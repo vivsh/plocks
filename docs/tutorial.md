@@ -1,7 +1,6 @@
 # Learn Plocks with blocks
 
-Run a lesson with `plocks run examples/<lesson>`. Every lesson also builds with
-`plocks build examples/<lesson>`; see [sharing](sharing.md).
+Run a lesson with `plocks run examples/<lesson>`.
 
 1. **first_steps** — construct a Sprite from Pillow, add it, bind Right to a glide.
 2. **jump_patrol** — compose a jump with two glides; another actor patrols independently.
@@ -54,11 +53,10 @@ def update(dt: float) -> None:
 A direct x assignment interrupts an active x glide. It does not interrupt a y-only
 jump. Collision queries report overlap; they do not move the actor or supply physics.
 
-## Share and explore
+## Run and explore
 
 Keep `stage.run()` last. Use the project root as the working directory for relative
-assets. `plocks run` sets that directory for you. Build a ZIP with
-`plocks build . --self-contained` when sharing without external runtime requests.
+assets. `plocks run` sets that directory for you.
 
 Hover over blocks, enums and methods in Pylance to see their arguments and units.
 The [API guide](api.md) explains cancellation, messages, audio and advanced scripts.
