@@ -35,7 +35,7 @@ def main() -> None:
     def cancel() -> None:
         hero.stop()
 
-    @stage.on_update
+    @friend.on_update
     def update(dt: float) -> None:
         friend.x += 30 * dt
         if friend.x > 200:

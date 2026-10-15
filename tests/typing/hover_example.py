@@ -55,3 +55,32 @@ def pose_after_steps(distance: int) -> Block[Puppet]:
 
 hero.on_message(steps, walk)
 person.on_message(steps, pose_after_steps)
+
+from plocks import Actor, MouseButton, Point
+
+
+@hero.on_update
+def move_hero(dt: float) -> None:
+    hero.x += 20 * dt
+
+
+@person.on_update
+def turn_person(dt: float) -> None:
+    person.turn_right(15 * dt)
+
+
+@hero.on_click
+def greet(position: Point, button: MouseButton) -> None:
+    hero.say(f"Clicked at {position}")
+
+
+@person.on_click
+async def answer(position: Point, button: MouseButton) -> None:
+    await stage.wait(0.1)
+    person.say(button.name)
+
+
+hero.on_click(spoken_walk)
+person.on_click(puppet_dialogue)
+target: Actor = hero if held else person
+target.on_click(greet)

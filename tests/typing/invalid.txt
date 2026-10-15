@@ -64,3 +64,32 @@ def sprite_factory(value: int) -> Block[Sprite]:
 person.on_message(points, sprite_factory)
 sprite.on_message(points, Move(1))
 sprite.on_message(Signal("go"), sprite_factory)
+
+from plocks import MouseButton, Point
+
+@sprite.on_update
+async def async_sprite_update(dt: float) -> None:
+    pass
+
+@person.on_update
+async def async_puppet_update(dt: float) -> None:
+    pass
+
+@sprite.on_update
+def wrong_sprite_update(dt: str) -> None:
+    pass
+
+@person.on_update
+def wrong_puppet_update(dt: float) -> str:
+    return "wrong"
+
+@sprite.on_click
+def wrong_sprite_click(position: str, button: MouseButton) -> None:
+    pass
+
+@person.on_click
+async def wrong_puppet_click(position: Point, button: str) -> None:
+    pass
+
+person.on_click(SetCostume(sprite.costume))
+sprite.on_click(SetPose(person.pose))

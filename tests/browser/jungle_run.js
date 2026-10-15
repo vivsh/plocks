@@ -26,7 +26,7 @@ for task in asyncio.all_tasks():
  f=getattr(task.get_coro(),'cr_frame',None)
  if f and f.f_code.co_name=='drive':
   s=f.f_locals['stage']
-v=dict(inspect.getclosurevars(s._updates[0]).nonlocals)
+v=dict(inspect.getclosurevars(s._updates[0][1]).nonlocals)
 v.update(inspect.getclosurevars(s._draws[0]).nonlocals)
 h=v['hero']
 ${command}

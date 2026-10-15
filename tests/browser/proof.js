@@ -31,7 +31,7 @@ for _task in asyncio.all_tasks():
     if _frame and _frame.f_code.co_name == 'drive':
         _stage = _frame.f_locals['stage']
         ${command}
-        _result = {'stamp': ${JSON.stringify(token)}, 'time': _stage.time, 'x': _stage.objects[0].x, 'y': _stage.objects[0].y, 'sounds': _stage._updates[0].__globals__['sounds'], 'paused': _stage.paused, 'voices': len(_stage._voices)}
+        _result = {'stamp': ${JSON.stringify(token)}, 'time': _stage.time, 'x': _stage.objects[0].x, 'y': _stage.objects[0].y, 'sounds': _stage._updates[0][1].__globals__['sounds'], 'paused': _stage.paused, 'voices': len(_stage._voices)}
         platform.window.document.getElementById('canvas').setAttribute('data-proof', json.dumps(_result))
 `;
       await tab.evaluate(code => window.python.PyRun_SimpleString(code), source);

@@ -36,7 +36,7 @@ def game() -> Iterator[Stage]:
 
 def state(stage: Stage) -> dict[str, object]:
     """Inspect authored game values without adding test hooks to the example."""
-    values = dict[str, object](inspect.getclosurevars(stage._updates[0]).nonlocals)
+    values = dict[str, object](inspect.getclosurevars(stage._updates[0][1]).nonlocals)
     values.update(inspect.getclosurevars(stage._draws[0]).nonlocals)
     return values
 
@@ -49,7 +49,7 @@ def advance(stage: Stage, ticks: int) -> None:
         _deliver(stage)
         dispatch(stage)
         _step(stage)
-        for update in tuple(stage._updates):
+        for actor, update in tuple(stage._updates):
             update(1 / stage.tick_rate)
 
 

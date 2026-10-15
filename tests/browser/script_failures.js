@@ -21,7 +21,7 @@ for task in asyncio.all_tasks():
     f=getattr(task.get_coro(),'cr_frame',None)
     if f and f.f_code.co_name=='drive':
         proof_stage=f.f_locals['stage']
-        proof_game=proof_stage._updates[0].__globals__
+        proof_game=proof_stage._updates[0][1].__globals__
         proof_hero=proof_game['hero']
         proof_person=proof_game['person']
 async def fail_script(actor):

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Coroutine, Mapping
 from types import MappingProxyType
 from typing import TYPE_CHECKING, TypeVar, cast, overload
 
@@ -10,7 +10,7 @@ from ._operations import _PoseRun, _sample_pose
 from ._scripts import WhenBusy, _admit, _cancel, _conflicts
 from .geometry import Bounds, Color, Point, _integer, _number, _point, _positive, _rotate
 from .imaging import Costume, CostumeSource, _costume
-from .input import Key
+from .input import Key, MouseButton
 from .messages import Message, Signal
 from .motion import Ease, RotationStyle, _mirrored, _visual_direction
 from .rigging import HumanJoint, Pose, Skeleton, _pivots
@@ -24,6 +24,8 @@ if TYPE_CHECKING:
 
 
 _D = TypeVar("_D")
+_U = TypeVar("_U", bound=Callable[[float], None])
+_C = TypeVar("_C", bound=Callable[[Point, MouseButton], None | Coroutine[object, object, None]])
 
 
 class Puppet:
@@ -240,6 +242,39 @@ class Puppet:
         if isinstance(other, TileMap):
             return bool(other.tiles_touching(self.bounds, solid_only=True))
         return self.bounds.intersects(other.bounds)
+
+    def on_update(self, callback: _U) -> _U:
+        """Decorate a synchronous callback(dt: float) -> None; attach this actor first.
+
+        Runs each fixed simulation tick in registration order, including while
+        hidden. Pausing stops updates. The stage skips this callback while the
+        actor is detached and clears it on closure. Detached registration raises
+        StageError. Use blocks for beginner behaviors; async updates are rejected.
+        """
+        from .errors import StageError
+
+        if self._stage is None:
+            raise StageError("Add the actor to a stage before registering events")
+        return self._stage._on_actor_update(self, callback)
+
+    @overload
+    def on_click(self, block: _C, *, when_busy: WhenBusy = WhenBusy.IGNORE) -> _C: ...
+    @overload
+    def on_click(self, block: Block[Puppet], *, when_busy: WhenBusy = WhenBusy.IGNORE) -> None: ...
+    def on_click(self, block: object, *, when_busy: WhenBusy = WhenBusy.IGNORE) -> object:
+        """Bind a block or decorate callback(position, button); attach this actor first.
+
+        Only the topmost visible actor under the pointer receives actor clicks.
+        Hit testing uses camera-adjusted bounds, including transparent padding.
+        Callback coordinates stay in stage space. Sync/async callbacks are supported;
+        busy invocations default to IGNORE. Stage click observers still run first.
+        Detached registration raises StageError. on_draw remains on Stage.
+        """
+        from .errors import StageError
+
+        if self._stage is None:
+            raise StageError("Add the actor to a stage before registering events")
+        return self._stage._on_actor_click(self, block, when_busy)
 
     def on_start(self, block: Block[Puppet]) -> None:
         """Run a block once when the game starts; register after add, before run.

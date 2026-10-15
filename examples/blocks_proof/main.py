@@ -25,7 +25,7 @@ def pause() -> None:
         stage.pause()
 
 
-@stage.on_update
+@friend.on_update
 def update(dt: float) -> None:
     friend.x += 40 * dt
     if friend.x > 180:

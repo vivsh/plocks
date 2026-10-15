@@ -14,9 +14,11 @@ import pygame
 from ._render import frame
 from ._scripts import _cancel, _deliver, _sample, _step, _trigger
 from .errors import StageError
+from .geometry import Point
 from .input import Key, MouseButton
 
 if TYPE_CHECKING:
+    from .blocks import Actor
     from .stage import Stage
 
 
@@ -142,9 +144,28 @@ def dispatch(stage: Stage) -> None:
             if stage.running:
                 _trigger(stage, callback)
         if not isinstance(event, Key):
-            for clicked in tuple(stage._clicks):
+            target = _clicked_actor(stage, event[0])
+            observers = tuple(stage._clicks.get(None, ()))
+            targeted = tuple(stage._clicks.get(target, ())) if target is not None else ()
+            callbacks = (*observers, *targeted)
+            for clicked in callbacks:
                 if stage.running:
                     _trigger(stage, clicked, event)
+
+
+def _clicked_actor(stage: Stage, position: Point) -> Actor | None:
+    """Select one visible actor in render order using operation-local world bounds."""
+    from .puppets import Puppet
+    from .sprites import Sprite
+
+    x, y = position[0] + stage.camera[0], position[1] + stage.camera[1]
+    ordered = sorted(stage._members, key=lambda obj: obj.layer)
+    for actor in reversed(ordered):
+        if isinstance(actor, (Sprite, Puppet)) and actor.visible:
+            bounds = actor.bounds
+            if bounds.left <= x < bounds.right and bounds.bottom < y <= bounds.top:
+                return actor
+    return None
 
 
 def advance(stage: Stage, now: float) -> None:
@@ -170,8 +191,8 @@ def advance(stage: Stage, now: float) -> None:
         _step(stage)
         if stage.paused:
             break
-        for callback in tuple(stage._updates):
-            if stage.running and not stage.paused:
+        for actor, callback in tuple(stage._updates):
+            if stage.running and not stage.paused and (actor is None or actor._stage is stage):
                 callback(dt)
     if stage._accumulator >= dt:
         stage._accumulator %= dt

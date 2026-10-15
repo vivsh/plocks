@@ -163,9 +163,55 @@ them.
 
 Use Stage callback decorators for game-wide logic such as scores and pause controls.
 The existing `stage.on_start(actor, block)`, key and message binding forms remain
-supported. Click handlers stay on Stage and receive clicks anywhere in the viewport;
-there is no actor `on_click` or implicit actor hit-testing. Update and drawing
-callbacks also remain on Stage. Use `Script` to bind an advanced async actor function.
+supported. Use `Script` to bind an advanced async actor function. Custom drawing
+stays on Stage; actors have no `on_draw` method.
+
+For custom continuous movement, attach a synchronous update callback:
+
+```python
+@hero.on_update
+def move(dt: float) -> None:
+    if stage.keyboard.is_down(Key.RIGHT):
+        hero.x += 200 * dt
+```
+
+Actor and Stage updates share registration order and fixed simulated seconds.
+Updates stop during pause/suspension, run even when an actor is hidden, and skip
+actors detached from their registering stage. `stop()` cancels block executions;
+it does not unregister update or event callbacks. Async update functions are
+rejected. Changes to registrations take effect in the next update phase.
+
+Click an actor to run a block, or receive the pointer payload in a typed callback:
+
+```python
+hero.on_click(jump)
+
+@person.on_click
+def greet(position: Point, button: MouseButton) -> None:
+    person.say(f"{button.name.title()} click!")
+```
+
+Only the topmost visible Sprite or Puppet under the pointer receives actor clicks,
+using layer and then later insertion order. Hit testing uses transformed world
+bounds through the camera, including transparent padding; it is not pixel-mask
+hit testing. Left/top edges count, right/bottom edges do not. A visible actor without
+click handlers still blocks actors beneath it. Tile maps, backgrounds, bubbles,
+and Canvas overlays do not intercept actor clicks.
+
+For a variable annotated as `Actor` (`Sprite | Puppet`), use named registration
+`actor.on_click(callback)` if mypy rejects decorator syntax on the union.
+Decorators work directly on concrete Sprite and Puppet variables.
+
+Click payloads stay in stage coordinates. Actor click callbacks can be synchronous
+or asynchronous; block and async invocations use the normal busy policy and actor
+cancellation rules. During pause, sync click callbacks run and asynchronous/block
+work waits until resume. Register after adding the actor to a stage.
+
+Stage click callbacks still observe every click and run before targeted actor
+handlers. The target and handler lists are snapshotted before dispatch. Removing
+the selected actor in a global observer skips it without retargeting that click.
+The older `stage.on_click(actor, block)` form remains a global click binding;
+prefer `actor.on_click(block)` when the actor itself should be clicked.
 
 `Signal("name")` carries no data. `Message[int]("name")` carries a typed value.
 Share the same token instance, often from a project-local messages module: identical

@@ -71,7 +71,7 @@ for _task in asyncio.all_tasks():
     _frame = getattr(_task.get_coro(), 'cr_frame', None)
     if _frame and _frame.f_code.co_name == 'drive':
         _stage = _frame.f_locals['stage']
-        _game = _stage._updates[0].__globals__
+        _game = _stage._updates[0][1].__globals__
         ${command}
         _result = {'stamp': ${JSON.stringify(stamp)}, 'time': _stage.time, 'x': _game['hero'].x, 'camera': _stage.camera, 'pose': _game['person'].pose.angles[HumanJoint.RIGHT_HAND], 'score': _game['score'], 'paused': _stage.paused, 'voices': len(_stage._voices)}
         platform.window.document.getElementById('canvas').setAttribute('data-proof', json.dumps(_result))

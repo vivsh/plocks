@@ -22,6 +22,7 @@ from .sprites import Sprite
 from .tiling import TiledBackground, TileMap
 
 type _Update = Callable[[float], None]
+_U = TypeVar("_U", bound=_Update)
 type _Press = Callable[[], None | Coroutine[object, object, None]]
 _P = TypeVar("_P", bound=_Press)
 type _Result = None | Coroutine[object, object, None]
@@ -90,11 +91,11 @@ class Stage:
         self._camera: Point = (0, 0)
         self._volume = 1.0
         self._members: list[_StageObject] = []
-        self._updates: list[_Update] = []
+        self._updates: list[tuple[Actor | None, _Update]] = []
         self._keys: dict[Key, list[_Handler]] = {}
         self._runs: list[_Run] = []
         self._starts: list[_Handler] = []
-        self._clicks: list[_Handler] = []
+        self._clicks: dict[Actor | None, list[_Handler]] = {}
         self._messages: list[_Delivery] = []
         self._message_handlers: dict[Signal | Message[object], list[_Handler]] = {}
         self._draws: list[_Draw] = []
@@ -244,7 +245,17 @@ class Stage:
     def on_update(self, callback: _Update) -> _Update:
         """Register a callback(dt: float) -> None. dt is fixed simulated seconds."""
         _open(self)
-        self._updates.append(callback)
+        self._updates.append((None, callback))
+        return callback
+
+    def _on_actor_update(self, actor: Actor, callback: _U) -> _U:
+        _open(self)
+        _actor(self, actor)
+        from inspect import iscoroutinefunction
+
+        if not callable(callback) or iscoroutinefunction(callback):
+            raise TypeError("Actor update callbacks must be synchronous functions")
+        self._updates.append((actor, callback))
         return callback
 
     @overload
@@ -305,16 +316,25 @@ class Stage:
         """Bind a block, or decorate a typed callback(position, button); async is supported."""
         _open(self)
         if block is not None:
-            self._clicks.append(_binding(self, actor, block, when_busy))
+            self._clicks.setdefault(None, []).append(_binding(self, actor, block, when_busy))
             return None
         callback = cast(_Click, actor)
-
-        def start(data: object) -> _Result:
-            position, button = cast(tuple[Point, MouseButton], data)
-            return callback(position, button)
-
-        self._clicks.append(_Handler(start, None, None, when_busy))
+        self._clicks.setdefault(None, []).append(_click_handler(callback, None, when_busy))
         return actor
+
+    def _on_actor_click(self, actor: Actor, block: object, when_busy: WhenBusy) -> object:
+        _open(self)
+        _actor(self, actor)
+        if isinstance(block, Block):
+            handler = _binding(self, actor, cast("Block[Actor]", block), when_busy)
+            result: object = None
+        else:
+            if not callable(block):
+                raise TypeError("Click handlers must be a Block or callback(position, button)")
+            handler = _click_handler(cast(_Click, block), actor, when_busy)
+            result = block
+        self._clicks.setdefault(actor, []).append(handler)
+        return result
 
     @overload
     def on_message(
@@ -512,3 +532,11 @@ def _binding(stage: Stage, actor: object, block: object, when_busy: WhenBusy) ->
         raise TypeError("Event bindings require a Block, not the result of actor.act")
     recipe = cast(Block[Actor], block)
     return _Handler(lambda _: recipe.run(target), target, recipe, when_busy)
+
+
+def _click_handler(callback: _Click, actor: Actor | None, when_busy: WhenBusy) -> _Handler:
+    def start(data: object) -> _Result:
+        position, button = cast(tuple[Point, MouseButton], data)
+        return callback(position, button)
+
+    return _Handler(start, actor, None, when_busy)

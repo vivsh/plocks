@@ -13,7 +13,8 @@ Run a lesson with `plocks run examples/<lesson>`.
 9. **scripts** — advanced async functions await the same motion primitives.
 10. **tiling** — create grass, dirt and stone tiles with Pillow; click cells to edit the map.
 11. **jungle_run** — a short action game: run, jump onto platforms, shoot sentries, and restart.
-12. **animated_world** — combine spritesheets, Pillow art, tiles, editable cells, Puppet
+12. **actor_callbacks** — attach continuous updates and targeted clicks to sprites and Puppets.
+13. **animated_world** — combine spritesheets, Pillow art, tiles, editable cells, Puppet
     poses, sound, typed messages, a camera and a score overlay.
 
 ## Think in sequences
@@ -46,7 +47,7 @@ A costume's anchor marks its position; a Puppet uses its skeleton's root.
 Ordinary Python remains useful for continuous input, scores and derived cameras:
 
 ```python
-@stage.on_update
+@hero.on_update
 def update(dt: float) -> None:
     if stage.keyboard.is_down(Key.RIGHT):
         hero.x += 100 * dt
