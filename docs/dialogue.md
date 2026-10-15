@@ -15,7 +15,6 @@ wraps at the viewport edges, and uses an ellipsis when space is insufficient. Hi
 and off-screen actors still advance their speech timers. Custom Canvas overlays draw
 above bubbles; continue using Canvas.text for scores and other screen text.
 
-
 These examples keep game setup and callbacks local to main. The final statement in
 main is stage.run; there is no code relying on desktop/browser post-run equivalence.
 
