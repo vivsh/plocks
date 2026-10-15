@@ -19,7 +19,7 @@ def main() -> None:
     def clear() -> None:
         hero.clear_bubble()
 
-    stage.on_key_down(Key.ESCAPE, hero, ClearBubble())
+    hero.on_key_down(Key.ESCAPE, ClearBubble())
     stage.run()
 
 

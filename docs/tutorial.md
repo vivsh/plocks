@@ -23,7 +23,7 @@ jump = Sequence(
     GlideBy(y=-100, seconds=0.3, easing=Ease.IN),
     SetCostume(idle),
 )
-stage.on_key_down(Key.SPACE, hero, jump)
+hero.on_key_down(Key.SPACE, jump)
 ```
 
 Blocks are reusable recipes. Constructing one does not start it. `actor.act(block)`

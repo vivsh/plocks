@@ -17,6 +17,8 @@ def test_negative_examples(tmp_path: Path) -> None:
         check=False,
     )
     assert result.returncode == 1
-    assert result.stdout.count("error:") == 19, result.stdout
+    assert result.stdout.count("error:") == 27, result.stdout
     assert "on_update" in result.stdout and "on_draw" in result.stdout
     assert "Sprite" in result.stdout and "assignment" in result.stdout
+    assert '"on_start" of "Puppet"' in result.stdout
+    assert '"on_message" of "Sprite"' in result.stdout

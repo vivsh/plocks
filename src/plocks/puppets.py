@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar, cast, overload
 
 from ._operations import _PoseRun, _sample_pose
-from ._scripts import _admit, _cancel, _conflicts
+from ._scripts import WhenBusy, _admit, _cancel, _conflicts
 from .geometry import Bounds, Color, Point, _integer, _number, _point, _positive, _rotate
 from .imaging import Costume, CostumeSource, _costume
+from .input import Key
+from .messages import Message, Signal
 from .motion import Ease, RotationStyle, _mirrored, _visual_direction
 from .rigging import HumanJoint, Pose, Skeleton, _pivots
 
@@ -19,6 +21,9 @@ if TYPE_CHECKING:
     from .sprites import Sprite
     from .stage import Stage
     from .tiling import TileMap
+
+
+_D = TypeVar("_D")
 
 
 class Puppet:
@@ -235,6 +240,73 @@ class Puppet:
         if isinstance(other, TileMap):
             return bool(other.tiles_touching(self.bounds, solid_only=True))
         return self.bounds.intersects(other.bounds)
+
+    def on_start(self, block: Block[Puppet]) -> None:
+        """Run a block once when the game starts; register after add, before run.
+
+        Detached actors or registration after startup raise StageError. The stage
+        owns this binding; removal/re-addition does not replay startup.
+        """
+        from .errors import StageError
+
+        if self._stage is None:
+            raise StageError("Add the actor to a stage before registering events")
+        self._stage.on_start(self, block)
+
+    def on_key_down(
+        self, key: Key, block: Block[Puppet], *, when_busy: WhenBusy = WhenBusy.IGNORE
+    ) -> None:
+        """Bind a block to a new key press; attach this actor to a stage first.
+
+        Keys are game-wide, not actor focus. Repeated triggers are ignored while
+        this registration runs; RESTART cancels it and starts again. The stage
+        owns the handler, skips it while detached, and clears it on closure.
+        Detached registration raises StageError. Nothing runs inline.
+        """
+        from .errors import StageError
+
+        if self._stage is None:
+            raise StageError("Add the actor to a stage before registering events")
+        self._stage.on_key_down(key, self, block, when_busy=when_busy)
+
+    @overload
+    def on_message(
+        self, message: Signal, block: Block[Puppet], *, when_busy: WhenBusy = WhenBusy.IGNORE
+    ) -> None: ...
+    @overload
+    def on_message(
+        self,
+        message: Message[_D],
+        block: Callable[[_D], Block[Puppet]],
+        *,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> None: ...
+    def on_message(
+        self,
+        message: Signal | Message[_D],
+        block: Block[Puppet] | Callable[[_D], Block[Puppet]],
+        *,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> None:
+        """Bind a signal block or typed payload-to-block factory; attach first.
+
+        Example: hero.on_message(hit, recoil), where recoil accepts hit's payload
+        and returns a compatible block. Factories run only for accepted deliveries
+        when execution starts. Busy triggers default to IGNORE; RESTART cancels
+        and replaces the invocation. Registrations belong to the current stage,
+        stay inactive while detached, and never transfer to another stage.
+        Detached registration raises StageError. Nothing runs inline.
+        """
+        from .errors import StageError
+
+        if self._stage is None:
+            raise StageError("Add the actor to a stage before registering events")
+        if isinstance(message, Signal):
+            self._stage.on_message(message, self, cast("Block[Puppet]", block), when_busy=when_busy)
+        else:
+            self._stage.on_message(
+                message, self, cast("Callable[[_D], Block[Puppet]]", block), when_busy=when_busy
+            )
 
     def act(self, block: Block[Puppet], *, restart: bool = False) -> None:
         """Schedule a reusable block; requires stage membership. Repeated act continues it."""

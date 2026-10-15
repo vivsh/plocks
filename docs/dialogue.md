@@ -30,7 +30,7 @@ def main() -> None:
     stage = Stage(background="midnightblue")
     hero = Sprite(Image.new("RGBA", (32, 40), "orange"), x=-80, y=-40)
     stage.add(hero)
-    stage.on_start(hero, Sequence(
+    hero.on_start(Sequence(
         Say("Hello!", seconds=2),
         Think("Where should I go?", seconds=1),
         GlideBy(x=100, seconds=1),
@@ -60,11 +60,11 @@ def main() -> None:
     stage.add(hero)
     stage.add(friend)
 
-    stage.on_start(hero, During(
+    hero.on_start(During(
         GlideBy(x=100, seconds=2),
         meanwhile=Say("Watch me walk!", seconds=2),
     ))
-    stage.on_start(friend, Sequence(
+    friend.on_start(Sequence(
         Think("My turn next...", seconds=1),
         Say("I can move too!"),
         Loop(Sequence(
@@ -104,7 +104,7 @@ def main() -> None:
     def clear() -> None:
         hero.clear_bubble()
 
-    stage.on_key_down(Key.ESCAPE, hero, ClearBubble())
+    hero.on_key_down(Key.ESCAPE, ClearBubble())
     stage.run()
 
 
@@ -135,7 +135,7 @@ def main() -> None:
         score += amount
         hero.act(Say(f"Score: {score}", seconds=2))
 
-    stage.on_key_down(Key.SPACE, hero, Broadcast(score_added, 1))
+    hero.on_key_down(Key.SPACE, Broadcast(score_added, 1))
     stage.run()
 
 

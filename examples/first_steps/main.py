@@ -7,5 +7,5 @@ from plocks import GlideBy, Key, Sprite, Stage
 stage = Stage()
 cat = Sprite(Image.new("RGBA", (32, 32), "orange"))
 stage.add(cat)
-stage.on_key_down(Key.RIGHT, cat, GlideBy(x=60, seconds=0.4))
+cat.on_key_down(Key.RIGHT, GlideBy(x=60, seconds=0.4))
 stage.run()

@@ -18,7 +18,7 @@ def main() -> None:
         score += amount
         hero.act(Say(f"Score: {score}", seconds=2))
 
-    stage.on_key_down(Key.SPACE, hero, Broadcast(score_added, 1))
+    hero.on_key_down(Key.SPACE, Broadcast(score_added, 1))
     stage.run()
 
 

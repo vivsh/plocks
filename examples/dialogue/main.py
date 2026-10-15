@@ -9,8 +9,7 @@ def main() -> None:
     stage = Stage(background="midnightblue")
     hero = Sprite(Image.new("RGBA", (32, 40), "orange"), x=-80, y=-40)
     stage.add(hero)
-    stage.on_start(
-        hero,
+    hero.on_start(
         Sequence(
             Say("Hello!", seconds=2),
             Think("Where should I go?", seconds=1),

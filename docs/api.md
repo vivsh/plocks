@@ -58,7 +58,7 @@ jump = Sequence(
     GlideBy(y=100, seconds=0.3, easing=Ease.OUT),
     GlideBy(y=-100, seconds=0.3, easing=Ease.IN),
 )
-stage.on_key_down(Key.SPACE, hero, jump)
+hero.on_key_down(Key.SPACE, jump)
 ```
 
 `act` schedules; it returns `None` and never runs inline. Before `run`, it queues
@@ -139,10 +139,33 @@ supported.
 
 ## Events and messages
 
-`stage.on_start(actor, block)` starts once after the game opens. Key, click and signal
-bindings accept the actor and block directly. Busy registrations ignore repeat
-triggers by default; `when_busy=WhenBusy.RESTART` cancels and replaces their current
-invocation. There is no trigger backlog. Separate registrations are independent.
+Add an actor to a stage, then attach its reactions directly:
+
+```python
+stage.add(hero)
+hero.on_start(patrol)
+hero.on_key_down(Key.SPACE, jump)
+hero.on_message(dance, dance_steps)  # dance is a Signal
+```
+
+These methods accept blocks on both Sprite and Puppet. Startup registration must
+happen before `stage.run()`. Key and message handlers can also be registered during
+execution. Detached registration raises `StageError`. Keys are game-wide: multiple
+actors can react to the same key, without keyboard focus.
+
+Busy registrations ignore repeat triggers by default; `when_busy=WhenBusy.RESTART`
+cancels and replaces their current invocation. There is no trigger backlog.
+Separate registrations are independent. `stop()` cancels behavior without removing
+registrations. Removal cancels behavior and makes handlers inactive; re-adding to
+the same stage enables them again without replaying startup. Registrations belong
+to that stage and do not move with an actor to another stage. Stage closure clears
+them.
+
+Use Stage callback decorators for game-wide logic such as scores and pause controls.
+The existing `stage.on_start(actor, block)`, key and message binding forms remain
+supported. Click handlers stay on Stage and receive clicks anywhere in the viewport;
+there is no actor `on_click` or implicit actor hit-testing. Update and drawing
+callbacks also remain on Stage. Use `Script` to bind an advanced async actor function.
 
 `Signal("name")` carries no data. `Message[int]("name")` carries a typed value.
 Share the same token instance, often from a project-local messages module: identical
@@ -158,8 +181,8 @@ hit = Message[int]("hit")
 def recoil(distance: int) -> Block[Sprite]:
     return GlideBy(x=distance, seconds=0.2)
 
-stage.on_message(hit, enemy, recoil)
-stage.on_key_down(Key.H, hero, Broadcast(hit, 20))
+enemy.on_message(hit, recoil)
+hero.on_key_down(Key.H, Broadcast(hit, 20))
 ```
 
 Factories run only for accepted deliveries, when their behavior starts.

@@ -32,3 +32,26 @@ puppet_dialogue: Block[Puppet] = Sequence(
     Poses((person.pose,), fps=2),
     Think("Done", seconds=1),
 )
+
+from plocks import Message, Signal, WhenBusy
+
+stage.add(person)
+hero.on_start(spoken_walk)
+person.on_start(puppet_dialogue)
+hero.on_key_down(Key.SPACE, spoken_walk)
+person.on_key_down(Key.P, puppet_dialogue, when_busy=WhenBusy.RESTART)
+wave = Signal("wave")
+person.on_message(wave, puppet_dialogue)
+steps = Message[int]("steps")
+
+
+def walk(distance: int) -> Block[Sprite]:
+    return Sequence(GlideBy(x=distance, seconds=1), Say("Arrived"))
+
+
+def pose_after_steps(distance: int) -> Block[Puppet]:
+    return Sequence(GlideBy(x=distance, seconds=1), Poses((person.pose,), fps=2))
+
+
+hero.on_message(steps, walk)
+person.on_message(steps, pose_after_steps)

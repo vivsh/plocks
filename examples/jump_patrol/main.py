@@ -32,6 +32,6 @@ jump = Sequence(
 patrol = Loop(
     Sequence(GlideTo(x=150, seconds=1.5), Wait(0.2), GlideTo(x=-150, seconds=1.5), Wait(0.2))
 )
-stage.on_key_down(Key.SPACE, hero, jump)
-stage.on_start(friend, patrol)
+hero.on_key_down(Key.SPACE, jump)
+friend.on_start(patrol)
 stage.run()

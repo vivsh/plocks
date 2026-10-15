@@ -24,6 +24,6 @@ def recoil(data: Hit) -> Block[Sprite]:
     return Sequence(GlideBy(x=data.push, seconds=0.1), GlideBy(x=-data.push, seconds=0.2))
 
 
-stage.on_message(hit, enemy, recoil)
-stage.on_key_down(Key.H, hero, Broadcast(hit, Hit(push=20)))
+enemy.on_message(hit, recoil)
+hero.on_key_down(Key.H, Broadcast(hit, Hit(push=20)))
 stage.run()

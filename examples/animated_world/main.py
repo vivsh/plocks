@@ -89,7 +89,7 @@ def count_edit(amount: int) -> None:
 jump = Sequence(
     GlideBy(y=80, seconds=0.3, easing=Ease.OUT), GlideBy(y=-80, seconds=0.3, easing=Ease.IN)
 )
-stage.on_key_down(Key.J, hero, jump)
+hero.on_key_down(Key.J, jump)
 
 
 @stage.on_update
@@ -108,7 +108,7 @@ def update(dt: float) -> None:
     badge.turn_right(45 * dt)
 
 
-stage.on_key_down(Key.SPACE, hero, PlaySound(tone, volume=0.25, wait=False))
+hero.on_key_down(Key.SPACE, PlaySound(tone, volume=0.25, wait=False))
 
 
 @stage.on_key_down(Key.P)

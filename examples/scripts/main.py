@@ -14,5 +14,5 @@ async def jump(actor: Sprite) -> None:
     await actor.glide_by(y=-100, seconds=0.3, easing=Ease.IN)
 
 
-stage.on_key_down(Key.SPACE, hero, Script(jump))
+hero.on_key_down(Key.SPACE, Script(jump))
 stage.run()

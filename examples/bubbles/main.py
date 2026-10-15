@@ -15,10 +15,9 @@ def main() -> None:
     person = Puppet.stick_figure(color="lightgreen")
     person.position = (145, 15)
     stage.add(person)
-    stage.on_key_down(Key.T, person, Think("Where next?", seconds=2))
-    stage.on_key_down(
+    person.on_key_down(Key.T, Think("Where next?", seconds=2))
+    hero.on_key_down(
         Key.SPACE,
-        hero,
         During(
             GlideBy(x=100, seconds=1),
             meanwhile=Say("Watch me walk!", seconds=1),

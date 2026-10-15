@@ -9,7 +9,7 @@ hero = Sprite(Image.new("RGBA", (32, 32), "orange"), y=-100)
 friend = Sprite(Image.new("RGBA", (24, 24), "skyblue"), x=-150, y=80)
 stage.add(hero)
 stage.add(friend)
-stage.on_key_down(Key.SPACE, hero, GlideBy(y=100, seconds=0.6, easing=Ease.OUT))
+hero.on_key_down(Key.SPACE, GlideBy(y=100, seconds=0.6, easing=Ease.OUT))
 
 
 @stage.on_key_down(Key.A)

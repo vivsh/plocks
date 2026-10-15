@@ -12,15 +12,13 @@ def main() -> None:
     stage.add(hero)
     stage.add(friend)
 
-    stage.on_start(
-        hero,
+    hero.on_start(
         During(
             GlideBy(x=100, seconds=2),
             meanwhile=Say("Watch me walk!", seconds=2),
         ),
     )
-    stage.on_start(
-        friend,
+    friend.on_start(
         Sequence(
             Think("My turn next...", seconds=1),
             Say("I can move too!"),

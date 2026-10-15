@@ -50,3 +50,17 @@ sprite.say(123)
 person.think(None)
 stage.bubble_text_size = "large"
 _ = ClearBubble().run(stage)
+
+from plocks import Signal, SetPose
+person.on_start(SetCostume(sprite.costume))
+sprite.on_start(SetPose(person.pose))
+person.on_key_down(Key.SPACE, SetCostume(sprite.costume))
+sprite.on_key_down(Key.SPACE, SetPose(person.pose))
+sprite.on_message(points, wrong_factory)
+
+def sprite_factory(value: int) -> Block[Sprite]:
+    return SetCostume(sprite.costume)
+
+person.on_message(points, sprite_factory)
+sprite.on_message(points, Move(1))
+sprite.on_message(Signal("go"), sprite_factory)
