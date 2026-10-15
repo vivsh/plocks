@@ -11,7 +11,8 @@ Run a lesson with `plocks run examples/<lesson>`.
 7. **puppet** — animate a generated human using complete poses and `HumanJoint` names.
 8. **custom_figure** — attach images at joint pivots to make a custom articulated arm.
 9. **scripts** — advanced async functions await the same motion primitives.
-10. **animated_world** — combine spritesheets, Pillow art, tiles, editable cells, Puppet
+10. **tiling** — create grass, dirt and stone tiles with Pillow; click cells to edit the map.
+11. **animated_world** — combine spritesheets, Pillow art, tiles, editable cells, Puppet
     poses, sound, typed messages, a camera and a score overlay.
 
 ## Think in sequences
