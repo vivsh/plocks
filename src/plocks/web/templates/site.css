@@ -1,0 +1,13 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; background: #102033; color: #f1f5f9; }
+body { margin: 0; min-height: 100vh; }
+main { display: grid; min-height: 100vh; place-items: center; }
+canvas#canvas { display: block; width: min(100vw, 960px); height: auto; max-height: 100vh; object-fit: contain; border: 0; padding: 0; image-rendering: pixelated; outline: none; }
+canvas#canvas3d { display: none; }
+section { position: fixed; inset: auto; max-width: min(36rem, 85vw); padding: 2rem; border: 1px solid #395269; border-radius: 1rem; background: #152c42; box-shadow: 0 1rem 4rem #0009; }
+h1 { font-size: 1.5rem; margin-top: 0; }
+button { padding: .7rem 1.5rem; font: inherit; font-weight: 650; border: 0; border-radius: .5rem; background: #ffb454; color: #102033; cursor: pointer; }
+button:disabled { opacity: .45; cursor: wait; }
+button:focus-visible { outline: 3px solid white; outline-offset: 4px; }
+progress { width: 100%; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 55vh; overflow: auto; font-size: .85rem; }
+[hidden] { display: none !important; }

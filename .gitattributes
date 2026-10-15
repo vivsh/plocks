@@ -1,0 +1,4 @@
+# Preserve checksum-pinned upstream notices byte-for-byte on every checkout.
+src/plocks/web/notices/* -text
+*.png binary
+*.ogg binary

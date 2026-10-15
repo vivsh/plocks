@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>@@TITLE@@</title>
+  <link rel="icon" href="favicon.png">
+  <link rel="stylesheet" href="site.css">
+  <script src="site.js"></script>
+  <script src="browserfs.min.js"></script>
+</head>
+<body>
+  <main>
+    <canvas id="canvas" width="480" height="360" tabindex="0" aria-label="Game"></canvas>
+    <canvas id="canvas3d" width="1" height="1" hidden></canvas>
+    <section id="transfer" aria-live="polite">
+      <h1>@@TITLE@@</h1>
+      <p id="status">Loading the game…</p>
+      <progress id="progress" max="100"></progress>
+      <p id="infobox">Preparing Python…</p>
+      <button id="play" type="button" disabled>Play</button>
+    </section>
+    <section id="error" hidden role="alert">
+      <h1>The game stopped</h1>
+      <pre id="error-message"></pre>
+      <button type="button" id="reload">Reload</button>
+    </section>
+  </main>
+  <script type="text/plain" id="plocks-bootstrap">#<!--
+import asyncio
+import importlib
+import runpy
+import traceback
+
+async def custom_site():
+    import embed
+    import platform
+    import zipfile
+    from pathlib import Path
+    try:
+        appdir = Path("/data/data/plocks_game")
+        appdir.mkdir(exist_ok=True)
+        async with platform.fopen("game.apk", "rb") as archive:
+            with zipfile.ZipFile(archive) as bundle:
+                bundle.extractall(appdir)
+        platform.run_main(PyConfig, loaderhome=appdir / "assets", loadermain=None)
+        while embed.counter() < 0:
+            await asyncio.sleep(0.05)
+        await TopLevel_async_handler.start_toplevel(platform.shell, console=False)
+        for package in ("pygame", "PIL.Image"):
+            importlib.import_module(package)
+        platform.window.plocksReady()
+        while not platform.window.plocksStarted:
+            await asyncio.sleep(0.05)
+        main = appdir / "assets" / "main.py"
+        __import__(__name__).__file__ = main
+        runpy.run_path(str(main), run_name="__main__")
+        platform.window.document.title = platform.window.document.querySelector("#transfer h1").textContent
+    except Exception:
+        platform.window.plocksError(traceback.format_exc())
+        raise
+
+asyncio.run(custom_site())
+# --></script>
+</body>
+</html>

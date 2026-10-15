@@ -1,0 +1,52 @@
+from PIL import Image
+from plocks import Canvas, Pose, Skeleton, Sprite, Stage
+
+stage = Stage()
+
+@stage.on_update
+def wrong_update(dt: str) -> None:
+    pass
+
+@stage.on_draw
+def wrong_draw(canvas: Canvas, extra: int) -> None:
+    pass
+
+sprite = Sprite([1, 2, 3])
+sprite = Sprite(Image.new("RGBA", (4, 4)))
+sprite.x = "right"
+pose = Pose(Skeleton.human(), {"root": "upright"})
+
+from plocks import Block, Broadcast, Costumes, GlideBy, Key, Message, Move, Puppet, Sequence, SetCostume
+person = Puppet.stick_figure()
+stage.add(person)
+stage.add(sprite)
+person.act(Sequence(GlideBy(x=2, seconds=1), SetCostume(sprite.costume)))
+stage.on_key_down(Key.SPACE, person, Costumes((sprite.costume,), fps=2))
+points = Message[int]("points")
+stage.broadcast(points, "wrong")
+Broadcast(points, "wrong")
+
+@stage.on_message(points)
+def wrong_payload(value: str) -> None:
+    pass
+
+def wrong_factory(value: str) -> Block[Sprite]:
+    return Move(1)
+
+stage.on_message(points, sprite, wrong_factory)
+
+@stage.on_update
+async def async_update(dt: float) -> None:
+    pass
+
+@stage.on_draw
+async def async_draw(canvas: Canvas) -> None:
+    pass
+
+from plocks import Say, Think, ClearBubble
+Say(123)
+Think("bad", seconds="two")
+sprite.say(123)
+person.think(None)
+stage.bubble_text_size = "large"
+_ = ClearBubble().run(stage)

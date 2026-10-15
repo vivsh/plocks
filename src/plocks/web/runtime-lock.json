@@ -1,0 +1,188 @@
+[
+  {
+    "path": "0.9.3/pythons.js",
+    "url": "https://pygame-web.github.io/cdn/0.9.3/pythons.js",
+    "size": 69205,
+    "sha256": "6da43e3e62c3db933421b99681e8ef99ed9b0ce1589ed8a0c69b88443278e019"
+  },
+  {
+    "path": "0.9.3/cpythonrc.py",
+    "url": "https://pygame-web.github.io/cdn/0.9.3/cpythonrc.py",
+    "size": 50426,
+    "sha256": "b8a0b8168b58ef7c38c17d4705c9cbe1751fa667a0a6d26ed26f0537134735de"
+  },
+  {
+    "path": "0.9.3/default.tmpl",
+    "url": "https://pygame-web.github.io/cdn/0.9.3/default.tmpl",
+    "size": 12447,
+    "sha256": "42404ac4680640d3898e8a28cdd4bc79624b5b4a34ebdd2c2aac4088ebd956af"
+  },
+  {
+    "path": "0.9.3/favicon.png",
+    "url": "https://pygame-web.github.io/cdn/0.9.3/favicon.png",
+    "size": 18477,
+    "sha256": "a86cd9ec127aefce1a3ba06a8f91603e3be940cb3173754dae3f218dc90cbce2"
+  },
+  {
+    "path": "0.9.3/empty.ogg",
+    "url": "https://pygame-web.github.io/cdn/0.9.3/empty.ogg",
+    "size": 4035,
+    "sha256": "884c20d864222b845aa78fb078ec370f4ddaa203cd92ace28440ed7733403b40"
+  },
+  {
+    "path": "0.9.3/cpython312/main.js",
+    "url": "https://pygame-web.github.io/cdn/0.9.3/cpython312/main.js",
+    "size": 849985,
+    "sha256": "01c4e4dc7145a482ad259d8272ce73d97b58ec2a141bfb57e620347730d159c7"
+  },
+  {
+    "path": "0.9.3/cpython312/main.data",
+    "url": "https://pygame-web.github.io/cdn/0.9.3/cpython312/main.data",
+    "size": 6668609,
+    "sha256": "b068df4d59b06b113cfc3c4d6419bdf699d2c2eeb547c9119e2044c98cdc4a59"
+  },
+  {
+    "path": "0.9.3/cpython312/main.wasm",
+    "url": "https://pygame-web.github.io/cdn/0.9.3/cpython312/main.wasm",
+    "size": 13447111,
+    "sha256": "3cfb882de90feeb367325f0c58731932880c8f424fb5a670b98d035ae862b280"
+  },
+  {
+    "path": "cp312/pygame_ce-2.5.7-cp312-cp312-wasm32_bi_emscripten.whl",
+    "url": "https://pygame-web.github.io/cdn/cp312/pygame_ce-2.5.7-cp312-cp312-wasm32_bi_emscripten.whl",
+    "size": 1527290,
+    "sha256": "4f2caa3020592950565f3649c41e2eeacd001be93da892d60e5a4a43d893a323"
+  },
+  {
+    "path": "cp312/pillow-11.3.0-cp312-cp312-wasm32_bi_emscripten.whl",
+    "url": "https://pygame-web.github.io/cdn/cp312/pillow-11.3.0-cp312-cp312-wasm32_bi_emscripten.whl",
+    "size": 944083,
+    "sha256": "83fe10c08eb842804d577faf59ec5639a3fd03bab1ae0031e46a03cb1323a654"
+  },
+  {
+    "path": "lib/index.html",
+    "url": "https://pygame-web.github.io/cdn/lib/index.html",
+    "size": 2148,
+    "sha256": "e5affd445ee616953fc36aca1010f30bf9e6692fef5101cd192baacf43033769"
+  },
+  {
+    "path": "support/browserfs.min.js",
+    "url": "https://pygame-web.github.io/archives/0.9/browserfs.min.js",
+    "size": 251354,
+    "sha256": "ba01fda78db31a7ba579afe74b8b56cf4636381ca1b6c54ffba20467756a627f"
+  },
+  {
+    "path": "index-0.9.3-cp312.json",
+    "url": "https://pygame-web.github.io/cdn/index-0.9.3-cp312.json",
+    "size": 1451,
+    "sha256": "ec6edacc1b95700c99b8daecb8ce3949e58e96a1da5234c81d8a0071aa537213"
+  },
+  {
+    "path": "pure/typing_extensions-4.16.0-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl",
+    "size": 45571,
+    "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+  },
+  {
+    "path": "notices/pygame-ce-LGPL.txt",
+    "url": "https://raw.githubusercontent.com/pygame-community/pygame-ce/2.5.7/docs/LGPL.txt",
+    "size": 26430,
+    "sha256": "a190dc9c8043755d90f8b0a75fa66b9e42d4af4c980bf5ddc633f0124db3cee7"
+  },
+  {
+    "path": "notices/CPython-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/python/cpython/v3.12.12/LICENSE",
+    "size": 13936,
+    "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+  },
+  {
+    "path": "notices/Pygbag-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/pygame-web/pygbag/main/LICENSE",
+    "size": 1067,
+    "sha256": "c931c0cc84dce2b2f589786eae9a7acf28fe53e7100d80defed2d13c57d798b2"
+  },
+  {
+    "path": "notices/BrowserFS-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/jvilk/BrowserFS/v1.4.3/LICENSE",
+    "size": 6217,
+    "sha256": "3a7e16fe59c38735309c9df4657cda635cfd7a1bf672f5404b7c7ab5cf949d94"
+  },
+  {
+    "path": "notices/SDL-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/libsdl-org/SDL/release-2.32.10/LICENSE.txt",
+    "size": 884,
+    "sha256": "97f35b302b361680ec1e891e95d2d52097bb95abff361434916d99dc1305f127"
+  },
+  {
+    "path": "notices/SDL_image-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/libsdl-org/SDL_image/release-2.8.8/LICENSE.txt",
+    "size": 878,
+    "sha256": "7826eca0a0f7e591f38dd844e207a200aac81a59b20d8a30c3af8c6282af13e6"
+  },
+  {
+    "path": "notices/SDL_mixer-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/libsdl-org/SDL_mixer/release-2.8.1/LICENSE.txt",
+    "size": 878,
+    "sha256": "7826eca0a0f7e591f38dd844e207a200aac81a59b20d8a30c3af8c6282af13e6"
+  },
+  {
+    "path": "notices/SDL_ttf-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/libsdl-org/SDL_ttf/release-2.24.0/LICENSE.txt",
+    "size": 878,
+    "sha256": "7826eca0a0f7e591f38dd844e207a200aac81a59b20d8a30c3af8c6282af13e6"
+  },
+  {
+    "path": "notices/FreeType-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/freetype/freetype/VER-2-13-3/docs/FTL.TXT",
+    "size": 6743,
+    "sha256": "08c135755dd589039470f1fdbb400daaabaaa50d0b366d19cebff4d22986baa1"
+  },
+  {
+    "path": "notices/libpng-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/pnggroup/libpng/v1.6.50/LICENSE",
+    "size": 5345,
+    "sha256": "16d9daaafbf63a31a5bdc91d4600972548fef5aaa1244202393288dbd079c49a"
+  },
+  {
+    "path": "notices/zlib-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/madler/zlib/v1.3.1/LICENSE",
+    "size": 1002,
+    "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243"
+  },
+  {
+    "path": "notices/libjpeg-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/libjpeg-turbo/libjpeg-turbo/3.1.1/LICENSE.md",
+    "size": 5620,
+    "sha256": "96f5b328adbb78eeaaec6980d73fd558cb1e4d62560ed615646bc3cf5e532430"
+  },
+  {
+    "path": "notices/libwebp-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/webmproject/libwebp/v1.5.0/COPYING",
+    "size": 1496,
+    "sha256": "5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf"
+  },
+  {
+    "path": "notices/libogg-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/xiph/ogg/v1.3.5/COPYING",
+    "size": 1466,
+    "sha256": "d2ab5758336489da61c12cc5bb757da5339c4ae9001f9bb0562b4370249af814"
+  },
+  {
+    "path": "notices/libvorbis-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/xiph/vorbis/v1.3.7/COPYING",
+    "size": 1470,
+    "sha256": "ec1815db59fcd302846df949d7424876cb2e2dc5ed1606c5fb0b36787b1cf43a"
+  },
+  {
+    "path": "notices/Emscripten-LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/emscripten-core/emscripten/4.0.9/LICENSE",
+    "size": 5093,
+    "sha256": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86"
+  },
+  {
+    "path": "notices/GNU-GPL-2.0.txt",
+    "url": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt",
+    "size": 17984,
+    "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+  }
+]
