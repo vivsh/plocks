@@ -77,7 +77,9 @@ def frame(stage: Stage) -> None:
     for callback in tuple(stage._draws):
         canvas = Canvas(target, stage)
         try:
-            callback(canvas)
+            from .stage import _check_callback_result
+
+            _check_callback_result(callback(canvas), "draw")
         finally:
             canvas._surface = None
     pygame.display.flip()

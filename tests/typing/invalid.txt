@@ -1,95 +1,42 @@
 from PIL import Image
-from plocks import Canvas, Pose, Skeleton, Sprite, Stage
-
+from plocks import Action, Box, Canvas, Costume, Key, Message, MouseButton, Point, Puppet, Sprite, Stage
 stage = Stage()
-
-@stage.on_update
-def wrong_update(dt: str) -> None:
-    pass
-
-@stage.on_draw
-def wrong_draw(canvas: Canvas, extra: int) -> None:
-    pass
-
-sprite = Sprite([1, 2, 3])
-sprite = Sprite(Image.new("RGBA", (4, 4)))
-sprite.x = "right"
-pose = Pose(Skeleton.human(), {"root": "upright"})
-
-from plocks import Block, Broadcast, Costumes, GlideBy, Key, Message, Move, Puppet, Sequence, SetCostume
+hero = Sprite(Image.new("RGBA", (8, 8)))
 person = Puppet.stick_figure()
+stage.add(hero)
 stage.add(person)
-stage.add(sprite)
-person.act(Sequence(GlideBy(x=2, seconds=1), SetCostume(sprite.costume)))
-stage.on_key_down(Key.SPACE, person, Costumes((sprite.costume,), fps=2))
-points = Message[int]("points")
-stage.broadcast(points, "wrong")
-Broadcast(points, "wrong")
-
-@stage.on_message(points)
+hero.act(person.sequence())  # error
+person.act(hero.sequence())  # error
+person.sequence().set_costume(hero.costume)  # error
+hero.sequence().poses((person.pose,), fps=2)  # error
+hero.glide_by(x="far", seconds=1)  # error
+hero.glide_by(x=10, seconds=1, after=1)  # error
+message = Message[int]("score")
+stage.broadcast(message, "bad")  # error
+@hero.on_message(message)  # error
 def wrong_payload(value: str) -> None:
     pass
-
-def wrong_factory(value: str) -> Block[Sprite]:
-    return Move(1)
-
-stage.on_message(points, sprite, wrong_factory)
-
-@stage.on_update
+@hero.on_key_down(Key.A)  # error
+def wrong_key(value: int) -> None:
+    pass
+@stage.on_update  # error
 async def async_update(dt: float) -> None:
     pass
-
-@stage.on_draw
+@hero.on_update  # error
+def action_update(dt: float) -> Action:
+    return hero.wait(1)
+@stage.on_draw  # error
 async def async_draw(canvas: Canvas) -> None:
     pass
-
-from plocks import Say, Think, ClearBubble
-Say(123)
-Think("bad", seconds="two")
-sprite.say(123)
-person.think(None)
-stage.bubble_text_size = "large"
-_ = ClearBubble().run(stage)
-
-from plocks import Signal, SetPose
-person.on_start(SetCostume(sprite.costume))
-sprite.on_start(SetPose(person.pose))
-person.on_key_down(Key.SPACE, SetCostume(sprite.costume))
-sprite.on_key_down(Key.SPACE, SetPose(person.pose))
-sprite.on_message(points, wrong_factory)
-
-def sprite_factory(value: int) -> Block[Sprite]:
-    return SetCostume(sprite.costume)
-
-person.on_message(points, sprite_factory)
-sprite.on_message(points, Move(1))
-sprite.on_message(Signal("go"), sprite_factory)
-
-from plocks import MouseButton, Point
-
-@sprite.on_update
-async def async_sprite_update(dt: float) -> None:
+@person.on_click  # error
+def bad_click(position: str, button: int) -> None:
     pass
-
-@person.on_update
-async def async_puppet_update(dt: float) -> None:
-    pass
-
-@sprite.on_update
-def wrong_sprite_update(dt: str) -> None:
-    pass
-
-@person.on_update
-def wrong_puppet_update(dt: float) -> str:
-    return "wrong"
-
-@sprite.on_click
-def wrong_sprite_click(position: str, button: MouseButton) -> None:
-    pass
-
-@person.on_click
-async def wrong_puppet_click(position: Point, button: str) -> None:
-    pass
-
-person.on_click(SetCostume(sprite.costume))
-sprite.on_click(SetPose(person.pose))
+hero.costume = person.pose  # error
+person.pose = hero.costume  # error
+hero.body.velocity = "fast"  # error
+hero.body.shape = hero.costume  # error
+hero.repeat().call(42)  # error
+hero.wait(1).done = True  # error
+hero.position = (1, "up")  # error
+stage.join()  # error
+stage.broadcast(message)  # error

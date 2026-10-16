@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .physics import BodyType
+
 from math import cos, isfinite, radians, sin
 
 type Point = tuple[float, float]
@@ -98,3 +103,10 @@ class Bounds:
         """Return whether a point lies inside or on the boundary."""
         x, y = _point(point)
         return self.left <= x <= self.right and self.bottom <= y <= self.top
+
+
+@dataclass(frozen=True, slots=True)
+class _Placement:
+    position: Point
+    direction: float
+    body_type: BodyType

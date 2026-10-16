@@ -9,10 +9,8 @@ from PIL import Image
 
 from plocks import (
     Actor,
-    GlideBy,
     Joint,
     MouseButton,
-    Move,
     Point,
     Puppet,
     Skeleton,
@@ -138,7 +136,7 @@ def test_registration_requires_attachment_and_sync_update[A: (Sprite, Puppet)](
     with pytest.raises(StageError):
         actor.on_click(clicked)
     with pytest.raises(StageError):
-        actor.on_click(Move(1))
+        actor.on_click(actor.sequence().move(1))
     stage.add(actor)
 
     async def async_update(dt: float) -> None:
@@ -272,19 +270,19 @@ def test_click_block_busy_and_removal[A: (Sprite, Puppet)](
 ) -> None:
     """Repeated actor clicks share existing busy policies and removal cancels the root."""
     stage.add(actor)
-    actor.on_click(GlideBy(y=60, seconds=1), when_busy=busy)
+    actor.on_click(actor.sequence().glide_by(y=60, seconds=1), when_busy=busy)
     click(stage)
     ticks(stage, 13)
-    original = stage._runs[0]
+    original = stage._actions[0]
     frozen = actor.y
     click(stage, (actor.x, actor.y))
-    assert (stage._runs[0] is original) == (busy is WhenBusy.IGNORE)
+    assert (stage._actions[0] is original) == (busy is WhenBusy.IGNORE)
     stage.remove(actor)
     ticks(stage, 1)
-    assert actor.y == frozen and not stage._runs
+    assert actor.y == frozen and not stage._actions
     stage.add(actor)
     click(stage, (actor.x, actor.y))
-    assert len(stage._runs) == 1
+    assert len(stage._actions) == 1
 
 
 def test_paused_sync_clicks_and_async_invocation_ownership[A: (Sprite, Puppet)](
@@ -311,25 +309,26 @@ def test_paused_sync_clicks_and_async_invocation_ownership[A: (Sprite, Puppet)](
     stage.pause()
     click(stage)
     ticks(stage, 8)
-    assert events == ["sync"] and len(stage._runs) == 1
+    assert events == ["sync"] and len(stage._actions) == 1
     stage.resume()
     ticks(stage, 8)
     assert "start" in events and "end" in events and "update" in events
-    assert not stage._runs
+    assert not stage._actions
     click(stage)
-    assert stage._runs[0].actor is actor
+    assert stage._actions[0]._actor is actor
     stage.remove(actor)
-    assert not stage._runs
+    assert not stage._actions
 
 
 def test_legacy_stage_binding_stays_global[A: (Sprite, Puppet)](actor: A, stage: Stage) -> None:
     """The older Stage.on_click(actor, block) form still reacts anywhere on stage."""
     stage.add(actor)
-    stage.on_click(actor, Move(2))
-    actor.on_click(Move(3))
+    stage.on_click(actor, actor.sequence().move(2))
+    actor.on_click(actor.sequence().move(3))
     click(stage, (100, 100))
     ticks(stage, 1)
     assert actor.x == 2
+    ticks(stage, 1)  # The returned command completes its invocation at the next phase.
     click(stage, (actor.x, actor.y))
     ticks(stage, 1)
     assert actor.x == 7
@@ -359,5 +358,5 @@ def test_callback_failures_preserve_exception_and_cleanup[A: (Sprite, Puppet)](
     with pytest.raises(ValueError) as caught:
         asyncio.run(drive(stage))
     assert caught.value is failure
-    assert not stage._updates and not stage._clicks and not stage._runs
+    assert not stage._updates and not stage._clicks and not stage._actions
     assert actor._stage is None

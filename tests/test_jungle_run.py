@@ -122,8 +122,8 @@ def test_repeated_restart_and_close_retire_scripts(game: Stage) -> None:
     for _ in range(4):
         press(game, Key.R)
         advance(game, 1)
-        assert len(game._runs) == 6
+        assert len(game._actions) == 6
     actors = [obj for obj in game.objects if isinstance(obj, Sprite)]
     close(game)
-    assert not game._runs and not game.objects
+    assert not game._actions and not game.objects
     assert all(actor._stage is None for actor in actors)

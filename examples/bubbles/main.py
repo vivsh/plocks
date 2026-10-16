@@ -2,7 +2,7 @@
 
 from PIL import Image
 
-from plocks import During, GlideBy, Key, Puppet, Say, Sprite, Stage, Think
+from plocks import Key, Puppet, Sprite, Stage
 
 
 def main() -> None:
@@ -15,12 +15,12 @@ def main() -> None:
     person = Puppet.stick_figure(color="lightgreen")
     person.position = (145, 15)
     stage.add(person)
-    person.on_key_down(Key.T, Think("Where next?", seconds=2))
+    person.on_key_down(Key.T, person.sequence().think("Where next?", seconds=2))
     hero.on_key_down(
         Key.SPACE,
-        During(
-            GlideBy(x=100, seconds=1),
-            meanwhile=Say("Watch me walk!", seconds=1),
+        hero.sequence().during(
+            hero.sequence().glide_by(x=100, seconds=1),
+            meanwhile=hero.sequence().say("Watch me walk!", seconds=1),
         ),
     )
 

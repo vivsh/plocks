@@ -5,13 +5,13 @@ async page => {
     const external = [], errors = [], consoleMessages = [];
     try {
       if (mode === 'self') await context.route('**/*', route => {
-        if (new URL(route.request().url()).origin === 'http://127.0.0.1:8463') return route.continue();
+        if (new URL(route.request().url()).origin === 'http://127.0.0.1:8464') return route.continue();
         external.push(route.request().url()); return route.abort();
       });
       const tab = await context.newPage();
       tab.on('pageerror', error => errors.push(String(error)));
       tab.on('console', message => consoleMessages.push(message.text()));
-      await tab.goto(`http://127.0.0.1:8463/${mode}/`);
+      await tab.goto(`http://127.0.0.1:8464/bubbles-${mode}/`);
       await tab.bringToFront();
       await tab.waitForFunction(() => !document.getElementById('play').disabled, null, {timeout:60000});
       await tab.getByRole('button', {name:'Play',exact:true}).click();
@@ -23,7 +23,6 @@ async page => {
       const probe = async (command='pass') => {
         const stamp = String(Math.random());
         const source = `import asyncio,json,platform
-from plocks import Say,Think
 for task in asyncio.all_tasks():
  f=getattr(task.get_coro(),'cr_frame',None)
  if f and f.f_code.co_name=='drive':
@@ -34,7 +33,7 @@ ${command}
 b=h._bubble
 d=getattr(b,'definition',b)
 white=sum(s._target.get_at((x,y))[:3]==(255,255,255) for x in range(480) for y in range(90,170,2)) if s._target else 0
-platform.window.document.getElementById('canvas').setAttribute('data-bubble',json.dumps({'stamp':${JSON.stringify(stamp)},'time':s.time,'x':h.x,'friend':s.objects[1].x,'text':None if d is None else d.text,'runs':len(s._runs),'white':white,'mouse':s.mouse.position,'puppet':None if s.objects[2]._bubble is None else getattr(s.objects[2]._bubble,'definition',s.objects[2]._bubble).text}))`;
+platform.window.document.getElementById('canvas').setAttribute('data-bubble',json.dumps({'stamp':${JSON.stringify(stamp)},'time':s.time,'x':h.x,'friend':s.objects[1].x,'text':None if d is None else d.text,'runs':len(s._actions),'white':white,'mouse':s.mouse.position,'puppet':None if s.objects[2]._bubble is None else getattr(s.objects[2]._bubble,'definition',s.objects[2]._bubble).text}))`;
         await tab.evaluate(code => window.python.PyRun_SimpleString(code), source);
         await tab.waitForFunction(stamp => {const v=document.getElementById('canvas').getAttribute('data-bubble');return v&&JSON.parse(v).stamp===stamp},stamp);
         return JSON.parse(await tab.locator('#canvas').getAttribute('data-bubble'));
@@ -52,7 +51,7 @@ platform.window.document.getElementById('canvas').setAttribute('data-bubble',jso
       const done=await probe();
       if(Math.abs(done.x)>0.001||done.text!==null||done.runs!==0)throw Error('Completion/busy failed '+JSON.stringify(done));
       await tab.keyboard.press('Space');await tab.waitForTimeout(120);
-      await probe('h.act(Say("Replacement",seconds=0.4))');await tab.waitForTimeout(100);
+      await probe('h.say("Replacement",seconds=0.4)');await tab.waitForTimeout(100);
       const replaced=await probe();
       await tab.waitForTimeout(450);const ended=await probe();
       if(replaced.text!=='Replacement'||ended.text!==null||ended.x!==replaced.x)throw Error('Replacement did not cancel movement root');
@@ -60,7 +59,8 @@ platform.window.document.getElementById('canvas').setAttribute('data-bubble',jso
       await tab.keyboard.press('c');await tab.waitForTimeout(100);const canceled=await probe();
       if(canceled.text!==null||canceled.runs!==0)throw Error('Cancellation failed');
       await tab.keyboard.press('t');await tab.waitForTimeout(150);
-      const thought=await probe('h.say("Persistent speech")');
+      await probe('h.say("Persistent speech")');await tab.waitForTimeout(60);
+      const thought=await probe();
       if(thought.puppet!=='Where next?'||thought.text!=='Persistent speech')throw Error('Puppet thought or persistent speech failed');
       await probe('s.bubble_text_size=28');
       await tab.evaluate(() => {const c=document.getElementById('canvas');c.style.width='360px';c.style.height='270px';});
@@ -77,7 +77,7 @@ platform.window.document.getElementById('canvas').setAttribute('data-bubble',jso
       await tab.evaluate(() => window.python.PyRun_SimpleString("s.stop()\nplatform.window.document.getElementById('canvas').setAttribute('data-stopped','yes')"));
       await tab.waitForFunction(() => document.getElementById('canvas').hasAttribute('data-stopped'));
       await tab.waitForTimeout(100);
-      await tab.evaluate(() => window.python.PyRun_SimpleString("platform.window.document.getElementById('canvas').setAttribute('data-clean',str(not s._runs and not s.objects and s._target is None and h._stage is None and h._bubble is None))"));
+      await tab.evaluate(() => window.python.PyRun_SimpleString("platform.window.document.getElementById('canvas').setAttribute('data-clean',str(not s._actions and not s.objects and s._target is None and h._stage is None and h._bubble is None))"));
       await tab.waitForFunction(() => document.getElementById('canvas').hasAttribute('data-clean'));
       const cleanup=await tab.locator('#canvas').getAttribute('data-clean');
       if(cleanup!=='True'||external.length||errors.length)throw Error(JSON.stringify({cleanup,external,errors}));

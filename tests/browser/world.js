@@ -4,7 +4,7 @@ async page => {
     const tab = await context.newPage();
     const external = [], errors = [], transfers = [];
     if (@@BLOCK_EXTERNAL@@) await context.route("**/*", route => {
-      if (new URL(route.request().url()).origin === "http://127.0.0.1:8462") return route.continue();
+      if (new URL(route.request().url()).origin === "http://127.0.0.1:8464") return route.continue();
       external.push(route.request().url());
       return route.abort();
     });
@@ -12,7 +12,7 @@ async page => {
     tab.on("console", message => { if (message.type() === "error") errors.push(message.text()); });
     tab.on("requestfinished", request => transfers.push(request.sizes().then(size => ({url: request.url(), bytes: size.responseBodySize}))));
     const started = Date.now();
-    await tab.goto("http://127.0.0.1:8462/animated_world/dist/web/");
+    await tab.goto("http://127.0.0.1:8464/world-@@MODE@@/");
     await tab.bringToFront();
     await tab.waitForFunction(() => !document.getElementById("play").disabled, null, {timeout: 60000});
     const readyMs = Date.now() - started;
@@ -71,7 +71,11 @@ for _task in asyncio.all_tasks():
     _frame = getattr(_task.get_coro(), 'cr_frame', None)
     if _frame and _frame.f_code.co_name == 'drive':
         _stage = _frame.f_locals['stage']
-        _game = _stage._updates[0][1].__globals__
+        _game = {}
+        for _callback in [cb for owner,cb in _stage._updates]+_stage._draws:
+            _game.update(zip(_callback.__code__.co_freevars,[cell.cell_contents for cell in (_callback.__closure__ or ())]))
+        from plocks import Puppet
+        _game['person'] = next(obj for obj in _stage.objects if isinstance(obj,Puppet))
         ${command}
         _result = {'stamp': ${JSON.stringify(stamp)}, 'time': _stage.time, 'x': _game['hero'].x, 'camera': _stage.camera, 'pose': _game['person'].pose.angles[HumanJoint.RIGHT_HAND], 'score': _game['score'], 'paused': _stage.paused, 'voices': len(_stage._voices)}
         platform.window.document.getElementById('canvas').setAttribute('data-proof', json.dumps(_result))

@@ -81,7 +81,7 @@ def _package(staging: Path, downloaded: Path) -> Path:
         "--template",
         str(template),
         "--icon",
-        str(downloaded / "0.9.3/favicon.png"),
+        str(staging / "plocks/assets/icon.png"),
         str(staging),
     ]
     result = subprocess.run(
@@ -133,20 +133,22 @@ def _website(config: ProjectConfig, packed: Path, downloaded: Path, website: Pat
     cdn = "https://pygame-web.github.io/cdn/0.9.3/"
     if config.runtime_mode == "self-contained":
         cdn = "runtime/cdn/0.9.3/"
-        for artifact in artifacts():
+        for artifact in artifacts(physics=config.physics):
             if not artifact[0].endswith((".whl", ".tmpl")):
                 target = website / "runtime/cdn" / artifact[0]
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(downloaded / artifact[0], target)
     template = files(__package__).joinpath("templates/site.html").read_text()
     template = template.replace("@@TITLE@@", html.escape(config.title)).replace("@@CDN@@", cdn)
+    if config.physics:
+        template = template.replace('("pygame", "PIL.Image")', '("pygame", "PIL.Image", "pymunk")')
     (website / "index.html").write_text(template, encoding="utf-8")
     for name in ("site.css", "site.js"):
         content = (
             files(__package__).joinpath(f"templates/{name}").read_text().replace("@@CDN@@", cdn)
         )
         (website / name).write_text(content, encoding="utf-8")
-    shutil.copyfile(downloaded / "0.9.3/favicon.png", website / "favicon.png")
+    (website / "favicon.png").write_bytes(files("plocks").joinpath("assets/icon.png").read_bytes())
     shutil.copyfile(downloaded / "support/browserfs.min.js", website / "browserfs.min.js")
     (website / "runtime-index").mkdir()
     index = json.loads((downloaded / "index-0.9.3-cp312.json").read_text())
@@ -161,6 +163,11 @@ def _website(config: ProjectConfig, packed: Path, downloaded: Path, website: Pat
         shutil.copyfile(wheel, target)
     _normalize_apk(packed, website / "game.apk")
     _notices(website, downloaded)
+    if config.physics:
+        with (website / "notices/README.txt").open("a") as stream:
+            stream.write(
+                "Physics: Pymunk 6.4.0 (MIT), CFFI 1.18.0.dev0 (MIT), pycparser 2.22 (BSD). Native Chipmunk source: https://github.com/viblo/pymunk/tree/6.4.0/chipmunk_src\n"
+            )
     _manifest(config, website)
 
 
@@ -201,6 +208,7 @@ def _manifest(config: ProjectConfig, website: Path) -> None:
     document = {
         "plocks": importlib.metadata.version("plocks"),
         "mode": config.runtime_mode,
+        "physics": config.physics,
         "python": "3.12",
         "pygbag": "0.9.3",
         "pygame-ce": "2.5.7",
@@ -215,7 +223,8 @@ def _manifest(config: ProjectConfig, website: Path) -> None:
         ],
         "files": inventory,
         "runtime": [
-            dict(zip(("path", "url", "size", "sha256"), artifact)) for artifact in artifacts()
+            dict(zip(("path", "url", "size", "sha256"), artifact))
+            for artifact in artifacts(physics=config.physics)
         ],
     }
     (website / "build-manifest.json").write_text(
@@ -275,7 +284,7 @@ def _assemble(config: ProjectConfig, paths: tuple[Path, ...]) -> Path:
         staging.mkdir()
         _stage(config, paths, staging)
         downloaded = working / "downloads"
-        for artifact in artifacts():
+        for artifact in artifacts(physics=config.physics):
             if (
                 config.runtime_mode == "self-contained"
                 or artifact[0].startswith("notices/")

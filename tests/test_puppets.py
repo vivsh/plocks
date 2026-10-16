@@ -8,7 +8,6 @@ from plocks import (
     HumanJoint,
     Joint,
     Pose,
-    Poses,
     Puppet,
     RotationStyle,
     Skeleton,
@@ -58,7 +57,7 @@ def test_pose_sampling_and_freeze() -> None:
     try:
         start = skeleton.rest_pose().with_angles({"hand": 350})
         end = start.with_angles({"hand": 10})
-        actor.act(Poses((start, end), fps=1))
+        actor.poses((start, end), fps=1)
         _step(stage)
         stage._tick = 30
         _sample(stage)
@@ -72,7 +71,7 @@ def test_pose_sampling_and_freeze() -> None:
         assert actor.pose is frozen
         rest = skeleton.rest_pose()
         half = rest.with_angles({"hand": 180})
-        actor.act(Poses((rest, half), fps=1))
+        actor.poses((rest, half), fps=1)
         _step(stage)
         stage._tick += 30
         _step(stage)
@@ -93,15 +92,21 @@ def test_validation_snapshot_and_part_replacement() -> None:
     with pytest.raises(KeyError):
         pose.with_angles({"typo": 0})
     with pytest.raises(ValueError):
-        Poses((pose, rig().rest_pose()), fps=1)
+        puppet(skeleton).poses((pose, rig().rest_pose()), fps=1)
     with pytest.raises(ValueError):
         Puppet(rig(), parts={"hand": Image.new("RGBA", (2, 2))}, pose=pose)
     actor = puppet(skeleton)
     actor.pose = pose
+    stage = Stage()
+    stage.add(actor)
+    stage._state = "running"
     actor.set_part_costume("hand", Image.new("RGBA", (3, 3), "blue"))
+    _step(stage)
     assert actor.pose is pose and actor.parts["hand"].width == 3
     with pytest.raises(KeyError):
         actor.set_part_costume("root", actor.parts["hand"])
+        _step(stage)
+    close(stage)
 
 
 @pytest.mark.parametrize(

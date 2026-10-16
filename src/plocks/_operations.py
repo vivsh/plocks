@@ -6,19 +6,31 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
-from .geometry import _number
+from .geometry import Point, _number
 from .motion import Ease, _ease
 
 if TYPE_CHECKING:
-    from ._scripts import _Fiber, _Run
+    from ._commands import _Costumes, _Poses, _Say, _Think
+    from ._scripts import _Fiber
+    from .actions import Action
     from .audio import Voice
-    from .blocks import Costumes, Poses, Say, Think
     from .imaging import Costume
     from .messages import Message, Signal
+    from .physics import Body
     from .puppets import Puppet
     from .rigging import Pose
     from .sprites import Sprite
     from .stage import Stage
+
+
+@dataclass(frozen=True, slots=True)
+class _AwaitAction:
+    action: Action
+
+
+@dataclass(frozen=True, slots=True)
+class _AwaitAll:
+    actions: tuple[Action, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,9 +54,21 @@ class _Glide:
 
 
 type _Request = (
-    _Context | _Delay | _Glide | _CostumeRun | _PoseRun | _During | _Join | _SoundWait | _BubbleRun
+    _ForceRun
+    | _TorqueRun
+    | _AwaitAction
+    | _AwaitAll
+    | _Context
+    | _Delay
+    | _Glide
+    | _CostumeRun
+    | _PoseRun
+    | _During
+    | _JoinDelivery
+    | _SoundWait
+    | _BubbleRun
 )
-type _ExecutionContext = tuple[Stage, _Run, _Fiber, float]
+type _ExecutionContext = tuple[Stage, Action, _Fiber, float]
 
 
 def _request(request: _Request) -> Generator[object, object, object]:
@@ -94,6 +118,14 @@ async def _glide(
     stage, root, _, at = await _context()
     if actor._stage is not stage:
         raise StageError("The actor must belong to the executing stage")
+    from .physics import Body, BodyType
+
+    if isinstance(actor._transform, Body) and actor.body_type is not BodyType.KINEMATIC:
+        from .errors import PhysicsError
+
+        raise PhysicsError(
+            "Glides require a kinematic or nonphysical actor; use body velocity or impulses"
+        )
     _number(at + seconds, "glide deadline")
     end_x = None if x is None else _number(x + (actor.x if relative else 0), "destination x")
     end_y = None if y is None else _number(y + (actor.y if relative else 0), "destination y")
@@ -124,22 +156,36 @@ def _sample_glide(operation: _Glide, now: float) -> None:
         else min(1.0, max(0.0, (now - operation.started) / operation.seconds))
     )
     progress = _ease(progress, operation.easing)
+    from .motion import _set_position
+    from .physics import Body, _native
+
+    if isinstance(operation.actor._transform, Body) and progress < 1:
+        return
+    x, y = operation.actor.position
     if operation.x is not None:
         start, end = operation.x
-        operation.actor._x = end if progress == 1 else (1 - progress) * start + progress * end
+        x = end if progress == 1 else (1 - progress) * start + progress * end
     if operation.y is not None:
         start, end = operation.y
-        operation.actor._y = end if progress == 1 else (1 - progress) * start + progress * end
+        y = end if progress == 1 else (1 - progress) * start + progress * end
+    _set_position(operation.actor, (x, y))
+    if isinstance(operation.actor._transform, Body):
+        native = _native(operation.actor._transform)
+        vx, vy = native.velocity
+        native.velocity = (
+            0 if operation.x is not None else vx,
+            0 if operation.y is not None else vy,
+        )
 
 
 @dataclass(frozen=True, slots=True)
 class _BubbleRun:
     actor: Sprite | Puppet
-    definition: Say | Think
+    definition: _Say | _Think
     deadline: float
 
 
-async def _speak(actor: Sprite | Puppet, definition: Say | Think) -> None:
+async def _speak(actor: Sprite | Puppet, definition: _Say | _Think) -> None:
     from ._scripts import _conflicts
     from .errors import StageError
 
@@ -171,14 +217,14 @@ async def _speak(actor: Sprite | Puppet, definition: Say | Think) -> None:
 @dataclass(frozen=True, slots=True)
 class _CostumeRun:
     actor: Sprite
-    definition: Costumes
+    definition: _Costumes
     started: float
 
 
 @dataclass(frozen=True, slots=True)
 class _PoseRun:
     actor: Puppet
-    definition: Poses
+    definition: _Poses
     started: float
 
 
@@ -192,12 +238,13 @@ class _During:
 class _Delivery:
     message: Signal | Message[object]
     data: object
-    receivers: tuple[_Run, ...] | None = None
+    receivers: tuple[Action, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
-class _Join:
+class _JoinDelivery:
     delivery: _Delivery
+    wait_receivers: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -237,7 +284,7 @@ def _sample_pose(operation: _PoseRun, now: float) -> Pose:
 def _deadline(request: _Request) -> float | None:
     if isinstance(request, (_Delay, _BubbleRun)):
         return request.deadline
-    if isinstance(request, _Glide):
+    if isinstance(request, (_Glide, _ForceRun, _TorqueRun)):
         return request.started + request.seconds
     if isinstance(request, _CostumeRun):
         return request.started + len(request.definition.frames) / request.definition.fps
@@ -247,6 +294,16 @@ def _deadline(request: _Request) -> float | None:
 
 
 def _freeze(request: _Request | None, now: float, *, cancel: bool) -> None:
+    if isinstance(request, _Glide):
+        from .physics import Body, _native
+
+        if isinstance(request.actor._transform, Body):
+            native = _native(request.actor._transform)
+            vx, vy = native.velocity
+            native.velocity = (
+                0 if request.x is not None else vx,
+                0 if request.y is not None else vy,
+            )
     if isinstance(request, _BubbleRun) and request.actor._bubble is request:
         request.actor._bubble = None
     elif isinstance(request, _CostumeRun) and request.actor._visual is request:
@@ -255,3 +312,20 @@ def _freeze(request: _Request | None, now: float, *, cancel: bool) -> None:
         request.actor._pose = _sample_pose(request, now)
     elif isinstance(request, _SoundWait) and cancel:
         request.voice.stop()
+
+
+@dataclass(frozen=True, slots=True)
+class _ForceRun:
+    body: Body
+    vector: Point
+    point: Point | None
+    started: float
+    seconds: float
+
+
+@dataclass(frozen=True, slots=True)
+class _TorqueRun:
+    body: Body
+    amount: float
+    started: float
+    seconds: float

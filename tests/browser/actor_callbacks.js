@@ -5,13 +5,13 @@ async page => {
     const external=[], errors=[], messages=[];
     try {
       if(mode==='self') await context.route('**/*', route => {
-        if(new URL(route.request().url()).origin==='http://127.0.0.1:8465') return route.continue();
+        if(new URL(route.request().url()).origin==='http://127.0.0.1:8464') return route.continue();
         external.push(route.request().url()); return route.abort();
       });
       const tab=await context.newPage();
       tab.on('pageerror', error=>errors.push(String(error)));
       tab.on('console', message=>messages.push(message.text()));
-      await tab.goto(`http://127.0.0.1:8465/${mode}/`);
+      await tab.goto(`http://127.0.0.1:8464/actors-${mode}/`);
       await tab.bringToFront();
       await tab.waitForFunction(()=>!document.getElementById('play').disabled,null,{timeout:60000});
       await tab.getByRole('button',{name:'Play',exact:true}).click();
@@ -73,7 +73,7 @@ platform.window.document.getElementById('canvas').setAttribute('data-actors',jso
       await tab.screenshot({path:`output/playwright/actor-callbacks-${mode}.png`});
       await probe('s.stop()');
       await tab.waitForFunction(()=>{
-        window.python.PyRun_SimpleString("platform.window.document.getElementById('canvas').setAttribute('data-clean',str(not s._updates and not s._clicks and not s._runs and not s.objects and s._target is None))");
+        window.python.PyRun_SimpleString("platform.window.document.getElementById('canvas').setAttribute('data-clean',str(not s._updates and not s._clicks and not s._actions and not s.objects and s._target is None))");
         return document.getElementById('canvas').getAttribute('data-clean')==='True';
       });
       if(external.length||errors.length)throw Error(JSON.stringify({external,errors}));

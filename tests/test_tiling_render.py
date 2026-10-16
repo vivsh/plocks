@@ -1,3 +1,5 @@
+from plocks.motion import _bounce, _move, _point_towards, _random
+
 """World/grid addressing, solid queries, clipping, and rendered camera behavior."""
 
 import pygame
@@ -149,7 +151,7 @@ def test_cardinal_rotation_has_no_phantom_edge_overlap() -> None:
     sprite = Sprite(Image.new("RGBA", (10, 20)), direction=0)
     other = Sprite(Image.new("RGBA", (10, 20)), direction=0, x=20)
     assert not sprite.touching(other)
-    sprite.move(10)
+    _move(sprite, 10)
     assert sprite.position == (0, 10)
 
 
@@ -159,19 +161,19 @@ def test_rotation_styles_pointing_and_bounce() -> None:
 
     sprite = Sprite(Image.new("RGBA", (10, 20), "red"), x=47)
     bounds = Bounds(-50, -50, 50, 50)
-    assert sprite.bounce_on_edge(bounds)
+    assert _bounce(sprite, bounds)
     assert sprite.direction == 270 and sprite.bounds.right == 50
     sprite.rotation_style = RotationStyle.NONE
     sprite.direction = 0
     assert sprite.bounds.width == 10
-    sprite.point_towards((sprite.x, 100))
+    _point_towards(sprite, (sprite.x, 100))
     assert sprite.direction == 0
-    sprite.go_to_random(bounds)
+    _random(sprite, bounds)
     assert bounds.contains(sprite.position)
     sprite.scale = 20
     previous = (sprite.position, sprite.direction)
     with pytest.raises(ValueError):
-        sprite.bounce_on_edge(bounds)
+        _bounce(sprite, bounds)
     assert (sprite.position, sprite.direction) == previous
 
 

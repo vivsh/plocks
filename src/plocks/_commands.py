@@ -1,31 +1,31 @@
-"""Immutable behavior recipes: compose definitions, then start them with actor.act."""
+"""Immutable internal command definitions; public authoring uses actor methods and groups."""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Coroutine, Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import KW_ONLY, dataclass
-from typing import Generic, TypeVar, cast, overload
+from typing import Generic, TypeVar
 
 from ._bubbles import _validate_text
 from ._operations import (
     _context,
     _CostumeRun,
     _During,
-    _Join,
     _PoseRun,
     _SoundWait,
     _speak,
     _suspend,
 )
 from ._scripts import _conflicts, _Fiber
+from .actions import Action
 from .audio import Sound, _volume
-from .conditions import Condition
 from .errors import StageError
-from .geometry import Bounds, Point, _integer, _number, _point, _positive
+from .geometry import Bounds, Point, _number, _point, _positive
 from .imaging import Costume, CostumeSource, _costume
 from .messages import Message, Signal
 from .motion import Ease
+from .physics import Body
 from .puppets import Puppet
 from .rigging import Pose
 from .sprites import Sprite
@@ -36,8 +36,8 @@ Target_contra = TypeVar("Target_contra", bound=Actor, contravariant=True)
 Payload = TypeVar("Payload")
 
 
-class Block(ABC, Generic[Target_contra]):  # noqa: UP046 -- explicit contravariance is contractual
-    """Reusable behavior without target or progress state. Beginners use concrete blocks."""
+class _Command(ABC, Generic[Target_contra]):  # noqa: UP046 -- explicit contravariance is contractual
+    """Immutable command recipe without progress state; groups compose these internally."""
 
     __slots__ = ()
 
@@ -46,101 +46,53 @@ class Block(ABC, Generic[Target_contra]):  # noqa: UP046 -- explicit contravaria
         """Advanced execution hook; call actor.act to schedule a root behavior."""
 
 
-@dataclass(frozen=True, slots=True, init=False)
-class Sequence(Block[Target_contra]):
-    """Run one or more blocks in order; timed children preserve fractional timing."""
-
-    blocks: tuple[Block[Target_contra], ...]
-
-    def __init__(self, first: Block[Target_contra], *rest: Block[Target_contra]) -> None:
-        object.__setattr__(self, "blocks", (first, *rest))
-
-    async def run(self, actor: Target_contra) -> None:
-        """Run each child in this invocation."""
-        for block in self.blocks:
-            await block.run(actor)
-
-
 @dataclass(frozen=True, slots=True)
-class Repeat(Block[Target_contra]):
-    """Repeat a block a nonnegative integer number of times; zero does nothing."""
-
-    times: int
-    block: Block[Target_contra]
-
-    def __post_init__(self) -> None:
-        _integer(self.times, "times", minimum=0)
+class _Sequence(_Command[Target_contra]):
+    commands: tuple[_Command[Target_contra], ...]
 
     async def run(self, actor: Target_contra) -> None:
-        """Execute finite repetitions, respecting the shared fairness budget."""
-        for _ in range(self.times):
+        for command in self.commands:
             await _context()
-            await self.block.run(actor)
+            await command.run(actor)
 
 
 @dataclass(frozen=True, slots=True)
-class Loop(Block[Target_contra]):
-    """Repeat until canceled; immediate-only iterations yield one simulation tick."""
-
-    block: Block[Target_contra]
+class _Repeat(_Command[Target_contra]):
+    times: int | None
+    command: _Command[Target_contra]
 
     async def run(self, actor: Target_contra) -> None:
-        """Repeat without blocking input, drawing, or other actors."""
-        while True:
+        remaining = self.times
+        while remaining is None or remaining > 0:
             stage, _, _, before = await _context()
-            await self.block.run(actor)
+            await self.command.run(actor)
             _, _, _, after = await _context()
-            if after <= before:
-                await stage.wait(0)
+            if remaining is not None:
+                remaining -= 1
+            if after <= before and (remaining is None or remaining > 0):
+                from ._operations import _wait
+
+                await _wait(stage, 0)
 
 
 @dataclass(frozen=True, slots=True)
-class If(Block[Target_contra]):
-    """Evaluate a condition once, then run the selected branch."""
-
-    condition: Condition[Target_contra]
-    _: KW_ONLY
-    then: Block[Target_contra]
-    otherwise: Block[Target_contra] | None = None
-
-    async def run(self, actor: Target_contra) -> None:
-        """Test current state, without monitoring in the background."""
-        await _context()
-        selected = self.then if self.condition.test(actor) else self.otherwise
-        if selected is not None:
-            await selected.run(actor)
-
-
-@dataclass(frozen=True, slots=True)
-class During(Block[Target_contra]):
+class _DuringPlan(_Command[Target_contra]):
     """Run meanwhile alongside foreground; foreground completion closes the background."""
 
-    foreground: Block[Target_contra]
+    foreground: _Command[Target_contra]
     _: KW_ONLY
-    meanwhile: Block[Target_contra]
+    background: _Command[Target_contra]
 
     async def run(self, actor: Target_contra) -> None:
         """Create two owned branches; neither can outlive this invocation."""
         await _context()
         await _suspend(
-            _During(_Fiber(self.foreground.run(actor)), _Fiber(self.meanwhile.run(actor)))
+            _During(_Fiber(self.foreground.run(actor)), _Fiber(self.background.run(actor)))
         )
 
 
 @dataclass(frozen=True, slots=True)
-class Script(Block[Target_contra]):
-    """Advanced: adapt an async actor function that awaits Plocks operations."""
-
-    function: Callable[[Target_contra], Coroutine[object, object, None]]
-
-    async def run(self, actor: Target_contra) -> None:
-        """Run this function within the current cooperative execution."""
-        await _context()
-        await self.function(actor)
-
-
-@dataclass(frozen=True, slots=True)
-class Say(Block[Actor]):
+class _Say(_Command[Actor]):
     """Show speech; omit seconds to persist, or wait simulated seconds then clear.
 
     Text is captured at construction (including f-strings). A timed bubble claims
@@ -163,7 +115,7 @@ class Say(Block[Actor]):
 
 
 @dataclass(frozen=True, slots=True)
-class Think(Block[Actor]):
+class _Think(_Command[Actor]):
     """Show thought; omit seconds to persist, or wait simulated seconds then clear.
 
     Shares one bubble with speech. Text is captured at construction; replacement
@@ -185,7 +137,7 @@ class Think(Block[Actor]):
 
 
 @dataclass(frozen=True, slots=True)
-class ClearBubble(Block[Actor]):
+class _ClearBubble(_Command[Actor]):
     """Clear this actor's speech or thought immediately when the block is reached.
 
     Cancels a timed bubble's whole root, including movement in that root. No timer
@@ -197,12 +149,13 @@ class ClearBubble(Block[Actor]):
         stage, _, _, _ = await _context()
         if actor._stage is not stage:
             raise StageError("Bubble blocks require membership in the executing stage")
-        actor.clear_bubble()
+        _conflicts(actor, False, False, bubble=True)
+        actor._bubble = None
 
 
 @dataclass(frozen=True, slots=True)
-class Wait(Block[Actor]):
-    """Wait simulated seconds; pause stops the wait and zero yields one tick."""
+class _Wait(_Command[Actor]):
+    """_Wait simulated seconds; pause stops the wait and zero yields one tick."""
 
     seconds: float
 
@@ -212,12 +165,14 @@ class Wait(Block[Actor]):
     async def run(self, actor: Actor) -> None:
         """Suspend without blocking the game."""
         stage, _, _, _ = await _context()
-        await stage.wait(self.seconds)
+        from ._operations import _wait
+
+        await _wait(stage, self.seconds)
 
 
 @dataclass(frozen=True, slots=True)
-class Move(Block[Actor]):
-    """Move immediately along direction; one step is one world pixel."""
+class _Move(_Command[Actor]):
+    """_Move immediately along direction; one step is one world pixel."""
 
     steps: float
 
@@ -227,7 +182,9 @@ class Move(Block[Actor]):
     async def run(self, actor: Actor) -> None:
         """Apply an immediate move when this block is reached."""
         await _context()
-        actor.move(self.steps)
+        from .motion import _move
+
+        _move(actor, self.steps)
 
 
 def _coordinates(x: float | None, y: float | None) -> None:
@@ -239,7 +196,7 @@ def _coordinates(x: float | None, y: float | None) -> None:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class MoveTo(Block[Actor]):
+class _MoveTo(_Command[Actor]):
     """Set supplied world coordinates immediately; omitted coordinates stay unchanged."""
 
     x: float | None = None
@@ -251,11 +208,13 @@ class MoveTo(Block[Actor]):
     async def run(self, actor: Actor) -> None:
         """Place the actor without collision resolution."""
         await _context()
-        actor.move_to(x=self.x, y=self.y)
+        from .motion import _move_to
+
+        _move_to(actor, self.x, self.y)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class GlideTo(Block[Actor]):
+class _GlideTo(_Command[Actor]):
     """Glide to world coordinates in simulated seconds; only supplied axes are controlled."""
 
     seconds: float
@@ -271,11 +230,13 @@ class GlideTo(Block[Actor]):
 
     async def run(self, actor: Actor) -> None:
         """Await absolute motion; competing writers cancel their previous root."""
-        await actor.glide_to(x=self.x, y=self.y, seconds=self.seconds, easing=self.easing)
+        from ._operations import _glide
+
+        await _glide(actor, self.x, self.y, self.seconds, self.easing, relative=False)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class GlideBy(Block[Actor]):
+class _GlideBy(_Command[Actor]):
     """Glide by world pixels in simulated seconds, capturing position when reached."""
 
     seconds: float
@@ -291,11 +252,13 @@ class GlideBy(Block[Actor]):
 
     async def run(self, actor: Actor) -> None:
         """Await relative motion; omitted axes remain available to other behaviors."""
-        await actor.glide_by(x=self.x, y=self.y, seconds=self.seconds, easing=self.easing)
+        from ._operations import _glide
+
+        await _glide(actor, self.x, self.y, self.seconds, self.easing, relative=True)
 
 
 @dataclass(frozen=True, slots=True)
-class TurnLeft(Block[Actor]):
+class _TurnLeft(_Command[Actor]):
     """Turn immediately counterclockwise, in degrees."""
 
     degrees: float
@@ -306,11 +269,11 @@ class TurnLeft(Block[Actor]):
     async def run(self, actor: Actor) -> None:
         """Change direction when reached."""
         await _context()
-        actor.turn_left(self.degrees)
+        actor.direction -= self.degrees
 
 
 @dataclass(frozen=True, slots=True)
-class TurnRight(Block[Actor]):
+class _TurnRight(_Command[Actor]):
     """Turn immediately clockwise, in degrees."""
 
     degrees: float
@@ -321,11 +284,11 @@ class TurnRight(Block[Actor]):
     async def run(self, actor: Actor) -> None:
         """Change direction when reached."""
         await _context()
-        actor.turn_right(self.degrees)
+        actor.direction += self.degrees
 
 
 @dataclass(frozen=True, slots=True)
-class PointTowards(Block[Actor]):
+class _PointTowards(_Command[Actor]):
     """Face a world point or an actor's position sampled when reached."""
 
     target: Point | Actor
@@ -337,11 +300,13 @@ class PointTowards(Block[Actor]):
     async def run(self, actor: Actor) -> None:
         """Point immediately; coincident positions leave direction unchanged."""
         await _context()
-        actor.point_towards(self.target)
+        from .motion import _point_towards
+
+        _point_towards(actor, self.target)
 
 
 @dataclass(frozen=True, slots=True)
-class GoToRandom(Block[Actor]):
+class _GoToRandom(_Command[Actor]):
     """Place the anchor randomly in bounds, defaulting to the visible world."""
 
     bounds: Bounds | None = None
@@ -349,11 +314,13 @@ class GoToRandom(Block[Actor]):
     async def run(self, actor: Actor) -> None:
         """Sample a new position when reached; does not guarantee the whole image fits."""
         await _context()
-        actor.go_to_random(self.bounds)
+        from .motion import _random
+
+        _random(actor, self.bounds)
 
 
 @dataclass(frozen=True, slots=True)
-class BounceOnEdge(Block[Actor]):
+class _BounceOnEdge(_Command[Actor]):
     """Reflect outward movement and fit inside bounds; this is an immediate operation."""
 
     bounds: Bounds | None = None
@@ -361,11 +328,13 @@ class BounceOnEdge(Block[Actor]):
     async def run(self, actor: Actor) -> None:
         """Bounce against supplied bounds or the visible world."""
         await _context()
-        actor.bounce_on_edge(self.bounds)
+        from .motion import _bounce
+
+        _bounce(actor, self.bounds)
 
 
 @dataclass(frozen=True, slots=True, init=False)
-class SetCostume(Block[Sprite]):
+class _SetCostume(_Command[Sprite]):
     """Set a sprite image, canceling any current timed costume writer."""
 
     costume: Costume
@@ -380,7 +349,7 @@ class SetCostume(Block[Sprite]):
 
 
 @dataclass(frozen=True, slots=True, init=False)
-class Costumes(Block[Sprite]):
+class _Costumes(_Command[Sprite]):
     """One timed frame pass, including the final frame interval; use Loop to repeat."""
 
     frames: tuple[Costume, ...]
@@ -389,7 +358,7 @@ class Costumes(Block[Sprite]):
     def __init__(self, frames: Iterable[CostumeSource], *, fps: float) -> None:
         copied = tuple(_costume(frame) for frame in frames)
         if not copied:
-            raise ValueError("Costumes needs at least one frame")
+            raise ValueError("_Costumes needs at least one frame")
         object.__setattr__(self, "frames", copied)
         object.__setattr__(self, "fps", _positive(fps, "fps"))
         _number(len(copied) / self.fps, "costume duration")
@@ -398,7 +367,7 @@ class Costumes(Block[Sprite]):
         """Display first frame immediately, then sample using simulation time."""
         stage, root, _, at = await _context()
         if actor._stage is not stage:
-            raise StageError("Costumes requires membership in the executing stage")
+            raise StageError("_Costumes requires membership in the executing stage")
         _number(at + len(self.frames) / self.fps, "costume deadline")
         _conflicts(actor, False, False, root, visual=True)
         operation = _CostumeRun(actor, self, at)
@@ -407,7 +376,7 @@ class Costumes(Block[Sprite]):
 
 
 @dataclass(frozen=True, slots=True)
-class SetPose(Block[Puppet]):
+class _SetPose(_Command[Puppet]):
     """Set a complete Puppet pose; its skeleton must match the target instance."""
 
     pose: Pose
@@ -419,7 +388,7 @@ class SetPose(Block[Puppet]):
 
 
 @dataclass(frozen=True, slots=True, init=False)
-class Poses(Block[Puppet]):
+class _Poses(_Command[Puppet]):
     """Interpolate first to last pose, one interval per 1/fps seconds; explicitly close loops."""
 
     poses: tuple[Pose, ...]
@@ -428,7 +397,7 @@ class Poses(Block[Puppet]):
     def __init__(self, poses: Iterable[Pose], *, fps: float) -> None:
         copied = tuple(poses)
         if not copied or any(p.skeleton is not copied[0].skeleton for p in copied):
-            raise ValueError("Poses needs poses sharing one exact skeleton")
+            raise ValueError("_Poses needs poses sharing one exact skeleton")
         object.__setattr__(self, "poses", copied)
         object.__setattr__(self, "fps", _positive(fps, "fps"))
         _number((len(copied) - 1) / self.fps, "pose duration")
@@ -437,9 +406,9 @@ class Poses(Block[Puppet]):
         """Sample shortest angles; exact 180-degree ties turn clockwise."""
         stage, root, _, at = await _context()
         if actor._stage is not stage:
-            raise StageError("Poses requires membership in the executing stage")
+            raise StageError("_Poses requires membership in the executing stage")
         if actor.skeleton is not self.poses[0].skeleton:
-            raise ValueError("Poses belongs to another skeleton")
+            raise ValueError("_Poses belongs to another skeleton")
         _number(at + (len(self.poses) - 1) / self.fps, "pose deadline")
         _conflicts(actor, False, False, root, visual=True)
         if len(self.poses) == 1:
@@ -451,7 +420,7 @@ class Poses(Block[Puppet]):
 
 
 @dataclass(frozen=True, slots=True, init=False)
-class SetPartCostume(Block[Puppet]):
+class _SetPartCostume(_Command[Puppet]):
     """Replace an existing Puppet attachment; its pose motion continues."""
 
     joint: str
@@ -464,11 +433,13 @@ class SetPartCostume(Block[Puppet]):
     async def run(self, actor: Puppet) -> None:
         """Replace an attachment; unknown attachment keys raise KeyError."""
         await _context()
-        actor.set_part_costume(self.joint, self.costume)
+        if self.joint not in actor._parts:
+            raise KeyError(self.joint)
+        actor._parts[self.joint] = self.costume
 
 
 @dataclass(frozen=True, slots=True)
-class PlaySound(Block[Actor]):
+class _PlaySound(_Command[Actor]):
     """Play one OGG occurrence; waiting is default and cancellation stops that occurrence."""
 
     sound: Sound
@@ -487,43 +458,163 @@ class PlaySound(Block[Actor]):
             await _suspend(_SoundWait(voice))
 
 
-@dataclass(frozen=True, slots=True, init=False)
-class Broadcast(Block[Actor]):
-    """Queue a signal or matching typed payload; receivers run in a later delivery cycle."""
-
+@dataclass(frozen=True, slots=True)
+class _Broadcast(_Command[Actor]):
     message: Signal | Message[object]
     data: object
-
-    @overload
-    def __init__(self, message: Signal) -> None: ...
-    @overload
-    def __init__(self, message: Message[Payload], data: Payload) -> None: ...
-    def __init__(self, message: Signal | Message[Payload], data: Payload | None = None) -> None:
-        object.__setattr__(self, "message", cast("Signal | Message[object]", message))
-        object.__setattr__(self, "data", data)
+    wait_receivers: bool
 
     async def run(self, actor: Actor) -> None:
-        """Emit without waiting for receiver completion."""
-        stage, _, _, _ = await _context()
-        stage._enqueue(self.message, self.data)
+        await _broadcast(self.message, self.data, self.wait_receivers)
 
 
-@dataclass(frozen=True, slots=True, init=False)
-class BroadcastAndWait(Block[Actor]):
-    """Deliver a message and join only the receiver invocations accepted for it."""
+async def _broadcast(message: Signal | Message[object], data: object, wait_receivers: bool) -> None:
+    from ._operations import _JoinDelivery
 
-    message: Signal | Message[object]
-    data: object
+    stage, _, _, _ = await _context()
+    await _suspend(_JoinDelivery(stage._enqueue(message, data), wait_receivers))
 
-    @overload
-    def __init__(self, message: Signal) -> None: ...
-    @overload
-    def __init__(self, message: Message[Payload], data: Payload) -> None: ...
-    def __init__(self, message: Signal | Message[Payload], data: Payload | None = None) -> None:
-        object.__setattr__(self, "message", cast("Signal | Message[object]", message))
-        object.__setattr__(self, "data", data)
+
+@dataclass(frozen=True, slots=True)
+class _Call(_Command[Actor]):
+    function: Callable[[], None | Action]
+
+    def __post_init__(self) -> None:
+        if not callable(self.function):
+            raise TypeError("call requires a synchronous function")
 
     async def run(self, actor: Actor) -> None:
-        """Wait for accepted roots; cancellation does not retract the delivery."""
-        stage, _, _, _ = await _context()
-        await _suspend(_Join(stage._enqueue(self.message, self.data)))
+        await _call(self.function)
+
+
+async def _call(function: Callable[[], None | Action]) -> None:
+    stage, _, fiber, _ = await _context()
+    before = tuple(stage._actions)
+    result = function()
+    admitted = tuple(action for action in stage._actions if action not in before)
+    # The resume boundary adopts admissions. A None result releases its new work
+    # immediately during this same phase; a returned Action scopes that work.
+    await _context()
+    if result is None:
+        for action in admitted:
+            if action in fiber.children:
+                fiber.children.remove(action)
+                action._parent = None
+                stage._actions.append(action)
+        return
+    if not isinstance(result, Action) or result._stage is not stage:
+        raise StageError("call must return None or an Action from this stage")
+    try:
+        await result
+    finally:
+        for action in admitted:
+            action.cancel()
+
+
+@dataclass(frozen=True, slots=True)
+class _JoinActions(_Command[Actor]):
+    actions: tuple[Action, ...]
+
+    async def run(self, actor: Actor) -> None:
+        await _join(self.actions)
+
+
+async def _join(actions: tuple[Action, ...]) -> None:
+    from ._operations import _AwaitAll
+    from .errors import ActionCancelled
+
+    await _suspend(_AwaitAll(actions))
+    for action in actions:
+        if action.cancelled:
+            raise ActionCancelled("A joined action was canceled")
+        if action.exception is not None:
+            raise action.exception
+
+
+_Target = TypeVar("_Target", bound=Actor)
+
+
+def _schedule(actor: _Target, command: _Command[_Target], *, after: Action | None = None) -> Action:  # noqa: UP047 -- shared contravariant binding
+    from ._scripts import _admit
+
+    stage = actor._stage
+    if stage is None:
+        raise StageError("Add the actor to a stage before scheduling commands")
+    return _admit(stage, command.run(actor), actor, after=after)
+
+
+@dataclass(frozen=True, slots=True)
+class _Impulse(_Command[Actor]):
+    body: Body
+    x: float
+    y: float
+    point: Point | None
+
+    def __post_init__(self) -> None:
+        _point((self.x, self.y), "impulse")
+        if self.point is not None:
+            object.__setattr__(self, "point", _point(self.point, "at"))
+
+    async def run(self, actor: Actor) -> None:
+        from .physics import _dynamic
+
+        await _context()
+        native = _dynamic(self.body)
+        point = (
+            native.local_to_world(native.center_of_gravity) if self.point is None else self.point
+        )
+        native.apply_impulse_at_world_point((self.x, self.y), point)
+
+
+@dataclass(frozen=True, slots=True)
+class _Force(_Command[Actor]):
+    body: Body
+    x: float
+    y: float
+    seconds: float | None
+    point: Point | None
+
+    def __post_init__(self) -> None:
+        _point((self.x, self.y), "force")
+        if self.point is not None:
+            object.__setattr__(self, "point", _point(self.point, "at"))
+        if self.seconds is not None:
+            _number(self.seconds, "seconds", minimum=0)
+
+    async def run(self, actor: Actor) -> None:
+        from ._operations import _Delay, _ForceRun
+        from .physics import _dynamic
+
+        stage, _, _, at = await _context()
+        _dynamic(self.body)
+        seconds = 1 / stage.tick_rate if self.seconds is None else self.seconds
+        _number(at + seconds, "force deadline")
+        if seconds:
+            await _suspend(_ForceRun(self.body, (self.x, self.y), self.point, at, seconds))
+        else:
+            await _suspend(_Delay(stage.time + 1 / stage.tick_rate))
+
+
+@dataclass(frozen=True, slots=True)
+class _Torque(_Command[Actor]):
+    body: Body
+    amount: float
+    seconds: float | None
+
+    def __post_init__(self) -> None:
+        _number(self.amount, "torque")
+        if self.seconds is not None:
+            _number(self.seconds, "seconds", minimum=0)
+
+    async def run(self, actor: Actor) -> None:
+        from ._operations import _Delay, _TorqueRun
+        from .physics import _dynamic
+
+        stage, _, _, at = await _context()
+        _dynamic(self.body)
+        seconds = 1 / stage.tick_rate if self.seconds is None else self.seconds
+        _number(at + seconds, "torque deadline")
+        if seconds:
+            await _suspend(_TorqueRun(self.body, self.amount, at, seconds))
+        else:
+            await _suspend(_Delay(stage.time + 1 / stage.tick_rate))

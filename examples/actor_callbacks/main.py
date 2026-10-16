@@ -4,7 +4,7 @@ from math import sin
 
 from PIL import Image
 
-from plocks import Canvas, GlideBy, Key, MouseButton, Point, Puppet, Say, Sequence, Sprite, Stage
+from plocks import Canvas, Key, MouseButton, Point, Puppet, Sprite, Stage
 
 
 def main() -> None:
@@ -17,7 +17,7 @@ def main() -> None:
     person = Puppet.stick_figure(color="lightgreen")
     person.position = (230, -20)
     stage.add(person)
-    person.on_click(Say("Puppet clicked!", seconds=0.6))
+    person.on_click(person.sequence().say("Puppet clicked!", seconds=0.6))
     clicks = 0
 
     @hero.on_update
@@ -26,11 +26,10 @@ def main() -> None:
         hero.x = max(-280, min(280, hero.x + direction * 160 * dt))
 
     hero.on_click(
-        Sequence(
-            Say("You clicked me!", seconds=0.4),
-            GlideBy(y=40, seconds=0.2),
-            GlideBy(y=-40, seconds=0.2),
-        )
+        hero.sequence()
+        .say("You clicked me!", seconds=0.4)
+        .glide_by(y=40, seconds=0.2)
+        .glide_by(y=-40, seconds=0.2)
     )
 
     @friend.on_update

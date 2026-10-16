@@ -21,7 +21,7 @@ def test_pillow_snapshot_and_bounds() -> None:
     sprite = Sprite(costume, x=5, y=6)
     assert sprite.bounds.left == 5
     assert sprite.bounds.top == 6
-    sprite.turn_right(90)
+    sprite.direction += 90
     assert sprite.bounds.width == pytest.approx(20)
     assert sprite.bounds.height == pytest.approx(10)
 
@@ -55,7 +55,7 @@ def test_desktop_input_sound_render_cleanup() -> None:
 
     assert pygame.display.get_surface() is None
     stage.run()
-    assert sprite.x == pytest.approx(10)
+    assert sprite.x == pytest.approx(100 * 7 / 60)
     assert len(voices) == 1
     assert voices[0].finished
     assert pygame.display.get_surface() is None

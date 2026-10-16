@@ -10,7 +10,7 @@ import pygame
 from ._operations import _BubbleRun
 
 if TYPE_CHECKING:
-    from .blocks import Say, Think
+    from ._commands import _Say, _Think
     from .geometry import Point
     from .puppets import Puppet
     from .sprites import Sprite
@@ -24,7 +24,7 @@ def _validate_text(text: str) -> None:
         raise ValueError("Bubble text cannot contain control characters except tab and newline")
 
 
-def _set_bubble(actor: Sprite | Puppet, definition: Say | Think | None) -> None:
+def _set_bubble(actor: Sprite | Puppet, definition: _Say | _Think | None) -> None:
     from ._scripts import _conflicts
 
     _conflicts(actor, False, False, bubble=True)
@@ -154,7 +154,7 @@ def _connector(target: pygame.Surface, body: pygame.Rect, tip: Point, thought: b
 
 def _draw_bubble(stage: Stage, target: pygame.Surface, actor: Sprite | Puppet) -> None:
     """Paint dialogue between scene and Canvas overlays, using the bundled font."""
-    from .blocks import Think
+    from ._commands import _Think
 
     source = actor._bubble
     if source is None or not actor.visible or not actor.bounds.intersects(stage.world_bounds):
@@ -172,7 +172,7 @@ def _draw_bubble(stage: Stage, target: pygame.Surface, actor: Sprite | Puppet) -
     previous = target.get_clip()
     target.set_clip(previous.clip(target.get_rect()))
     try:
-        _connector(target, body, tip, isinstance(definition, Think))
+        _connector(target, body, tip, isinstance(definition, _Think))
         pygame.draw.rect(target, "white", body, border_radius=10)
         pygame.draw.rect(target, "#202020", body, width=2, border_radius=10)
         stride = max(font.get_linesize(), stage.bubble_text_size)

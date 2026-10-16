@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import zipfile
+from importlib.resources import files
 from pathlib import Path
 
 import pytest
@@ -64,7 +65,7 @@ def packaging(monkeypatch: pytest.MonkeyPatch) -> None:
                     output.write(path, "assets/" + path.relative_to(staging).as_posix())
         return archive
 
-    monkeypatch.setattr(builder, "artifacts", lambda: inventory)
+    monkeypatch.setattr(builder, "artifacts", lambda **kwargs: inventory)
     monkeypatch.setattr(builder, "download", fetch)
     monkeypatch.setattr(builder, "_package", pack)
 
@@ -183,6 +184,9 @@ def test_bundle_identity_repeatability_and_no_execution(project: Path, packaging
     }
     website = build(project, self_contained=True)
     assert not (project / "EXECUTED").exists()
+    assert (website / "favicon.png").read_bytes() == (
+        files("plocks").joinpath("assets/icon.png").read_bytes()
+    )
     assert (website / "runtime/cdn/0.9.3/python.wasm").read_bytes() == b"runtime"
     assert (website / "notices/runtime.txt").is_file()
     manifest = json.loads((website / "build-manifest.json").read_text())
@@ -212,6 +216,9 @@ def test_cdn_and_previous_output_survives_failure(
     """A failed rebuild leaves both previous successful outputs intact."""
     website = build(project)
     assert not (website / "runtime").exists()
+    assert (website / "favicon.png").read_bytes() == (
+        files("plocks").joinpath("assets/icon.png").read_bytes()
+    )
     assert "https://pygame-web.github.io/cdn/0.9.3/" in (website / "site.js").read_text()
     original = (website.parent / "game-web.zip").read_bytes()
 
@@ -330,3 +337,19 @@ def test_windows_junctions_cannot_escape_collection_or_output(
     with pytest.raises(BuildError, match="dist"):
         build(project)
     assert sentinel.read_text() == "must not be bundled or replaced"
+
+
+def test_physics_configuration_and_optional_inventory(project: Path) -> None:
+    """Physics is explicit and its runtime closure never enters a base inventory."""
+    (project / "plocks.toml").write_text("[game]\nphysics = true\n")
+    assert load_project(project).physics
+    base = artifacts()
+    optional = artifacts(physics=True)
+    assert not any("physics/" in item[0] for item in base)
+    extra = [item for item in optional if item not in base]
+    assert len(extra) == 3
+    assert all(len(item[3]) == 64 and item[2] > 0 for item in extra)
+    assert any("pymunk-6.4.0" in item[0] for item in extra)
+    (project / "plocks.toml").write_text('[game]\nphysics = "yes"\n')
+    with pytest.raises(BuildError, match="true or false"):
+        load_project(project)

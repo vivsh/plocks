@@ -2,7 +2,7 @@
 
 from PIL import Image
 
-from plocks import GlideBy, Say, Sequence, Sprite, Stage, Think
+from plocks import Sprite, Stage
 
 
 def main() -> None:
@@ -10,12 +10,11 @@ def main() -> None:
     hero = Sprite(Image.new("RGBA", (32, 40), "orange"), x=-80, y=-40)
     stage.add(hero)
     hero.on_start(
-        Sequence(
-            Say("Hello!", seconds=2),
-            Think("Where should I go?", seconds=1),
-            GlideBy(x=100, seconds=1),
-            Say("Here looks good."),
-        ),
+        hero.sequence()
+        .say("Hello!", seconds=2)
+        .think("Where should I go?", seconds=1)
+        .glide_by(x=100, seconds=1)
+        .say("Here looks good.")
     )
     stage.run()
 

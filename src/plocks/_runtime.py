@@ -7,6 +7,7 @@ import platform
 import sys
 import time
 import traceback
+from importlib.resources import files
 from typing import TYPE_CHECKING
 
 import pygame
@@ -18,7 +19,7 @@ from .geometry import Point
 from .input import Key, MouseButton
 
 if TYPE_CHECKING:
-    from .blocks import Actor
+    from ._commands import Actor
     from .stage import Stage
 
 
@@ -39,13 +40,15 @@ def start(stage: Stage) -> None:
             raise StageError("Desktop run() requires a script outside an existing asyncio loop")
     try:
         pygame.display.init()
+        if sys.platform != "emscripten":
+            with files("plocks").joinpath("assets/icon.png").open("rb") as source:
+                pygame.display.set_icon(pygame.image.load(source, "icon.png"))
+            pygame.display.set_caption("Plocks")
         stage._target = pygame.display.set_mode((stage.width, stage.height))
         pygame.event.clear()
         if sys.platform == "emscripten":
             canvas = vars(platform)["window"].document.getElementById("canvas")
             canvas.style.width = f"min(100vw, 960px, calc(100vh * {stage.width / stage.height}))"
-        if sys.platform != "emscripten":
-            pygame.display.set_caption("Plocks")
         stage._state = "running"
         if sys.platform == "emscripten":
             stage._task = asyncio.create_task(drive(stage))
@@ -184,8 +187,6 @@ def advance(stage: Stage, now: float) -> None:
         if not stage.running or stage.paused:
             break
         stage._accumulator -= dt
-        stage._tick += 1
-        _sample(stage)
         _deliver(stage)
         dispatch(stage)
         _step(stage)
@@ -193,7 +194,16 @@ def advance(stage: Stage, now: float) -> None:
             break
         for actor, callback in tuple(stage._updates):
             if stage.running and not stage.paused and (actor is None or actor._stage is stage):
-                callback(dt)
+                from .stage import _check_callback_result
+
+                _check_callback_result(callback(dt), "update")
+        if stage.running and not stage.paused:
+            if stage._physics is not None:
+                from ._physics import _integrate
+
+                _integrate(stage, dt)
+            stage._tick += 1
+            _sample(stage)
     if stage._accumulator >= dt:
         stage._accumulator %= dt
     stage._accumulator = max(0, stage._accumulator)
@@ -233,7 +243,7 @@ def close(stage: Stage) -> None:
     primary = sys.exception()
     errors: list[BaseException] = []
     stage._state = "closed"
-    for root in tuple(stage._runs):
+    for root in tuple(stage._actions):
         try:
             _cancel(stage, root)
         except BaseException as error:  # noqa: BLE001 -- finish cleanup and re-raise the original failure
@@ -242,6 +252,13 @@ def close(stage: Stage) -> None:
         try:
             stage.remove(obj)
         except BaseException as error:  # noqa: BLE001 -- finish cleanup and re-raise the original failure
+            errors.append(error)
+    if stage._physics is not None:
+        from ._physics import _close
+
+        try:
+            _close(stage._physics)
+        except BaseException as error:  # noqa: BLE001 -- finish native cleanup without masking the primary error
             errors.append(error)
     stage._messages.clear()
     stage._message_handlers.clear()

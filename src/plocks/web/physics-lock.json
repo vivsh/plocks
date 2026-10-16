@@ -1,0 +1,20 @@
+[
+  {
+    "path": "physics/pymunk-6.4.0-cp312-cp312-wasm32_bi_emscripten.whl",
+    "url": "https://pygame-web.github.io/archives/repo/cp312/pymunk-6.4.0-cp312-cp312-wasm32_bi_emscripten.whl",
+    "size": 283245,
+    "sha256": "880385ea0b5f9b442b6472f8ee304d9343ae8948db29b2318ebddb737a61c29d"
+  },
+  {
+    "path": "physics/cffi-1.18.0.dev0-cp312-cp312-wasm32_bi_emscripten.whl",
+    "url": "https://pygame-web.github.io/archives/repo/cp312-0.9.2/cffi-1.18.0.dev0-cp312-cp312-wasm32_bi_emscripten.whl",
+    "size": 159045,
+    "sha256": "f8b75b33b2cad0ddecb7e13cbfd8986cf9b7e94ef261ec98a33fcb7df5d43a03"
+  },
+  {
+    "path": "physics/pycparser-2.22-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl",
+    "size": 117552,
+    "sha256": "c3702b6d3dd8c7abc1afa565d7e63d53a1d0bd86cdc24edd75470f4de499cfcc"
+  }
+]

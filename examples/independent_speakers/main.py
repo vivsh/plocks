@@ -2,7 +2,7 @@
 
 from PIL import Image
 
-from plocks import During, GlideBy, Loop, Say, Sequence, Sprite, Stage, Think
+from plocks import Sprite, Stage
 
 
 def main() -> None:
@@ -11,24 +11,21 @@ def main() -> None:
     friend = Sprite(Image.new("RGBA", (28, 28), "skyblue"), x=100, y=-70)
     stage.add(hero)
     stage.add(friend)
-
     hero.on_start(
-        During(
-            GlideBy(x=100, seconds=2),
-            meanwhile=Say("Watch me walk!", seconds=2),
-        ),
+        hero.sequence().during(
+            hero.sequence().glide_by(x=100, seconds=2),
+            meanwhile=hero.sequence().say("Watch me walk!", seconds=2),
+        )
     )
     friend.on_start(
-        Sequence(
-            Think("My turn next...", seconds=1),
-            Say("I can move too!"),
-            Loop(
-                Sequence(
-                    GlideBy(x=-80, seconds=1),
-                    GlideBy(x=80, seconds=1),
-                )
-            ),
-        ),
+        friend.sequence()
+        .think("My turn next...", seconds=1)
+        .say("I can move too!")
+        .act(
+            friend.repeat().act(
+                friend.sequence().glide_by(x=-80, seconds=1).glide_by(x=80, seconds=1)
+            )
+        )
     )
     stage.run()
 

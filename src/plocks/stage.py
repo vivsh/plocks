@@ -8,24 +8,27 @@ from typing import Literal, TypeVar, cast, overload
 
 import pygame
 
-from ._operations import _context, _Delivery, _Join, _suspend
-from ._scripts import WhenBusy, _detach, _Handler, _Run
+from ._commands import Actor
+from ._operations import _Delivery
+from ._scripts import WhenBusy, _admit, _detach, _Handler
+from .actions import Action
 from .audio import Sound, Voice, _play, _volume
-from .blocks import Actor, Block
 from .canvas import Canvas
 from .errors import StageError
 from .geometry import Bounds, Color, Point, _integer, _point
+from .groups import Group
 from .input import Key, Keyboard, Mouse, MouseButton
 from .messages import Message, Signal
+from .physics import Physics
 from .puppets import Puppet
 from .sprites import Sprite
 from .tiling import TiledBackground, TileMap
 
 type _Update = Callable[[float], None]
 _U = TypeVar("_U", bound=_Update)
-type _Press = Callable[[], None | Coroutine[object, object, None]]
+type _Press = Callable[[], None | Action | Coroutine[object, object, None]]
 _P = TypeVar("_P", bound=_Press)
-type _Result = None | Coroutine[object, object, None]
+type _Result = None | Action | Coroutine[object, object, None]
 type _Click = Callable[[Point, MouseButton], _Result]
 _C = TypeVar("_C", bound=_Click)
 _T = TypeVar("_T", bound=Actor)
@@ -45,6 +48,7 @@ class Stage:
 
     __slots__ = (
         "_accumulator",
+        "_actions",
         "_background",
         "_bubble_text_size",
         "_camera",
@@ -60,7 +64,7 @@ class Stage:
         "_mouse",
         "_pause_reasons",
         "_pending",
-        "_runs",
+        "_physics",
         "_starts",
         "_state",
         "_target",
@@ -81,6 +85,7 @@ class Stage:
         tick_rate: int = 60,
         background: Color = "black",
         bubble_text_size: int = 24,
+        physics: bool = False,
     ) -> None:
         self._width = _integer(width, "width", minimum=1)
         self._bubble_text_size = _integer(bubble_text_size, "bubble_text_size", minimum=1)
@@ -93,7 +98,7 @@ class Stage:
         self._members: list[_StageObject] = []
         self._updates: list[tuple[Actor | None, _Update]] = []
         self._keys: dict[Key, list[_Handler]] = {}
-        self._runs: list[_Run] = []
+        self._actions: list[Action] = []
         self._starts: list[_Handler] = []
         self._clicks: dict[Actor | None, list[_Handler]] = {}
         self._messages: list[_Delivery] = []
@@ -110,6 +115,18 @@ class Stage:
         self._voices: list[Voice] = []
         self._target: pygame.Surface | None = None
         self._task: asyncio.Task[None] | None = None
+        if not isinstance(physics, bool):
+            raise TypeError("physics must be bool")
+        self._physics = Physics(self) if physics else None
+
+    @property
+    def physics(self) -> Physics:
+        """This stage's optional world; enable with Stage(physics=True)."""
+        from .errors import PhysicsError
+
+        if self._physics is None:
+            raise PhysicsError("Create the stage with physics=True")
+        return self._physics
 
     @property
     def bubble_text_size(self) -> int:
@@ -220,9 +237,16 @@ class Stage:
             raise ValueError("This object is already in the stage")
         if not isinstance(obj, (Sprite, Puppet, TileMap, TiledBackground)):
             raise TypeError("Stage objects are Sprite, Puppet, TileMap, or TiledBackground")
-        if isinstance(obj, (Sprite, Puppet)):
+        if isinstance(obj, (Sprite, Puppet, TileMap)):
             if obj._stage is not None:
                 raise StageError("An actor belongs to at most one stage")
+            if self._physics is not None:
+                from ._physics import _attach, _terrain
+
+                if isinstance(obj, TileMap):
+                    _terrain(self._physics, obj)
+                else:
+                    _attach(self._physics, obj)
             obj._stage = self
         self._members.append(obj)
 
@@ -233,6 +257,12 @@ class Stage:
         try:
             if isinstance(obj, (Sprite, Puppet)):
                 _detach(self, obj)
+            elif isinstance(obj, TileMap):
+                if self._physics is not None:
+                    from ._physics import _remove_terrain
+
+                    _remove_terrain(self._physics, obj)
+                obj._stage = None
         finally:
             if obj in self._members:
                 self._members.remove(obj)
@@ -245,6 +275,7 @@ class Stage:
     def on_update(self, callback: _Update) -> _Update:
         """Register a callback(dt: float) -> None. dt is fixed simulated seconds."""
         _open(self)
+        _sync(callback, "update")
         self._updates.append((None, callback))
         return callback
 
@@ -261,17 +292,28 @@ class Stage:
     @overload
     def on_start(self, actor: _P) -> _P: ...
     @overload
-    def on_start(self, actor: _T, block: Block[_T]) -> None: ...
-    def on_start(self, actor: object, block: object = None) -> object:
-        """Bind a startup block or decorate a sync/async function; register before run."""
+    def on_start(self, actor: _T, group: Group[_T]) -> None: ...
+    def on_start(self, actor: object, group: object = None) -> object:
+        """Register startup work before run; returning Action keeps the invocation alive."""
         if self._state != "new":
             raise StageError("Register startup handlers before run")
-        if block is not None:
-            self._starts.append(_binding(self, actor, block, WhenBusy.IGNORE))
+        if group is not None:
+            self._starts.append(_binding(self, actor, group, WhenBusy.IGNORE))
             return None
         callback = cast(_Press, actor)
-        self._starts.append(_Handler(lambda _: callback(), None, None, WhenBusy.IGNORE))
+        self._starts.append(_Handler(lambda _: callback(), None, WhenBusy.IGNORE))
         return actor
+
+    def _on_actor_start(self, actor: Actor, work: object) -> object:
+        _actor(self, actor)
+        if self._state != "new":
+            raise StageError("Register startup handlers before run")
+        if isinstance(work, Group):
+            self._starts.append(_binding(self, actor, cast(object, work), WhenBusy.IGNORE))
+            return None
+        callback = cast(_Press, work)
+        self._starts.append(_Handler(lambda _: callback(), actor, WhenBusy.IGNORE))
+        return work
 
     @overload
     def on_key_down(
@@ -279,27 +321,29 @@ class Stage:
     ) -> Callable[[_P], _P]: ...
     @overload
     def on_key_down(
-        self, key: Key, actor: _T, block: Block[_T], *, when_busy: WhenBusy = WhenBusy.IGNORE
+        self, key: Key, actor: _T, group: Group[_T], *, when_busy: WhenBusy = WhenBusy.IGNORE
     ) -> None: ...
     def on_key_down(
         self,
         key: Key,
         actor: object = None,
-        block: object = None,
+        group: object = None,
         *,
         when_busy: WhenBusy = WhenBusy.IGNORE,
     ) -> object:
-        """Bind a block or decorate a sync/async handler. Busy triggers default to ignore."""
+        """Bind a recipe or decorate a key callback; return Action for busy protection."""
         _open(self)
         if actor is not None:
-            self._keys.setdefault(key, []).append(_binding(self, actor, block, when_busy))
+            self._keys.setdefault(key, []).append(_binding(self, actor, group, when_busy))
             return None
+        return self._key_decorator(key, None, when_busy)
 
+    def _key_decorator(
+        self, key: Key, actor: Actor | None, when_busy: WhenBusy
+    ) -> Callable[[_P], _P]:
         def register(callback: _P) -> _P:
             _open(self)
-            self._keys.setdefault(key, []).append(
-                _Handler(lambda _: callback(), None, None, when_busy)
-            )
+            self._keys.setdefault(key, []).append(_Handler(lambda _: callback(), actor, when_busy))
             return callback
 
         return register
@@ -308,31 +352,32 @@ class Stage:
     def on_click(self, actor: _C) -> _C: ...
     @overload
     def on_click(
-        self, actor: _T, block: Block[_T], *, when_busy: WhenBusy = WhenBusy.IGNORE
+        self, actor: _T, group: Group[_T], *, when_busy: WhenBusy = WhenBusy.IGNORE
     ) -> None: ...
     def on_click(
-        self, actor: object, block: object = None, *, when_busy: WhenBusy = WhenBusy.IGNORE
+        self, actor: object, group: object = None, *, when_busy: WhenBusy = WhenBusy.IGNORE
     ) -> object:
-        """Bind a block, or decorate a typed callback(position, button); async is supported."""
+        """Observe clicks anywhere; actor.on_click targets only the topmost hit actor."""
         _open(self)
-        if block is not None:
-            self._clicks.setdefault(None, []).append(_binding(self, actor, block, when_busy))
+        if group is not None:
+            self._clicks.setdefault(None, []).append(_binding(self, actor, group, when_busy))
             return None
-        callback = cast(_Click, actor)
-        self._clicks.setdefault(None, []).append(_click_handler(callback, None, when_busy))
+        self._clicks.setdefault(None, []).append(
+            _click_handler(cast(_Click, actor), None, when_busy)
+        )
         return actor
 
-    def _on_actor_click(self, actor: Actor, block: object, when_busy: WhenBusy) -> object:
+    def _on_actor_click(self, actor: Actor, work: object, when_busy: WhenBusy) -> object:
         _open(self)
         _actor(self, actor)
-        if isinstance(block, Block):
-            handler = _binding(self, actor, cast("Block[Actor]", block), when_busy)
+        if isinstance(work, Group):
+            handler = _binding(self, actor, cast(object, work), when_busy)
             result: object = None
         else:
-            if not callable(block):
-                raise TypeError("Click handlers must be a Block or callback(position, button)")
-            handler = _click_handler(cast(_Click, block), actor, when_busy)
-            result = block
+            if not callable(work):
+                raise TypeError("Use a group or a callback(position, button)")
+            handler = _click_handler(cast(_Click, work), actor, when_busy)
+            result = work
         self._clicks.setdefault(actor, []).append(handler)
         return result
 
@@ -346,14 +391,10 @@ class Stage:
     ) -> Callable[[Callable[[_D], _R]], Callable[[_D], _R]]: ...
     @overload
     def on_message(
-        self, message: Signal, actor: _T, block: Block[_T], *, when_busy: WhenBusy = WhenBusy.IGNORE
-    ) -> None: ...
-    @overload
-    def on_message(
         self,
-        message: Message[_D],
+        message: Signal | Message[_D],
         actor: _T,
-        block: Callable[[_D], Block[_T]],
+        group: Group[_T],
         *,
         when_busy: WhenBusy = WhenBusy.IGNORE,
     ) -> None: ...
@@ -361,30 +402,23 @@ class Stage:
         self,
         message: Signal | Message[_D],
         actor: object = None,
-        block: object = None,
+        group: object = None,
         *,
         when_busy: WhenBusy = WhenBusy.IGNORE,
     ) -> object:
-        """Receive a signal, typed payload, or payload-to-block factory; matching token identity matters."""
+        """Receive a token's typed payload; a directly bound group ignores the payload."""
         _open(self)
         token = cast("Signal | Message[object]", message)
         if actor is not None:
-            if isinstance(message, Signal):
-                handler = _binding(self, actor, block, when_busy)
-            else:
-                target = _actor(self, actor)
-                factory = cast(Callable[[object], Block[Actor]], block)
-
-                async def receive(data: object) -> None:
-                    recipe = factory(data)
-                    if not isinstance(recipe, Block):
-                        raise TypeError("A message factory must return a Block")
-                    await recipe.run(target)
-
-                handler = _Handler(receive, target, None, when_busy)
-            self._message_handlers.setdefault(token, []).append(handler)
+            self._message_handlers.setdefault(token, []).append(
+                _binding(self, actor, group, when_busy)
+            )
             return None
+        return self._message_decorator(token, None, when_busy)
 
+    def _message_decorator(
+        self, message: Signal | Message[object], actor: Actor | None, when_busy: WhenBusy
+    ) -> Callable[[object], object]:
         def register(callback: object) -> object:
             _open(self)
 
@@ -393,9 +427,7 @@ class Stage:
                     return cast(_Press, callback)()
                 return cast(Callable[[object], _Result], callback)(data)
 
-            self._message_handlers.setdefault(token, []).append(
-                _Handler(start, None, None, when_busy)
-            )
+            self._message_handlers.setdefault(message, []).append(_Handler(start, actor, when_busy))
             return callback
 
         return register
@@ -410,35 +442,72 @@ class Stage:
         return delivery
 
     @overload
-    def broadcast(self, message: Signal) -> None: ...
+    def broadcast(self, message: Signal, *, after: Action | None = None) -> Action: ...
     @overload
-    def broadcast(self, message: Message[_D], data: _D) -> None: ...
-    def broadcast(self, message: Signal | Message[_D], data: _D | None = None) -> None:
-        """Queue stage-local delivery; no receiver runs inline. Payloads are shared by reference."""
-        self._enqueue(cast("Signal | Message[object]", message), data)
+    def broadcast(
+        self, message: Message[_D], data: _D, *, after: Action | None = None
+    ) -> Action: ...
+    def broadcast(
+        self, message: Signal | Message[_D], data: _D | None = None, *, after: Action | None = None
+    ) -> Action:
+        """Schedule FIFO delivery; complete after delivery, without joining receivers."""
+        from ._commands import _broadcast
+
+        return _admit(
+            self,
+            _broadcast(cast("Signal | Message[object]", message), data, False),
+            None,
+            after=after,
+        )
 
     @overload
-    async def broadcast_and_wait(self, message: Signal) -> None: ...
+    def broadcast_and_wait(self, message: Signal, *, after: Action | None = None) -> Action: ...
     @overload
-    async def broadcast_and_wait(self, message: Message[_D], data: _D) -> None: ...
-    async def broadcast_and_wait(
-        self, message: Signal | Message[_D], data: _D | None = None
-    ) -> None:
-        """Advanced: deliver and await accepted receiver invocations, excluding skipped busy handlers."""
-        stage, _, _, _ = await _context()
-        if stage is not self:
-            raise StageError("Use the executing stage for message waits")
-        await _suspend(_Join(self._enqueue(cast("Signal | Message[object]", message), data)))
+    def broadcast_and_wait(
+        self, message: Message[_D], data: _D, *, after: Action | None = None
+    ) -> Action: ...
+    def broadcast_and_wait(
+        self, message: Signal | Message[_D], data: _D | None = None, *, after: Action | None = None
+    ) -> Action:
+        """Schedule delivery and wait for accepted receiver invocations; skipped busy receivers are excluded."""
+        from ._commands import _broadcast
 
-    async def wait(self, seconds: float) -> None:
-        """Advanced: await simulated seconds; zero yields until the next tick."""
+        return _admit(
+            self,
+            _broadcast(cast("Signal | Message[object]", message), data, True),
+            None,
+            after=after,
+        )
+
+    def wait(self, seconds: float, *, after: Action | None = None) -> Action:
+        """Schedule a simulation-time wait; zero yields until the next tick."""
         from ._operations import _wait
+        from .geometry import _number
 
-        await _wait(self, seconds)
+        seconds = _number(seconds, "seconds", minimum=0)
+        return _admit(self, _wait(self, seconds), None, after=after)
+
+    def call(self, function: Callable[[], None | Action], *, after: Action | None = None) -> Action:
+        """Run a synchronous function when reached and wait for its returned Action."""
+        from ._commands import _call
+
+        if not callable(function):
+            raise TypeError("call expects a function, not its result")
+        return _admit(self, _call(function), None, after=after)
+
+    def join(self, first: Action, *rest: Action, after: Action | None = None) -> Action:
+        """Wait for independent actions; canceling this join does not cancel them."""
+        from ._commands import _join
+
+        actions = (first, *rest)
+        if any(action._stage is not self for action in actions):
+            raise StageError("Join actions from the same stage")
+        return _admit(self, _join(actions), None, after=after)
 
     def on_draw(self, callback: _Draw) -> _Draw:
         """Register a Canvas callback drawn above the scene, also while paused."""
         _open(self)
+        _sync(callback, "draw")
         self._draws.append(callback)
         return callback
 
@@ -526,12 +595,19 @@ def _actor(stage: Stage, value: object) -> Actor:
     return value
 
 
-def _binding(stage: Stage, actor: object, block: object, when_busy: WhenBusy) -> _Handler:
+def _binding(stage: Stage, actor: object, group: object, when_busy: WhenBusy) -> _Handler:
     target = _actor(stage, actor)
-    if not isinstance(block, Block):
-        raise TypeError("Event bindings require a Block, not the result of actor.act")
-    recipe = cast(Block[Actor], block)
-    return _Handler(lambda _: recipe.run(target), target, recipe, when_busy)
+    if not isinstance(group, Group) or cast(Group[Actor], group)._actor is not target:
+        raise TypeError("Bind a group belonging to this exact actor")
+    recipe = cast(Group[Actor], group)
+
+    def start(_: object) -> Action:
+        from ._commands import _schedule
+        from .groups import _snapshot
+
+        return _schedule(target, _snapshot(recipe, target))
+
+    return _Handler(start, target, when_busy)
 
 
 def _click_handler(callback: _Click, actor: Actor | None, when_busy: WhenBusy) -> _Handler:
@@ -539,4 +615,27 @@ def _click_handler(callback: _Click, actor: Actor | None, when_busy: WhenBusy) -
         position, button = cast(tuple[Point, MouseButton], data)
         return callback(position, button)
 
-    return _Handler(start, actor, None, when_busy)
+    return _Handler(start, actor, when_busy)
+
+
+def _attached(actor: Actor) -> Stage:
+    if actor._stage is None:
+        raise StageError("Add the actor to a stage before registering events")
+    _open(actor._stage)
+    return actor._stage
+
+
+def _sync(callback: object, kind: str) -> None:
+    from inspect import iscoroutinefunction
+
+    if not callable(callback) or iscoroutinefunction(callback):
+        raise TypeError(f"{kind} callbacks must be synchronous functions returning None")
+
+
+def _check_callback_result(result: object, kind: str) -> None:
+    if result is not None:
+        from collections.abc import Coroutine
+
+        if isinstance(result, Coroutine):
+            result.close()
+        raise TypeError(f"{kind} callbacks must return None, not an Action or coroutine")

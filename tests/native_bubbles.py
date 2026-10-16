@@ -43,11 +43,11 @@ def main() -> None:
             from plocks import Sprite
 
             assert isinstance(hero, Sprite)
-            assert hero._bubble is None and hero.x == 0 and not stage._runs
+            assert hero._bubble is None and hero.x == 0 and not stage._actions
             stage.stop()
 
     stage.run()
-    assert stage._target is None and not stage.objects and not stage._runs
+    assert stage._target is None and not stage.objects and not stage._actions
     print("BUBBLE_NATIVE_CLEANUP_OK")
 
 

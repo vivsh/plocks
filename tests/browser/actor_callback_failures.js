@@ -5,11 +5,11 @@ async page => {
     const external=[];
     try {
       if(mode==='self')await context.route('**/*',route=>{
-        if(new URL(route.request().url()).origin==='http://127.0.0.1:8465')return route.continue();
+        if(new URL(route.request().url()).origin==='http://127.0.0.1:8464')return route.continue();
         external.push(route.request().url());return route.abort();
       });
       const tab=await context.newPage();
-      await tab.goto(`http://127.0.0.1:8465/${mode}/`);
+      await tab.goto(`http://127.0.0.1:8464/actions-${mode}/`);
       await tab.bringToFront();
       await tab.waitForFunction(()=>!document.getElementById('play').disabled,null,{timeout:60000});
       await tab.getByRole('button',{name:'Play',exact:true}).click();
@@ -40,7 +40,7 @@ platform.window.document.getElementById('canvas').setAttribute('data-triggered',
       const message=await tab.locator('#error-message').innerText();
       if(!message.includes(`LookupError: deliberate actor ${kind} failure`)||!message.includes('Traceback'))throw Error(message);
       await tab.waitForFunction(()=>{
-        window.python.PyRun_SimpleString("platform.window.document.getElementById('canvas').setAttribute('data-clean',str(not callback_stage._updates and not callback_stage._clicks and not callback_stage._runs and not callback_stage.objects and callback_stage._target is None and callback_actor._stage is None and callback_actor._bubble is None))");
+        window.python.PyRun_SimpleString("platform.window.document.getElementById('canvas').setAttribute('data-clean',str(not callback_stage._updates and not callback_stage._clicks and not callback_stage._actions and not callback_stage.objects and callback_stage._target is None and callback_actor._stage is None and callback_actor._bubble is None))");
         return document.getElementById('canvas').getAttribute('data-clean')==='True';
       });
       if(external.length)throw Error(JSON.stringify(external));

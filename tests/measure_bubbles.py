@@ -13,6 +13,7 @@ from plocks import Actor, Puppet, Sprite, Stage
 from plocks._bubbles import _draw_bubble
 from plocks._render import frame
 from plocks._runtime import close
+from plocks._scripts import _step
 
 
 def main() -> None:
@@ -30,9 +31,10 @@ def main() -> None:
                 else Sprite(Image.new("RGBA", (20, 20), "orange"))
             )
             actor.position = ((index % 10) * 55 - 260, (index // 10) * 30 - 150)
-            actor.say("Hello! This message wraps into readable lines.")
             stage.add(actor)
+            actor.say("Hello! This message wraps into readable lines.")
             actors.append(actor)
+        _step(stage)
         pygame.font.quit()
         started = time.perf_counter()
         frame(stage)

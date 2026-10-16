@@ -2,7 +2,7 @@
 
 All artwork is generated with Pillow. Platforms are one-way: jump through them
 from below and land on top. This intermediate example authors its own gravity,
-landing and projectiles; Plocks supplies sprites, blocks, input and rendering.
+landing and projectiles; Plocks supplies sprites, actions, input and rendering.
 """
 
 from math import sin
@@ -10,17 +10,12 @@ from math import sin
 from PIL import Image, ImageDraw
 
 from plocks import (
+    Action,
     Bounds,
     Canvas,
     Costume,
-    Costumes,
-    During,
-    GlideTo,
     Key,
-    Loop,
     RotationStyle,
-    Script,
-    Sequence,
     Sprite,
     Stage,
     TiledBackground,
@@ -114,7 +109,8 @@ def main() -> None:
     stage.add(Sprite(Costume(flag_image, anchor=(4, 100)), x=1720, y=-150, layer=-1))
 
     idle = soldier()
-    walking = Loop(Costumes((soldier(1), soldier(-1)), fps=9))
+    walking_frames = (soldier(1), soldier(-1))
+    walking: Action | None = None
     hero = Sprite(idle, x=-300, y=-150, scale=1.5, layer=2)
     hero.rotation_style = RotationStyle.LEFT_RIGHT
     stage.add(hero)
@@ -154,28 +150,21 @@ def main() -> None:
         stage.add(shot)
         shots.append((shot, direction * (560 if friendly else 230), friendly))
 
-    async def enemy_fire(actor: Sprite) -> None:
-        await stage.wait(0.7 + (actor.x % 3) * 0.2)
-        while True:
-            if not finished() and abs(actor.x - hero.x) < 480:
-                actor.direction = 90 if hero.x > actor.x else 270
-                fire(actor, False)
-            await stage.wait(1.5)
-
     def spawn_enemies() -> None:
         for x, y in ((140, -150), (440, -22), (730, -150), (970, -86), (1260, -150), (1490, -86)):
             enemy = Sprite(sentry, x=x, y=y, scale=1.5, layer=1)
             enemy.rotation_style = RotationStyle.LEFT_RIGHT
             stage.add(enemy)
             enemies.append(enemy)
-            patrol = During(
-                Loop(Sequence(GlideTo(x=x + 45, seconds=1.2), GlideTo(x=x, seconds=1.2))),
-                meanwhile=Script(enemy_fire),
-            )
-            if stage.running:
-                enemy.act(patrol)
-            else:
-                enemy.on_start(patrol)
+
+            def fire_when_near(actor: Sprite = enemy) -> None:
+                if not finished() and abs(actor.x - hero.x) < 480:
+                    actor.direction = 90 if hero.x > actor.x else 270
+                    fire(actor, False)
+
+            patrol = enemy.repeat().glide_to(x=x + 45, seconds=1.2).glide_to(x=x, seconds=1.2)
+            firing = enemy.repeat().wait(1.5).call(fire_when_near)
+            enemy.during(patrol, meanwhile=firing)
 
     def remove_shot(shot: tuple[Sprite, float, bool]) -> None:
         shots.remove(shot)
@@ -227,9 +216,10 @@ def main() -> None:
 
     @stage.on_update
     def update(dt: float) -> None:
-        nonlocal vertical_speed, next_shot, defeated
+        nonlocal vertical_speed, next_shot, defeated, walking
         if finished():
-            hero.stop(walking)
+            if walking is not None:
+                walking.cancel()
             hero.costume = idle
             hero.visible = True
             return
@@ -238,9 +228,11 @@ def main() -> None:
         if direction:
             hero.direction = 90 if direction > 0 else 270
         if direction and grounded():
-            hero.act(walking)
+            if walking is None or walking.done:
+                walking = hero.act(hero.repeat().costumes(walking_frames, fps=9))
         else:
-            hero.stop(walking)
+            if walking is not None:
+                walking.cancel()
             hero.costume = idle
 
         previous_feet = hero.y

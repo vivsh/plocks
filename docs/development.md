@@ -1,41 +1,27 @@
-# Development and validation
+# Local development
 
-Install with `python -m pip install -e '.[dev,web]'` in a Python 3.12+ environment.
+Install the editable package and tools in a virtual environment:
 
 ```sh
+python -m pip install -e '.[dev,web]'
+python -m pytest -q
+python -m mypy
+pyright
 ruff check src tests examples
 ruff format --check src tests examples
-mypy src tests examples
-pyright
-pyright --verifytypes plocks --ignoreexternal
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy pytest -q
+python -m build
 ```
 
-On Windows PowerShell, set the two driver variables using `$env:NAME="dummy"`
-before pytest. Real desktop/display/audio checks should also run with them unset.
-Dummy drivers prove lifecycle behavior, not audible hardware output. Negative type
-fixtures verify callbacks, actor/block compatibility, invariant message payloads,
-factories, assets, coordinates, pose angles, and rejection of async update/draw.
+`SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy` can be set for headless behavioral
+checks. Those checks do not establish native display or audible sound behavior.
+`tests/native_actions.py` and `tests/native_physics.py` exercise actual display execution.
+Run native/window-focus probes serially: losing focus intentionally suspends the game.
 
-Build distributions with `python -m build`. Install the wheel into an isolated
-environment outside this checkout and repeat type checks there. Wheel and source
-distribution must contain `py.typed`, browser templates, and the pinned runtime
-inventory. Select the intended environment on PATH for Pyright verification.
+`tests/typing/hover_example.py` is a positive editor fixture. Select the virtual
+environment in VS Code/Pylance and inspect completion and hovers there. The negative
+fixture is checked by tests. `pyright --verifytypes plocks --ignoreexternal` checks
+public type completeness. Validate an installed wheel outside this checkout as well.
 
-Browser acceptance scripts in `tests/browser/` exercise input, audio, animation,
-pointer scaling, failures, and cleanup. Run them serially because focus loss
-intentionally suspends simulation. Browser installations must match the Playwright CLI.
-
-The configured CI matrix covers Windows/macOS/Linux on Python 3.12/3.13/3.14 and
-the minimum pygame-ce/Pillow combination on 3.12. Browser engines, real audio, and
-Pylance hovers require separate checks; unit tests do not prove those paths.
-
-Strict Pyright keeps type diagnostics enabled. Three non-type diagnostics are
-disabled explicitly: private access across cooperating implementation modules,
-unused private functions that are imported elsewhere, and runtime checks that
-remain useful for untyped callers. Unknown-type diagnostics remain enabled.
-
-`native_bubbles.py` posts native SDL events to the dialogue example.
-`measure_bubbles.py` measures local dialogue rendering with 1/10/100 visible
-speakers; do not compare dummy-driver timing with native presentation timing as
-if they measure the same thing.
+Do not install the separate `pygame` distribution alongside pygame-ce. Pymunk is included in
+the default installation. Enable simulation explicitly with `Stage(physics=True)`.
+No PyPI release is required to develop or run Plocks locally.

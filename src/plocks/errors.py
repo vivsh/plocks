@@ -21,3 +21,11 @@ class StageError(PlocksError):
 
 class BuildError(PlocksError):
     """A project cannot be assembled into a portable browser website."""
+
+
+class ActionCancelled(PlocksError):
+    """An advanced coroutine awaited an action that was canceled."""
+
+
+class PhysicsError(PlocksError):
+    """Physics is unavailable or a body operation conflicts with its role or lifetime."""

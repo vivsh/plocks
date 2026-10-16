@@ -5,11 +5,11 @@ async page => {
     const external=[];
     try {
       if(mode==='self') await context.route('**/*', route => {
-        if(new URL(route.request().url()).origin==='http://127.0.0.1:8463')return route.continue();
+        if(new URL(route.request().url()).origin==='http://127.0.0.1:8464')return route.continue();
         external.push(route.request().url());return route.abort();
       });
       const tab=await context.newPage();
-      await tab.goto(`http://127.0.0.1:8463/${mode}/`);
+      await tab.goto(`http://127.0.0.1:8464/bubbles-${mode}/`);
       await tab.bringToFront();
       await tab.waitForFunction(()=>!document.getElementById('play').disabled,null,{timeout:60000});
       await tab.getByRole('button',{name:'Play',exact:true}).click();
@@ -42,7 +42,7 @@ platform.window.document.getElementById('canvas').setAttribute('data-triggered',
         if(!message.includes('LookupError: deliberate bubble failure')||!message.includes('Traceback'))throw Error(message);
       }
       await tab.waitForFunction(()=>{
-        window.python.PyRun_SimpleString("platform.window.document.getElementById('canvas').setAttribute('data-clean',str(bubble_stage._state=='closed' and not bubble_stage._runs and not bubble_stage.objects and bubble_stage._target is None and bubble_hero._stage is None and bubble_person._stage is None and bubble_hero._bubble is None and bubble_person._bubble is None))");
+        window.python.PyRun_SimpleString("platform.window.document.getElementById('canvas').setAttribute('data-clean',str(bubble_stage._state=='closed' and not bubble_stage._actions and not bubble_stage.objects and bubble_stage._target is None and bubble_hero._stage is None and bubble_person._stage is None and bubble_hero._bubble is None and bubble_person._bubble is None))");
         return document.getElementById('canvas').getAttribute('data-clean')==='True';
       },null,{polling:100});
       if(external.length)throw Error(JSON.stringify(external));

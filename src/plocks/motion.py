@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from .geometry import Bounds, Point, _rotate
 
 if TYPE_CHECKING:
+    from .physics import Body
     from .puppets import Puppet
     from .sprites import Sprite
 
@@ -100,6 +101,84 @@ def _bounce(actor: Sprite | Puppet, bounds: Bounds | None) -> bool:
     if horizontal or vertical or x or y:
         actor.direction = direction
         if x or y:
-            actor.move_to(x=actor.x + x if x else None, y=actor.y + y if y else None)
+            _move_to(actor, actor.x + x if x else None, actor.y + y if y else None)
         return True
     return False
+
+
+def _move(actor: Sprite | Puppet, steps: float) -> None:
+    dx, dy = _rotate((steps, 0), actor.direction)
+    _move_to(actor, actor.x + dx, actor.y + dy)
+
+
+def _move_to(actor: Sprite | Puppet, x: float | None, y: float | None) -> None:
+    from ._scripts import _conflicts
+    from .geometry import _number
+
+    px = actor.x if x is None else _number(x, "x")
+    py = actor.y if y is None else _number(y, "y")
+    _conflicts(actor, x is not None, y is not None)
+    _set_position(actor, (px, py))
+
+
+def _point_towards(actor: Sprite | Puppet, target: Point | Sprite | Puppet) -> None:
+    from math import atan2, degrees
+
+    from .geometry import _point
+
+    point = _point(target) if isinstance(target, tuple) else target.position
+    dx, dy = point[0] - actor.x, point[1] - actor.y
+    if dx or dy:
+        actor.direction = degrees(atan2(dx, dy))
+
+
+def _random(actor: Sprite | Puppet, bounds: Bounds | None) -> None:
+    from random import uniform
+
+    area = _area(actor, bounds)
+    actor.position = uniform(area.left, area.right), uniform(area.bottom, area.top)
+
+
+def _body_position(body: Body) -> Point:
+    from .physics import _native
+
+    value = _native(body).position
+    return float(value.x), float(value.y)
+
+
+def _body_direction(body: Body) -> float:
+    from math import degrees
+
+    from .physics import _native
+
+    return (90 - degrees(_native(body).angle)) % 360
+
+
+def _set_position(actor: Sprite | Puppet, position: Point) -> None:
+    from ._physics import _space
+    from .geometry import _Placement
+    from .physics import Body, _native
+
+    if isinstance(actor._transform, Body):
+        native = _native(actor._transform)
+        native.position = position
+        _space(actor._transform._world).reindex_shapes_for_body(native)
+        native.activate()
+    else:
+        actor._transform = _Placement(position, actor.direction, actor.body_type)
+
+
+def _set_direction(actor: Sprite | Puppet, direction: float) -> None:
+    from math import radians
+
+    from ._physics import _space
+    from .geometry import _Placement
+    from .physics import Body, _native
+
+    if isinstance(actor._transform, Body):
+        native = _native(actor._transform)
+        native.angle = radians(90 - direction)
+        _space(actor._transform._world).reindex_shapes_for_body(native)
+        native.activate()
+    else:
+        actor._transform = _Placement(actor.position, direction, actor.body_type)

@@ -1,24 +1,27 @@
-"""Bubble messages."""
-
 from PIL import Image
 
-from plocks import Broadcast, Key, Message, Say, Sprite, Stage
+from plocks import Action, Key, Message, Sprite, Stage
 
 
 def main() -> None:
-    stage = Stage(background="midnightblue", bubble_text_size=28)
-    hero = Sprite(Image.new("RGBA", (32, 40), "orange"))
+    stage = Stage(background="midnightblue")
+    hero = Sprite(Image.new("RGBA", (24, 24), "orange"), x=-80)
+    friend = Sprite(Image.new("RGBA", (24, 24), "skyblue"), x=80)
     stage.add(hero)
+    stage.add(friend)
     score_added = Message[int]("score added")
     score = 0
 
-    @stage.on_message(score_added)
-    def show_score(amount: int) -> None:
+    @hero.on_message(score_added)
+    def add_score(amount: int) -> None:
         nonlocal score
         score += amount
-        hero.act(Say(f"Score: {score}", seconds=2))
+        hero.say(f"Score: {score}", seconds=1)
 
-    hero.on_key_down(Key.SPACE, Broadcast(score_added, 1))
+    @hero.on_key_down(Key.SPACE)
+    def collect() -> Action:
+        return stage.broadcast(score_added, 1)
+
     stage.run()
 
 

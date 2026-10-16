@@ -1,31 +1,40 @@
-# Migrating to Plocks
+# Upgrade to 0.2.1
 
-The project was renamed from Scratchpy to Plocks. Update imports to `plocks`,
-use the `plocks` command, rename `scratchpy.toml` to `plocks.toml`, and replace
-`ScratchpyError` with `PlocksError`. There are no old-name compatibility aliases.
-Reinstall the local checkout after renaming.
+This revision replaces public Block classes with synchronous commands and actor-bound groups.
+There are no compatibility aliases. Python 3.12+ and the pygame-ce foundation remain unchanged.
 
-## Moving from 0.1 to 0.2
+| Previous API | 0.3 |
+|---|---|
+| `hero.act(Sequence(...))` | `hero.act(hero.sequence().move(...).wait(...))` |
+| `Loop(...)`, `Repeat(n, ...)` | `hero.repeat()`, `hero.repeat(n)` |
+| `GlideBy(...)` | `hero.glide_by(...)` or `group.glide_by(...)` |
+| `Costumes(...)`, `Poses(...)` | `costumes(...)`, `poses(...)` methods |
+| `During(...)` | `hero.during(foreground, meanwhile=background)` |
+| `If`, `Condition` | Ordinary typed function passed to `call` |
+| `Script(...)` | Typed callback returning Action, or an advanced async callback |
+| `Say`, `Think`, `ClearBubble` | `say`, `think`, `clear_bubble` methods |
+| Payload-to-Block factory | Typed message callback returning Action |
+| `act(..., restart=True)` | Cancel the previous Action, then start a fresh execution |
+| `stop(block)` | `stop(action)` or `action.cancel()` |
 
-This revision intentionally breaks the earlier API. There are no compatibility aliases.
+Command methods now schedule work and return immediately. This includes methods
+that used to be immediate: `move`, turns, pointing, bounce, dialogue, and part replacement.
+Use property assignment for immediate state edits, including setup before stage membership.
+Commands made while paused wait for resume.
 
-| Earlier API | Current API |
-| --- | --- |
-| `sprite.play(Animation(frames, fps=10))` | `sprite.act(Loop(Costumes(frames, fps=10)))` |
-| Nonlooping animation | `sprite.act(Costumes(frames, fps=10))` |
-| `stop_animation()` | `stop(recipe)` or `stop()` |
-| `is_animating` | Put the next action after the animation in a `Sequence` |
-| `StickFigure` | `Puppet.stick_figure()` or image-part `Puppet(...)` |
-| `PoseAnimation` | `Poses`, with `Loop` or `Repeat` as needed |
-| Automatic pose-loop closing | Repeat the first pose at the end explicitly |
-| Re-add resumes playback | Removal cancels; start the desired block again |
-| Replaying a completed definition stays completed | `act` starts a new execution after completion |
+Old `await hero.glide_by(...)` still sequences movement, but the call itself now
+schedules it. Awaiting observes the same Action. Do not discard a command expecting
+it to remain unstarted until awaited.
 
-Joint geometry changed deliberately: `Joint(parent, offset=(x, y), angle=...)`
-defines a pivot. Its own angle rotates its image and descendants, not its offset
-from its parent. Re-author old bone-endpoint rigs rather than copying old angle
-mappings unchanged. Images provide all appearance, including the stick preset.
+Return the last Action from an event callback to preserve busy handling and scope
+newly created work. Returning None deliberately leaves created actions independent.
+Each `act(group)` starts a fresh snapshot; calling it every update starts many actions.
+Use an event, a repeating group, or retain an Action when explicit lifecycle control is useful.
 
-Actors belong to one Stage at a time. Add them before binding behavior. A direct
-position or appearance assignment interrupts the active writer's entire enclosing
-behavior. Use independent axes when a patrol and jump should coexist.
+Groups belong to one actor. Use functions accepting actors to reuse recipes.
+Removing actors cancels work. Tile maps now belong to at most one stage.
+`on_update` observes state at the start of the simulation interval, before physics.
+The simulation tick advances after integration.
+
+Physics is included in the default installation. Games remain nonphysical unless constructed with
+`Stage(physics=True)`. See the [physics guide](physics.md).

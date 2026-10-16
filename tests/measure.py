@@ -11,14 +11,9 @@ from PIL import Image
 
 from plocks import (
     Costume,
-    During,
-    GlideBy,
     HumanJoint,
-    Loop,
     Message,
-    Poses,
     Puppet,
-    Sequence,
     Sound,
     Sprite,
     Stage,
@@ -49,11 +44,9 @@ def main() -> None:
         stage.add(person)
         rest = person.skeleton.rest_pose()
         raised = rest.with_angles({HumanJoint.RIGHT_ELBOW: 90})
-        person.act(
-            During(
-                Loop(Sequence(GlideBy(y=10, seconds=0.5), GlideBy(y=-10, seconds=0.5))),
-                meanwhile=Loop(Poses((rest, raised, rest), fps=2)),
-            )
+        person.during(
+            person.repeat().glide_by(y=10, seconds=0.5).glide_by(y=-10, seconds=0.5),
+            meanwhile=person.repeat().poses((rest, raised, rest), fps=2),
         )
     delivered = 0
     message = Message[int]("benchmark")
@@ -63,6 +56,7 @@ def main() -> None:
         nonlocal delivered
         delivered += amount
 
+    _step(stage)
     for _ in range(10):
         frame(stage)
     samples: list[float] = []
@@ -71,7 +65,9 @@ def main() -> None:
         started = time.perf_counter()
         for _ in range(32):
             stage.broadcast(message, 1)
+        _step(stage)
         _deliver(stage)
+        _step(stage)
         messages.append(1000 * (time.perf_counter() - started))
         stage._tick += 1
         _sample(stage)
@@ -93,7 +89,7 @@ def main() -> None:
                 "display": pygame.display.get_driver(),
                 "pygame": pygame.version.ver,
                 "frames": len(samples),
-                "roots": len(stage._runs),
+                "roots": len(stage._actions),
                 "fibers": _count(stage),
                 "message_deliveries": delivered,
                 "message_batch_median_ms": statistics.median(messages),

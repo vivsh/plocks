@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "plocks"
-version = "0.2.0"
-description = "Small, typed Python games with composable blocks, Puppets, and browser sharing."
+version = "0.2.1"
+description = "Small, typed Python games with synchronous actions, reusable groups, Puppets, and optional physics."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["pygame-ce>=2.5.7,<2.6", "Pillow>=11.3,<13"]
+dependencies = ["pygame-ce>=2.5.7,<2.6", "Pillow>=11.3,<13", "pymunk==6.11.1"]
 
 [project.urls]
 Repository = "https://github.com/vivsh/plocks"

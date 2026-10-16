@@ -17,9 +17,15 @@ type _Artifact = tuple[str, str, int, str]
 """Manifest (relative path, URL, byte count, SHA-256); an ordinary immutable tuple."""
 
 
-def artifacts() -> tuple[_Artifact, ...]:
+def artifacts(*, physics: bool = False) -> tuple[_Artifact, ...]:
     """Read the shipped immutable runtime inventory, including expected hashes."""
-    document: object = json.loads(files(__package__).joinpath("runtime-lock.json").read_text())
+    names = ("runtime-lock.json", "physics-lock.json") if physics else ("runtime-lock.json",)
+    return tuple(artifact for name in names for artifact in _inventory(name))
+
+
+def _inventory(name: str) -> tuple[_Artifact, ...]:
+    """Validate either packaged dependency inventory through the same boundary."""
+    document: object = json.loads(files(__package__).joinpath(name).read_text())
     if not isinstance(document, list):
         raise BuildError("Invalid packaged runtime inventory")
     result: list[_Artifact] = []
@@ -51,7 +57,7 @@ def download(artifact: _Artifact, destination: Path) -> Path:
         if path.startswith("notices/"):
             body = files(__package__).joinpath(path).read_bytes()
         else:
-            request = urllib.request.Request(url, headers={"User-Agent": "plocks/0.2"})
+            request = urllib.request.Request(url, headers={"User-Agent": "plocks/0.3"})
             with urllib.request.urlopen(request, timeout=60) as response:
                 body = response.read(size + 1)
     except (OSError, urllib.error.URLError) as error:
@@ -78,7 +84,16 @@ def extract_wheel(wheel: Path, destination: Path) -> None:
             if path.suffix in {".pyc", ".pyi"}:
                 continue
             if not (
-                path.parts[0] in {"pygame", "PIL", "typing_extensions.py"}
+                path.parts[0]
+                in {
+                    "pygame",
+                    "PIL",
+                    "typing_extensions.py",
+                    "pymunk",
+                    "cffi",
+                    "pycparser",
+                    "_cffi_backend.cpython-312-wasm32-emscripten.so",
+                }
                 or ".dist-info" in path.parts[0]
             ):
                 continue

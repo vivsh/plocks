@@ -2,7 +2,7 @@
 
 from PIL import Image
 
-from plocks import ClearBubble, Key, Sprite, Stage
+from plocks import Key, Sprite, Stage
 
 
 def main() -> None:
@@ -19,7 +19,7 @@ def main() -> None:
     def clear() -> None:
         hero.clear_bubble()
 
-    hero.on_key_down(Key.ESCAPE, ClearBubble())
+    hero.on_key_down(Key.ESCAPE, hero.sequence().clear_bubble())
     stage.run()
 
 

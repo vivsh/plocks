@@ -37,7 +37,7 @@ jobs:
           SDL_AUDIODRIVER: dummy
       - run: python -m build
       - run: python -m pip uninstall -y plocks
-      - run: python -m pip install dist/plocks-0.2.0-py3-none-any.whl
+      - run: python -m pip install dist/plocks-0.2.1-py3-none-any.whl
       - run: cd /tmp && pyright --verifytypes plocks --ignoreexternal
       - uses: actions/upload-artifact@v4
         with:

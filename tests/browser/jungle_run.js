@@ -11,7 +11,7 @@ async page => {
       const tab = await context.newPage();
       tab.on('pageerror', error => errors.push(String(error)));
       tab.on('console', message => messages.push(message.text()));
-      await tab.goto(`http://127.0.0.1:8464/${mode}/`);
+      await tab.goto(`http://127.0.0.1:8464/jungle-${mode}/`);
       await tab.bringToFront();
       await tab.waitForFunction(() => !document.getElementById('play').disabled, null, {timeout:60000});
       await tab.getByRole('button', {name:'Play', exact:true}).click();
@@ -80,7 +80,7 @@ platform.window.document.getElementById('canvas').setAttribute('data-game',json.
       await tab.keyboard.press('p');
       await probe('s.stop()');
       await tab.waitForFunction(() => {
-        window.python.PyRun_SimpleString("platform.window.document.getElementById('canvas').setAttribute('data-clean',str(not s._runs and not s.objects and s._target is None))");
+        window.python.PyRun_SimpleString("platform.window.document.getElementById('canvas').setAttribute('data-clean',str(not s._actions and not s.objects and s._target is None))");
         return document.getElementById('canvas').getAttribute('data-clean') === 'True';
       });
       if (external.length || errors.length) throw Error(JSON.stringify({external,errors}));

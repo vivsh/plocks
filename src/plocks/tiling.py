@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .stage import Stage
+
 from collections.abc import Iterable, Mapping, Sequence
 from math import ceil, floor
 from types import MappingProxyType
@@ -18,7 +23,17 @@ class TileMap:
     movement is never resolved automatically. Empty cells return None.
     """
 
-    __slots__ = ("_cells", "_layer", "_palette", "_solid", "_tile_size", "_visible", "_x", "_y")
+    __slots__ = (
+        "_cells",
+        "_layer",
+        "_palette",
+        "_solid",
+        "_stage",
+        "_tile_size",
+        "_visible",
+        "_x",
+        "_y",
+    )
 
     def __init__(
         self,
@@ -49,6 +64,7 @@ class TileMap:
         for row in cells:
             if any(key is not None and key not in self._palette for key in row):
                 raise KeyError("The map contains a character absent from the palette")
+        self._stage: Stage | None = None
         self._cells = cells
         self._tile_size = (
             _integer(tile_size[0], "tile width", minimum=1),
@@ -96,7 +112,12 @@ class TileMap:
 
     @x.setter
     def x(self, value: float) -> None:
-        self._x = _number(value, "x")
+        value = _number(value, "x")
+        if self._stage is not None and self._stage._physics is not None:
+            from ._physics import _terrain
+
+            _terrain(self._stage._physics, self, position=(value, self.y))
+        self._x = value
 
     @property
     def y(self) -> float:
@@ -105,7 +126,12 @@ class TileMap:
 
     @y.setter
     def y(self, value: float) -> None:
-        self._y = _number(value, "y")
+        value = _number(value, "y")
+        if self._stage is not None and self._stage._physics is not None:
+            from ._physics import _terrain
+
+            _terrain(self._stage._physics, self, position=(self.x, value))
+        self._y = value
 
     @property
     def position(self) -> Point:
@@ -114,7 +140,12 @@ class TileMap:
 
     @position.setter
     def position(self, value: Point) -> None:
-        self._x, self._y = _point(value)
+        point = _point(value)
+        if self._stage is not None and self._stage._physics is not None:
+            from ._physics import _terrain
+
+            _terrain(self._stage._physics, self, position=point)
+        self._x, self._y = point
 
     @property
     def visible(self) -> bool:
@@ -156,6 +187,12 @@ class TileMap:
         self._check_cell(row, column)
         if tile is not None and tile not in self.palette:
             raise KeyError(f"Unknown tile key: {tile}")
+        if self._stage is not None and self._stage._physics is not None:
+            from ._physics import _terrain
+
+            cells = [line.copy() for line in self._cells]
+            cells[row][column] = tile
+            _terrain(self._stage._physics, self, cells=cells)
         self._cells[row][column] = tile
 
     def cell_at(self, *, x: float, y: float) -> tuple[int, int] | None:

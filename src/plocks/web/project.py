@@ -20,6 +20,7 @@ class ProjectConfig:
     asset_paths: tuple[Path, ...]
     include_paths: tuple[Path, ...]
     runtime_mode: Literal["cdn", "self-contained"]
+    physics: bool = False
 
 
 def _is_link(path: Path) -> bool:
@@ -71,7 +72,7 @@ def load_project(path: str | Path, *, self_contained: bool = False) -> ProjectCo
             settings = cast(dict[str, object], game)
     except (OSError, tomllib.TOMLDecodeError) as error:
         raise BuildError(f"Cannot read {filename}: {error}") from error
-    unknown = settings.keys() - {"entry", "title", "assets", "include"}
+    unknown = settings.keys() - {"entry", "title", "assets", "include", "physics"}
     if unknown:
         raise BuildError(f"Unknown game setting(s): {', '.join(sorted(unknown))}")
     entry = settings.get("entry", "main.py")
@@ -81,6 +82,9 @@ def load_project(path: str | Path, *, self_contained: bool = False) -> ProjectCo
     entry_path = _relative(root, entry)
     if entry_path.suffix != ".py" or not (root / entry_path).is_file():
         raise BuildError("game.entry must name a Python file")
+    physics = settings.get("physics", False)
+    if not isinstance(physics, bool):
+        raise BuildError("game.physics must be true or false")
     assets = settings.get("assets", ["assets"] if (root / "assets").exists() else [])
     return ProjectConfig(
         root,
@@ -89,4 +93,5 @@ def load_project(path: str | Path, *, self_contained: bool = False) -> ProjectCo
         _paths(root, assets, "assets"),
         _paths(root, settings.get("include", []), "include"),
         "self-contained" if self_contained else "cdn",
+        physics,
     )
