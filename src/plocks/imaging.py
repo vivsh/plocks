@@ -9,7 +9,7 @@ import pygame
 from PIL import Image
 
 from .errors import AssetError
-from .geometry import Point, _integer, _point
+from .geometry import Point, _integer, _number, _point, _rotate
 
 type ImageSource = str | Path | Image.Image
 """An image filename or an already-created Pillow image."""
@@ -59,6 +59,85 @@ class Costume:
         """Placement anchor from the image's top-left, with image y downward."""
         return self._anchor
 
+    def flipped(self, *, horizontal: bool = False, vertical: bool = False) -> Costume:
+        """Return a mirrored costume, moving its anchor with the pixels.
+
+        Both flags may be combined. Neither flag returns this immutable costume.
+        The original is unchanged. Example: left = right.flipped(horizontal=True).
+        Non-boolean flags raise TypeError.
+        """
+        if not isinstance(horizontal, bool) or not isinstance(vertical, bool):
+            raise TypeError("horizontal and vertical must be booleans")
+        if not horizontal and not vertical:
+            return self
+        image = self.to_pillow()
+        x, y = self.anchor
+        if horizontal:
+            image = image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+            x = self.width - x
+        if vertical:
+            image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+            y = self.height - y
+        return Costume(image, anchor=(x, y))
+
+    def cropped(self, x: int, y: int, width: int, height: int) -> Costume:
+        """Copy a rectangle in image pixels, measured right/down from top-left.
+
+        The anchor moves by (-x, -y) and may lie outside the resulting image.
+        Width/height must be positive and the crop must fit inside this costume;
+        invalid ranges raise ValueError, non-integer values raise TypeError.
+        Example: portrait = sheet.cropped(x=0, y=0, width=32, height=32).
+        """
+        x = _integer(x, "x", minimum=0)
+        y = _integer(y, "y", minimum=0)
+        width = _integer(width, "width", minimum=1)
+        height = _integer(height, "height", minimum=1)
+        if x + width > self.width or y + height > self.height:
+            raise ValueError("The crop must fit inside the costume")
+        image = self.to_pillow().crop((x, y, x + width, y + height))
+        return Costume(image, anchor=(self.anchor[0] - x, self.anchor[1] - y))
+
+    def with_anchor(self, x: float, y: float) -> Costume:
+        """Return a costume with a new pivot, sharing the immutable pixels.
+
+        Image coordinates start at top-left, with y downward. Anchors may lie
+        outside the image. Non-finite coordinates raise ValueError; non-numeric
+        coordinates raise TypeError. Example: hand.with_anchor(x=8, y=4).
+        """
+        anchor = _point((x, y), "anchor")
+        return _from_pixels(self._pixels, anchor)
+
+    def rotated(self, degrees: float) -> Costume:
+        """Return a clockwise rotation in degrees, moving the anchor with it.
+
+        Rotate around the image center and expand with transparent padding to
+        avoid clipping. Nearest-neighbor sampling preserves pixel-art colors.
+        The original stays unchanged. Non-finite angles raise ValueError and
+        non-numeric angles raise TypeError. Example: tile.rotated(90).
+        """
+        degrees = _number(degrees, "degrees") % 360
+        image = self.to_pillow().rotate(-degrees, resample=Image.Resampling.NEAREST, expand=True)
+        x, y = self.anchor
+        # Convert the image's downward y axis to world coordinates for rotation.
+        dx, dy = _rotate((x - self.width / 2, self.height / 2 - y), 90 + degrees)
+        return Costume(image, anchor=(image.width / 2 + dx, image.height / 2 - dy))
+
+    def resized(self, width: int, height: int) -> Costume:
+        """Return an exact pixel size, scaling the anchor with the image.
+
+        Nearest-neighbor sampling keeps pixel art crisp. Changing the aspect ratio
+        stretches the image. Dimensions must be positive integers; invalid values
+        raise ValueError or TypeError. Example: tree.resized(width=32, height=64).
+        """
+        width = _integer(width, "width", minimum=1)
+        height = _integer(height, "height", minimum=1)
+        anchor = _point(
+            (self.anchor[0] * (width / self.width), self.anchor[1] * (height / self.height)),
+            "anchor",
+        )
+        pixels = pygame.transform.scale(self._pixels, (width, height))
+        return _from_pixels(pixels, anchor)
+
     def to_pillow(self) -> Image.Image:
         """Return an independent RGBA image; editing it leaves this asset unchanged."""
         return Image.frombytes(
@@ -68,6 +147,14 @@ class Costume:
 
 type CostumeSource = Costume | ImageSource
 """An existing immutable costume, filename, or Pillow image."""
+
+
+def _from_pixels(pixels: pygame.Surface, anchor: Point) -> Costume:
+    """Wrap private immutable pixels and a validated anchor without copying them."""
+    costume = object.__new__(Costume)
+    object.__setattr__(costume, "_pixels", pixels)
+    object.__setattr__(costume, "_anchor", anchor)
+    return costume
 
 
 def _costume(source: CostumeSource) -> Costume:

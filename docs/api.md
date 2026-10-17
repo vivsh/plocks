@@ -18,6 +18,34 @@ are copied into immutable RGBA assets; later Pillow edits cannot change them.
 `SpriteSheet.frames()` returns row-major costumes; `frames(row=1)` selects a row.
 PNG, JPEG and WebP are supported. OGG/Vorbis is the portable sound format.
 
+### Preparing costumes
+
+Prepare a costume once, then reuse it on sprites, Puppet parts, or tiles. These
+methods return immutable costumes; the original image stays unchanged.
+
+```python
+from plocks import Costume
+
+right = Costume("assets/hero.png")
+left = right.flipped(horizontal=True)
+upside_down = right.flipped(vertical=True)
+quarter_turn = right.rotated(90)  # Clockwise degrees.
+portrait = right.cropped(x=0, y=0, width=16, height=16)
+large = right.resized(width=64, height=64)
+hand = Costume("assets/hand.png").with_anchor(x=8, y=4)
+```
+
+Image coordinates start at the top-left, with y pointing down. Flipping, rotation,
+and resizing move the anchor with the pixels. Rotation expands the image with
+transparent padding; rotation and resizing use nearest-neighbor sampling.
+A resize may stretch the image if you change its proportions.
+
+Crops must fit inside the image and have positive integer dimensions. Cropping
+subtracts its top-left from the anchor, which can leave the anchor outside the
+new image. Use `with_anchor(...)` to choose a different pivot; it shares the
+existing immutable pixels. `flipped()` with neither flag returns the same costume.
+Angles and anchor coordinates must be finite.
+
 ## Commands and direct state
 
 Both Sprite and Puppet provide `move`, `move_to`, `glide_by`, `glide_to`, `wait`,

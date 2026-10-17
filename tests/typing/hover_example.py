@@ -26,6 +26,9 @@ def main() -> None:
     stage.add(person)
     patrol = hero.repeat(10).glide_by(x=10, seconds=0.2).costumes((hero.costume,), fps=5)
     hero.on_start(patrol)
+    left = hero.costume.flipped(horizontal=True)
+    portrait = left.cropped(x=0, y=0, width=8, height=8)
+    hero.costume = portrait.with_anchor(x=4, y=8).rotated(90).resized(width=16, height=16)
 
     @hero.on_key_down(Key.SPACE)
     def jump() -> Action:

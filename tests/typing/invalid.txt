@@ -40,3 +40,8 @@ hero.wait(1).done = True  # error
 hero.position = (1, "up")  # error
 stage.join()  # error
 stage.broadcast(message)  # error
+hero.costume.flipped(horizontal="yes")  # error
+hero.costume.cropped(x=0.5, y=0, width=8, height=8)  # error
+hero.costume.with_anchor(x="center", y=0)  # error
+hero.costume.rotated("left")  # error
+hero.costume.resized(width=2.5, height=8)  # error
