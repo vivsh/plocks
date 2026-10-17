@@ -26,7 +26,7 @@ def main() -> None:
         stages.append(stage)
 
     try:
-        os.chdir(root / "examples/animated_world")
+        os.chdir(root / "tests/fixtures/games/animated_world")
         with patch.object(Stage, "run", capture):
             runpy.run_path("main.py", run_name="__main__")
         stage = stages[0]

@@ -18,7 +18,7 @@ def main() -> None:
         stages.append(stage)
 
     with patch.object(Stage, "run", capture):
-        runpy.run_path("examples/bubbles/main.py", run_name="__main__")
+        runpy.run_path("tests/fixtures/games/bubbles/main.py", run_name="__main__")
     stage = stages[0]
     hero, friend = stage.objects[:2]
 

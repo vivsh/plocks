@@ -1,31 +1,30 @@
-# Jungle Run
+# 🌴 Jungle Run
 
-A short original run-and-gun level inspired by classic arcade action games.
-Run through a jungle outpost, defeat six sentry robots, and reach the gold flag.
+A Contra-style mission: defeat six robots and reach the gold flag.
 
-With Plocks installed in your active virtual environment, copy `main.py` into
-your project and run:
+## Play
 
 ```sh
-python main.py
+plocks run examples/jungle_run
 ```
 
-From a Plocks checkout, use `plocks run examples/jungle_run`.
-All artwork is generated with Pillow; no downloaded assets are required.
+**Arrows:** run · **Space:** jump · **Hold X:** shoot · **P:** pause · **R:** restart
 
-| Control | Action |
-| --- | --- |
-| Left / Right arrows | Run and face left / right |
-| Space | Jump; you can move and shoot in the air |
-| Hold X | Fire continuously in the direction you face |
-| P | Pause or resume |
-| R | Restart the level |
+## What you'll learn
 
-Platforms are one-way: jump through them from below and land on top. You have
-three health points, with a short grace period after taking damage. Jump to shoot
-robots on raised platforms, and jump over incoming fire.
+- **Functions:** `fire` makes bullets; `hurt` changes health.
+- **Lists and collisions:** Check each bullet, then remove it when it hits something.
+- **Recipes:** Robots walk and fire at the same time.
 
-This is an intermediate example. It combines block-based walking animation,
-structured patrol/fire behaviors, scrolling tile scenery, and a synchronous
-update callback for authored gravity, landing and projectile collisions. Those
-platforming rules belong to this game; Plocks does not apply automatic physics.
+Try this after Sky Steps. Jump through platforms from below and land on top.
+This bigger game writes its own gravity and landing rules.
+
+## Make it yours
+
+1. Change running speed from 220 to 280.
+2. Move a robot in `spawn_enemies`.
+3. Replace `assets/hero.png` with your own 32 × 40 character.
+
+**Your own project?** Copy this whole folder, keep `assets/` beside `main.py`,
+and run `python main.py` with Plocks installed. It also works from another folder
+using `python path/to/the/game/main.py`.

@@ -4,11 +4,11 @@ Physics is included in the default installation. From your checkout:
 
 ```sh
 python -m pip install -e .
-plocks run examples/physics_playground
+plocks run examples/platformer
 ```
 
-Use arrows to walk, Space to jump, and T to spin the crate. The blue lift runs a
-repeating glide recipe.
+Use arrows to walk and Space to jump. The lift runs a repeating glide recipe.
+Touch the green checkpoint to save your place; R restarts the course.
 
 Create `Stage(physics=True)`. Added Sprites and Puppets become dynamic bodies by
 default. TileMap solid cells become static rectangular terrain; TiledBackground

@@ -1,25 +1,25 @@
 # Let actors talk
 
+Copy the `assets` folder from `examples/platformer` beside this script, then run it
+from that folder. The PNG files are ready to use.
+
 ```python
-from PIL import Image
 from plocks import Sprite, Stage
 
 
-def main() -> None:
-    stage = Stage(background="midnightblue")
-    hero = Sprite(Image.new("RGBA", (32, 40), "orange"))
-    stage.add(hero)
+stage = Stage(background="midnightblue")
+hero = Sprite("assets/hero.png")
+stage.add(hero)
 
-    dialogue = hero.sequence()
-    dialogue.say("Hello!", seconds=2)
-    dialogue.think("Where next?", seconds=1)
-    dialogue.glide_by(x=100, seconds=1)
-    hero.on_start(dialogue)
-    stage.run()
+dialogue = hero.sequence()
+dialogue.say("Hello!", seconds=2)
+dialogue.think("Where next?", seconds=1)
+dialogue.glide_by(x=100, seconds=1)
+hero.on_start(dialogue)
 
 
 if __name__ == "__main__":
-    main()
+    stage.run()
 ```
 
 `hero.say("Hello!")` schedules persistent speech and completes once displayed.

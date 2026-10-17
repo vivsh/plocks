@@ -74,7 +74,7 @@ def main() -> None:
         _step(stage)
         frame(stage)
         samples.append(1000 * (time.perf_counter() - started))
-    sound = Sound(Path(__file__).parents[1] / "examples/proof/assets/tone.ogg")
+    sound = Sound(Path(__file__).parents[1] / "tests/fixtures/games/proof/assets/tone.ogg")
     stage.play(sound).stop()  # device initialization excluded from repeated decode measurement
     audio: list[float] = []
     for _ in range(30):

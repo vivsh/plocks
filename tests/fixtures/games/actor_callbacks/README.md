@@ -1,6 +1,6 @@
 # Actor callbacks
 
-Run `plocks run examples/actor_callbacks` from a checkout, or copy `main.py` into
+Run `plocks run tests/fixtures/games/actor_callbacks` from a checkout, or copy `main.py` into
 your own project with Plocks installed and run `python main.py`. Artwork is
 generated with Pillow; no asset files are required.
 

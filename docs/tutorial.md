@@ -1,7 +1,9 @@
 # Make things happen
 
-Start with the complete game in the [README](../README.md). These snippets belong
-inside `main()`, after adding your actors to the stage.
+Start with the complete game in the [README](../README.md), then choose a game from
+the [eight-example collection](../examples/README.md). These snippets belong
+at module level, after adding your actors to the stage. Keep the final
+`stage.run()` inside an `if __name__ == "__main__":` guard.
 
 ## Move, then move again
 
@@ -86,7 +88,7 @@ score = 0
 
 @friend.on_message(points)
 def add_points(amount: int) -> None:
-    nonlocal score
+    global score
     score += amount
     friend.say(f"Score: {score}", seconds=1)
 
@@ -112,7 +114,7 @@ raised = rest.with_angles({HumanJoint.RIGHT_ELBOW: 60})
 person.act(person.repeat().poses((rest, raised, rest), fps=2))
 ```
 
-`examples/custom_figure` attaches images to joint pivots. Each part's costume anchor
+For a custom Puppet, attach PNG files to joint pivots. Each part's costume anchor
 sits on its pivot; parent rotations move child pivots. Poses must belong to that exact skeleton.
 
 ## Advanced: await the same actions

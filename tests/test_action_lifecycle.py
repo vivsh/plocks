@@ -129,7 +129,7 @@ def test_sound_wait_cancel_stops_only_its_voice(game: tuple[Stage, Sprite]) -> N
     from pathlib import Path
 
     stage, hero = game
-    sound = Sound(Path(__file__).parents[1] / "examples/proof/assets/tone.ogg")
+    sound = Sound(Path(__file__).parents[1] / "tests/fixtures/games/proof/assets/tone.ogg")
     first = hero.play_sound(sound)
     second = hero.play_sound(sound)
     _step(stage)

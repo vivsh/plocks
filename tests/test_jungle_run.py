@@ -1,6 +1,5 @@
 """Play the standalone action example through deterministic input and simulation."""
 
-import inspect
 import runpy
 from collections.abc import Iterator
 from pathlib import Path
@@ -36,9 +35,7 @@ def game() -> Iterator[Stage]:
 
 def state(stage: Stage) -> dict[str, object]:
     """Inspect authored game values without adding test hooks to the example."""
-    values = dict[str, object](inspect.getclosurevars(stage._updates[0][1]).nonlocals)
-    values.update(inspect.getclosurevars(stage._draws[0]).nonlocals)
-    return values
+    return dict[str, object](stage._updates[0][1].__globals__)
 
 
 def advance(stage: Stage, ticks: int) -> None:

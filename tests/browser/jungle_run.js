@@ -21,13 +21,12 @@ async page => {
       });
       const probe = async (command='pass') => {
         const stamp = String(Math.random());
-        const source = `import asyncio,inspect,json,platform
+        const source = `import asyncio,json,platform
 for task in asyncio.all_tasks():
  f=getattr(task.get_coro(),'cr_frame',None)
  if f and f.f_code.co_name=='drive':
   s=f.f_locals['stage']
-v=dict(inspect.getclosurevars(s._updates[0][1]).nonlocals)
-v.update(inspect.getclosurevars(s._draws[0]).nonlocals)
+v=dict(s._updates[0][1].__globals__)
 h=v['hero']
 ${command}
 platform.window.document.getElementById('canvas').setAttribute('data-game',json.dumps({'stamp':${JSON.stringify(stamp)},'time':s.time,'x':h.x,'y':h.y,'health':v['health'],'defeated':v['defeated'],'enemies':len(v['enemies']),'shots':len(v['shots']),'friendly':sum(item[2] for item in v['shots']),'camera':s.camera[0]}))`;

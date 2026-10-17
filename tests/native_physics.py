@@ -15,7 +15,7 @@ def main() -> None:
         stages.append(stage)
 
     with patch.object(Stage, "run", capture):
-        runpy.run_path("examples/physics_proof/main.py", run_name="__main__")
+        runpy.run_path("tests/fixtures/games/physics_proof/main.py", run_name="__main__")
     stage = stages[0]
     hero, friend = stage.objects[1:]
     assert isinstance(hero, Sprite) and isinstance(friend, Sprite)

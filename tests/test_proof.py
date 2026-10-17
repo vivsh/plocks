@@ -31,7 +31,7 @@ def test_desktop_input_sound_render_cleanup() -> None:
     stage = Stage(background="navy")
     sprite = Sprite(Image.new("RGBA", (12, 12), "orange"))
     stage.add(sprite)
-    sound = Sound(Path(__file__).parents[1] / "examples/proof/assets/tone.ogg")
+    sound = Sound(Path(__file__).parents[1] / "tests/fixtures/games/proof/assets/tone.ogg")
     voices: list[Voice] = []
     canvases: list[Canvas] = []
 

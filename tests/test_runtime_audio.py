@@ -117,7 +117,7 @@ def test_cancelled_driver_releases_resources() -> None:
 
 def test_sound_overlap_limit_stale_handle_and_master_volume() -> None:
     """Playback does not steal channels, and a retired handle cannot stop its replacement."""
-    sound = Sound(Path(__file__).parents[1] / "examples/proof/assets/tone.ogg")
+    sound = Sound(Path(__file__).parents[1] / "tests/fixtures/games/proof/assets/tone.ogg")
     stage = Stage()
     stage._state = "running"
     voices = [stage.play(sound, volume=0.3, loop=True) for _ in range(16)]
@@ -143,7 +143,7 @@ def test_sound_snapshot_survives_source_removal(tmp_path: Path) -> None:
     """Playback reads the immutable snapshot, not a mutable or missing source file."""
     filename = tmp_path / "tone.ogg"
     filename.write_bytes(
-        (Path(__file__).parents[1] / "examples/proof/assets/tone.ogg").read_bytes()
+        (Path(__file__).parents[1] / "tests/fixtures/games/proof/assets/tone.ogg").read_bytes()
     )
     sound = Sound(filename)
     filename.unlink()

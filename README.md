@@ -1,71 +1,109 @@
-# Plocks
+<p align="center">
+  <img src="src/plocks/assets/icon.png" alt="Plocks: a cheerful orange block with green sneakers" width="160">
+</p>
 
-<img src="src/plocks/assets/icon.png" alt="Plocks: a cheerful orange block with green sneakers" width="180">
+<h1 align="center">Plocks</h1>
+<p align="center"><strong>Small games. Real Python. Your rules.</strong></p>
 
-Small, typed Python games for children moving on from Scratch. Create sprites and
-Puppets, give them actions, and build reusable recipes with ordinary Python methods.
-Editor tooltips explain coordinates, timing, and behavior. Requires Python 3.12+.
+Moving on from Scratch? Build Python games with ready-made pictures and simple
+movement recipes. Start with an example, then make it your own!
 
-Plocks is under development and has not been published to PyPI. Install from this checkout.
+## 🎮 Play your first game
 
-## Install and try it
+You need **Python 3.12+** and this project. Ask a grown-up for setup help if needed.
 
 ```sh
 python -m venv .venv
-# macOS / Linux
+# macOS / Linux:
 source .venv/bin/activate
-# Windows PowerShell: .venv\Scripts\Activate.ps1
+# Windows PowerShell instead: .venv\Scripts\Activate.ps1
 python -m pip install -e .
-plocks run examples/animated_world
+plocks run examples/platformer
 ```
 
-Arrows walk, J jumps, Space plays a sound, P pauses, and clicking near the ground edits tiles.
-Plocks uses pygame-ce; avoid installing the separate `pygame` distribution in the same environment.
+**Arrows** move · **Space** jumps · **R** restarts. Can you reach the gold flag?
 
-## Your first game
+Install from this checkout; Plocks is not on PyPI yet. It includes pygame-ce—
+keep the separate `pygame` package out of this environment.
 
-Save this as `main.py`. Run `python main.py` from its folder, or `plocks run path/to/my-game`.
+## 🗺️ Pick an adventure
+
+| Game | Your mission | New ideas to try |
+| --- | --- | --- |
+| [Sky Steps](examples/platformer/) — start here | Ride a lift and reach the flag | Physics, repeating moves, checkpoints |
+| [Beat Blocks](examples/geometry_dash/) | Jump over spikes | Timing, gravity, crash checks |
+| [Scrolling World](examples/scrolling_world/) | Explore and paint a world | Tile grids, layers, a following camera |
+| [Coin Quest](examples/mario/) | Grab coins and stomp enemies | Lists, solid tiles, scoring |
+| [Temple Trail](examples/temple_run/) | Jump, slide and turn corners | Movement recipes, costumes, perspective |
+| [Snake Run](examples/snake_run/) | Eat apples and grow a tail | Remembering positions, size and distance |
+| [Fruit Slice](examples/fruit_ninja/) | Swipe fruit, dodge bombs | Mouse input, randomness, swipe maths |
+| [Jungle Run](examples/jungle_run/) | Run, jump and shoot robots | Bullets, health, several things moving together |
+
+Each `main.py` has short comments. Start small; Fruit Slice and Jungle Run are
+stretch challenges. Copy a whole game folder into your project, including `assets/`,
+and run `python main.py` with Plocks installed.
+
+## ✨ Make a character hop
+
+Copy `examples/platformer/assets` beside a new `main.py`. Save this code and run
+`python main.py` there.
 
 ```python
-from PIL import Image
-from plocks import Key, Sprite, Stage
+from plocks import Action, Key, Sprite, Stage
+
+# Make the stage and hero before connecting their controls.
+stage = Stage()
+hero = Sprite("assets/hero.png")
+stage.add(hero)
+
+# A sequence is a recipe: go up, then come back down.
+hop = hero.sequence()
+hop.glide_by(y=60, seconds=0.3)
+hop.glide_by(y=-60, seconds=0.3)
 
 
-def main() -> None:
-    stage = Stage()
-    cat = Sprite(Image.new("RGBA", (32, 32), "orange"))
-    stage.add(cat)
-
-    hop = cat.sequence()
-    hop.glide_by(y=60, seconds=0.3)
-    hop.glide_by(y=-60, seconds=0.3)
-    cat.on_key_down(Key.SPACE, hop)
-
-    stage.run()
+@hero.on_key_down(Key.SPACE)
+def jump() -> Action:
+    # Ignore extra presses until this hop finishes.
+    return hero.act(hop)
 
 
+# Start only when we run this file directly.
 if __name__ == "__main__":
-    main()
+    stage.run()
 ```
 
-Coordinates start at the center. Positive x goes right; positive y goes up.
-Commands return immediately and run in the game loop. Pausing freezes simulated time.
-Sprites render automatically after `stage.add(...)`.
+Press **Space**! Change `60` to `100` in both moves for a bigger hop.
+**Coordinates:** the middle is `(0, 0)`; x goes right and y goes up.
 
-Physics is included in the default installation. Try falling, jumping, and moving platforms:
+Each example puts setup first, functions underneath, and the guarded `stage.run()`
+last. Importing the file prepares its pictures and game objects, but does not start
+its window. Use `global score` to reassign the shared score inside a function;
+changing `hero.x` or adding to a list does not need `global`.
 
-```sh
-plocks run examples/physics_proof
-```
+## 🧰 Python tools you'll meet
 
-## Learn more
+| Tool | What it does in a game |
+| --- | --- |
+| Variables and `True` / `False` | Remember a score or whether you have won |
+| `if` / `else` | Choose what happens: collect a coin or lose a life |
+| Functions (`def`) | Give a job a name, like `jump` or `restart` |
+| `for` loops | Do a job for every coin, enemy or tile |
+| Lists and tuples | Keep several things together, like coins or an `(x, y)` position |
+| Dictionaries | Find a picture by its name, such as `"coin"` |
+| Events (`@...`) | Tell Plocks when to call a function: on a key press or each game step |
+| `global` | Let a function change a game variable, such as `score`, from the top of the file |
+| f-strings (`f"Score: {score}"`) | Put a changing number into words on screen |
 
-- [Tutorial](docs/tutorial.md): sequences, repetition, messages, and Puppets.
-- [Dialogue](docs/dialogue.md): speech, thoughts, and changing text.
-- [Physics](docs/physics.md): bodies, terrain, forces, and moving platforms.
-- [API guide](docs/api.md): coordinates, action lifetimes, events, and assets.
-- [Migration](docs/migration.md): upgrading from the blocks API to 0.3.
-- [Development](docs/development.md): local installation, typing, and tests.
+**Timing:** `dt` is one game step's time; speed × dt gives movement.
+**Type hints:** `: float` means a number with decimals; `-> Action` means the function returns an action.
+Hover over Plocks names in your Python editor for help.
 
-Select your virtual environment in VS Code and enable Pylance. The package includes
-`py.typed`; no mypy plugin or injected globals are required.
+## 🚀 Make it yours
+
+1. Change one speed, colour or picture.
+2. Play again and see what changed.
+3. Invent a new rule!
+
+Find small challenges in each game's README. These are keyboard/mouse games;
+Snake Run and Temple Trail look 3D using flat pictures.
