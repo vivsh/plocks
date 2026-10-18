@@ -86,7 +86,7 @@ def test_cli_exposes_desktop_run_and_bundled_examples() -> None:
             check=False,
         )
         if command == "--help":
-            assert result.returncode == 0 and "{run,examples}" in result.stdout
+            assert result.returncode == 0 and "{run,examples,join}" in result.stdout
             assert "serve" not in result.stdout and "build" not in result.stdout
         else:
             assert result.returncode == 2 and "invalid choice" in result.stderr

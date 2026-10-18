@@ -2,11 +2,27 @@
 
 from PIL import Image
 
-from plocks import Action, BodyType, Canvas, Event, Key, Script, Sprite, Stage, TileMap
+from plocks import (
+    Action,
+    BodyType,
+    Canvas,
+    Event,
+    GamepadButton,
+    GamepadPress,
+    Key,
+    Script,
+    Sprite,
+    Stage,
+    TileMap,
+)
 
 
 def main() -> None:
     stage = Stage(width=640, height=360, physics=True, background="midnightblue")
+    stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
+    stage.gamepads[0].map_key(Key.T, GamepadButton.SELECT)
     ground = Image.new("RGBA", (32, 32), "forestgreen")
     stone = Image.new("RGBA", (32, 32), "slategray")
     world = TileMap(
@@ -39,21 +55,23 @@ def main() -> None:
 
     @hero.on_update
     def walk(event: Event[Sprite, float]) -> None:
-        direction = int(stage.keyboard.is_down(Key.RIGHT)) - int(stage.keyboard.is_down(Key.LEFT))
+        direction = int(stage.gamepads[0].is_down(GamepadButton.RIGHT)) - int(
+            stage.gamepads[0].is_down(GamepadButton.LEFT)
+        )
         _, vertical = hero.body.velocity
         hero.body.velocity = (direction * 150, vertical)
         if hero.y < -250:
             hero.position = (-260, -100)
             hero.body.velocity = (0, 0)
 
-    @hero.on_key_down(Key.SPACE)
-    def jump(event: Event[Sprite, Key]) -> Action | None:
+    @hero.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+    def jump(event: Event[Sprite, GamepadPress]) -> Action | None:
         if hero.body.grounded:
             return hero.body.impulse(y=400)
         return None
 
-    @crate.on_key_down(Key.T)
-    def spin(event: Event[Sprite, Key]) -> Action:
+    @crate.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+    def spin(event: Event[Sprite, GamepadPress]) -> Action:
         return crate.body.torque(60000, seconds=0.3)
 
     @stage.on_draw

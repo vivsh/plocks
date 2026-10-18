@@ -2,23 +2,25 @@
 
 from PIL import Image
 
-from plocks import Action, Event, Key, Script, Sprite, Stage
+from plocks import Action, Event, GamepadButton, GamepadPress, Key, Script, Sprite, Stage
 
 
 def main() -> None:
     stage = Stage(background="midnightblue")
+    stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     hero = Sprite(Image.new("RGBA", (32, 40), "orange"), y=-100)
     friend = Sprite(Image.new("RGBA", (28, 28), "skyblue"), x=-150, y=60)
     stage.add(hero)
     stage.add(friend)
 
-    @hero.on_key_down(Key.SPACE)
-    def climb(event: Event[Sprite, Key]) -> Action:
+    @hero.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+    def climb(event: Event[Sprite, GamepadPress]) -> Action:
         first = hero.glide_by(y=50, seconds=0.3)
         return hero.glide_by(y=50, seconds=0.3, after=first)
 
-    @hero.on_key_down(Key.A)
-    def descend(event: Event[Sprite, Key]) -> Script[Sprite]:
+    @hero.on_button_down(GamepadButton.LEFT, gamepad=stage.gamepads[0])
+    def descend(event: Event[Sprite, GamepadPress]) -> Script[Sprite]:
         return Script(Sprite).glide_by(y=-50, seconds=0.3).glide_by(y=-50, seconds=0.3)
 
     @friend.on_update

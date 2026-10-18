@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import degrees, hypot, inf, radians
+from math import ceil, degrees, hypot, inf, isfinite, radians
 from typing import TYPE_CHECKING
 
 from .errors import PhysicsError
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     import pymunk
 
     from ._commands import Actor
+    from ._operations import _Request
     from .stage import Stage
     from .tiling import TileMap
 
@@ -291,6 +292,12 @@ def _terrain(
             if key in tilemap.one_way:
                 shape = pymunk.Segment(native, (col * w, -row * h), ((col + 1) * w, -row * h), 0)
                 shape.collision_type = _ONE_WAY
+                # Only actual neighbors suppress an internal seam; gaps keep their edges.
+                before = col - 1 if col and line[col - 1] in tilemap.one_way else col
+                after = (
+                    col + 2 if col + 1 < len(line) and line[col + 1] in tilemap.one_way else col + 1
+                )
+                shape.set_neighbors((before * w, -row * h), (after * w, -row * h))
             else:
                 shape = pymunk.Poly(
                     native,
@@ -306,6 +313,69 @@ def _terrain(
     _space(world).add(native, *shapes)
     _remove_terrain(world, tilemap)
     world._terrain.append(_TileBody(tilemap, native))
+
+
+def _travel_speed(body: Body, dt: float, requests: tuple[_Request | None, ...]) -> float:
+    """Conservatively include linear/angular travel and currently applied acceleration."""
+    from ._operations import _ForceRun, _TorqueRun
+
+    native = _native(body)
+    definition = body.shape
+    radius = (
+        hypot(definition.width, definition.height) / 2
+        if isinstance(definition, Box)
+        else definition.radius
+    ) * body._actor.scale
+    speed = hypot(*native.velocity) + abs(float(native.angular_velocity)) * radius
+    if body.body_type is not BodyType.DYNAMIC:
+        return speed
+    force = hypot(*native.force)
+    torque = abs(float(native.torque))
+    for request in requests:
+        if isinstance(request, _ForceRun) and request.body is body:
+            magnitude = hypot(*request.vector)
+            force += magnitude
+            if request.point is not None:
+                center = native.local_to_world(native.center_of_gravity)
+                torque += magnitude * (
+                    hypot(request.point[0] - center.x, request.point[1] - center.y) + speed * dt
+                )
+        elif isinstance(request, _TorqueRun) and request.body is body:
+            torque += abs(request.amount)
+    acceleration = hypot(*body._world.gravity) + force / float(native.mass)
+    acceleration += torque / float(native.moment) * radius
+    return speed + acceleration * dt
+
+
+def _substeps(world: Physics, dt: float, requests: tuple[_Request | None, ...]) -> int:
+    """Keep relative travel below a quarter of the smallest moving collider dimension.
+
+    Derive the count locally only in worlds with one-way platforms. Retain the
+    usual four substeps for ordinary scenes; reject an unsafe count rather than
+    capping it silently or allowing an unbounded native stepping loop.
+    """
+    if not any(t.tilemap.one_way for t in world._terrain) and not any(
+        _one_way(body._actor) for body in world._bodies
+    ):
+        return 4
+    extent, speed = inf, 0.0
+    for body in world._bodies:
+        if body.body_type is BodyType.STATIC:
+            continue
+        speed = max(speed, _travel_speed(body, dt, requests))
+        if body.body_type is BodyType.DYNAMIC:
+            shape = body.shape
+            size = min(shape.width, shape.height) if isinstance(shape, Box) else 2 * shape.radius
+            extent = min(extent, size * body._actor.scale)
+    if extent == inf:
+        return 4
+    required = dt * (2 * speed) / (extent / 4)
+    if not isfinite(required) or required > 1024:
+        raise PhysicsError(
+            "One-way platform motion requires more than 1024 physics substeps; "
+            "reduce speed/force, enlarge the collider, or increase Stage(tick_rate=...)."
+        )
+    return max(4, ceil(required))
 
 
 def _integrate(stage: Stage, dt: float) -> None:
@@ -335,9 +405,10 @@ def _integrate(stage: Stage, dt: float) -> None:
             start, end = request.y
             vy = ((1 - t) * start + t * end - request.actor.y) / dt
         native.velocity = (vx, vy)
-    # Fixed native substeps improve contact stability without changing the public clock.
-    substep = dt / 4
-    for index in range(4):
+    # Adapt native precision without changing the simulation clock or action deadlines.
+    count = _substeps(world, dt, requests)
+    substep = dt / count
+    for index in range(count):
         start = stage.time + index * substep
         for request in requests:
             if not isinstance(request, (_ForceRun, _TorqueRun)):

@@ -2,10 +2,24 @@
 
 from pathlib import Path
 
-from plocks import Box, Costume, Event, Key, Sprite, Stage, TiledBackground, TileMap
+from plocks import (
+    Box,
+    Costume,
+    Event,
+    GamepadButton,
+    GamepadPress,
+    Key,
+    Sprite,
+    Stage,
+    TiledBackground,
+    TileMap,
+)
 
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=800, height=450, physics=True, background="#fff0cc")
+
+# Keys feed logical controls; gamepads and remote players work too.
+stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
 desert = Costume(assets / "desert.png").resized(width=800, height=450)
 scenery = TiledBackground(desert, layer=-10)
 stage.add(scenery)
@@ -24,8 +38,8 @@ dino.body.shape = Box(38, 58, center=(6, 34))
 dino.body.rotation_locked = True
 
 
-@dino.on_key_down(Key.SPACE)
-def jump(event: Event[Sprite, Key]) -> None:
+@dino.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+def jump(event: Event[Sprite, GamepadPress]) -> None:
     if event.target.body.grounded:
         event.target.body.impulse(y=460)
 

@@ -6,6 +6,8 @@ from plocks import (
     Canvas,
     Click,
     Event,
+    GamepadButton,
+    GamepadPress,
     Key,
     MouseButton,
     Sprite,
@@ -18,6 +20,14 @@ from plocks import (
 # Find assets beside this script, even when running from another folder.
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=800, height=450, background="#9bc7d2")
+
+# Keys feed logical controls; gamepads and remote players work too.
+stage.gamepads[0].map_left_stick(left=Key.LEFT, right=Key.RIGHT, up=Key.UP, down=Key.DOWN)
+stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+stage.gamepads[0].map_key(Key.ONE, GamepadButton.L)
+stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
+stage.gamepads[0].map_key(Key.THREE, GamepadButton.X)
+stage.gamepads[0].map_key(Key.TWO, GamepadButton.R)
 # Smaller layer numbers go behind bigger ones: sky, mountains, hills, then tiles.
 clouds = TiledBackground(assets / "clouds.png", layer=-30, offset=(0, 0))
 mountains = TiledBackground(assets / "mountains.png", layer=-20)
@@ -58,21 +68,21 @@ selected = "G"
 
 
 # These @ lines connect functions to keys. selected remembers our paint choice.
-@stage.on_key_down(Key.ONE)
-def grass(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.L, gamepad=stage.gamepads[0])
+def grass(event: Event[Stage, GamepadPress]) -> None:
     # global means: change selected at the top of this file, not a new local variable.
     global selected
     selected = "G"
 
 
-@stage.on_key_down(Key.TWO)
-def dirt(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.R, gamepad=stage.gamepads[0])
+def dirt(event: Event[Stage, GamepadPress]) -> None:
     global selected
     selected = "D"
 
 
-@stage.on_key_down(Key.THREE)
-def stone(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.X, gamepad=stage.gamepads[0])
+def stone(event: Event[Stage, GamepadPress]) -> None:
     global selected
     selected = "S"
 
@@ -96,9 +106,9 @@ def edit(event: Event[Stage, Click]) -> None:
 def update(event: Event[Stage, float]) -> None:
     dt = event.data
     direction = 0
-    if stage.keyboard.is_down(Key.RIGHT):
+    if stage.gamepads[0].left_stick[0] > 0:
         direction += 1
-    if stage.keyboard.is_down(Key.LEFT):
+    if stage.gamepads[0].left_stick[0] < 0:
         direction -= 1
     hero.x = max(-360, min(1780, hero.x + direction * 220 * dt))
     stage.camera = (max(0, min(1440, hero.x)), 0)

@@ -16,7 +16,6 @@ from .canvas import Canvas as Canvas
 from .conditions import Condition as Condition
 from .conditions import GamepadDown as GamepadDown
 from .conditions import Grounded as Grounded
-from .conditions import KeyDown as KeyDown
 from .conditions import Not as Not
 from .conditions import Touching as Touching
 from .errors import (
@@ -25,6 +24,7 @@ from .errors import (
 from .errors import (
     AudioError as AudioError,
 )
+from .errors import NetworkError as NetworkError
 from .errors import PhysicsError as PhysicsError
 from .errors import (
     PlocksError as PlocksError,
@@ -35,8 +35,10 @@ from .errors import (
 from .events import Click as Click
 from .events import Event as Event
 from .events import GamepadPress as GamepadPress
+from .events import RemoteChange as RemoteChange
 from .gamepads import Gamepad as Gamepad
 from .gamepads import GamepadButton as GamepadButton
+from .gamepads import GamepadInput as GamepadInput
 from .gamepads import GamepadLayout as GamepadLayout
 from .geometry import Bounds as Bounds
 from .geometry import Color as Color
@@ -46,12 +48,12 @@ from .imaging import CostumeSource as CostumeSource
 from .imaging import ImageSource as ImageSource
 from .imaging import SpriteSheet as SpriteSheet
 from .input import Key as Key
-from .input import Keyboard as Keyboard
 from .input import Mouse as Mouse
 from .input import MouseButton as MouseButton
 from .messages import Message as Message
 from .motion import Ease as Ease
 from .motion import RotationStyle as RotationStyle
+from .multiplayer import Multiplayer as Multiplayer
 from .physics import Body as Body
 from .physics import BodyType as BodyType
 from .physics import Box as Box

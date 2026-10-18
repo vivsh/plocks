@@ -14,8 +14,8 @@
 body. Gravity pulls it down. Solid tiles stop it falling through the floor.
 
 ```python
-@dino.on_key_down(Key.SPACE)
-def jump(event: Event[Sprite, Key]) -> None:
+@dino.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+def jump(event: Event[Sprite, GamepadPress]) -> None:
     if event.target.body.grounded:
         event.target.body.impulse(y=460)
 ```

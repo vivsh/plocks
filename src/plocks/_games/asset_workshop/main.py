@@ -19,6 +19,9 @@ from plocks import (
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=640, height=400, background="#203548")
 
+# Keys feed logical controls; gamepads and remote players work too.
+stage.gamepads[0].map_key(Key.E, GamepadButton.Y)
+
 # Tiled gives us ordinary tile maps and named places to start.
 level = TiledMap(assets / "jungle.tmj", x=-160, y=64, layer=-1)
 for tilemap in level.layers.values():
@@ -42,8 +45,8 @@ two.layout = GamepadLayout.NINTENDO
 jump = hero.sequence()
 jump.glide_by(y=80, seconds=0.25, easing=Ease.OUT)
 jump.glide_by(y=-80, seconds=0.25, easing=Ease.IN)
-hero.on_gamepad_button_down(GamepadButton.A, jump, gamepad=one)
-friend.on_gamepad_button_down(GamepadButton.A, jump, gamepad=two)
+hero.on_button_down(GamepadButton.A, jump, gamepad=one)
+friend.on_button_down(GamepadButton.A, jump, gamepad=two)
 
 
 @hero.on_update
@@ -58,19 +61,19 @@ def move_friend(event: Event[Sprite, float]) -> None:
     event.target.x += x * 120 * event.data
 
 
-@hero.on_gamepad_button_down(GamepadButton.B, gamepad=one, repeat=0.2)
+@hero.on_button_down(GamepadButton.B, gamepad=one, repeat=0.2)
 def hero_speaks(event: Event[Sprite, GamepadPress]) -> None:
     # Turbo repeats while B (or F) stays held. A jump still happens just once.
     event.target.say("Pew!", seconds=0.15)
 
 
-@friend.on_gamepad_button_down(GamepadButton.B, gamepad=two, repeat=0.2)
+@friend.on_button_down(GamepadButton.B, gamepad=two, repeat=0.2)
 def friend_speaks(event: Event[Sprite, GamepadPress]) -> None:
     event.target.say("Pop!", seconds=0.15)
 
 
-@stage.on_key_down(Key.E)
-def edit_ground(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.Y, gamepad=stage.gamepads[0])
+def edit_ground(event: Event[Stage, GamepadPress]) -> None:
     # Imported cells can be edited just like a hand-made tile map.
     ground = level.layers["Ground"]
     tile = None if ground.get_tile(row=4, column=5) else "1"

@@ -5,7 +5,19 @@ from collections.abc import Iterator
 import pytest
 from PIL import Image
 
-from plocks import Action, Event, Key, Message, Script, Sprite, Stage, StageError, WhenBusy
+from plocks import (
+    Action,
+    Event,
+    GamepadButton,
+    GamepadPress,
+    Key,
+    Message,
+    Script,
+    Sprite,
+    Stage,
+    StageError,
+    WhenBusy,
+)
 from plocks._runtime import close, dispatch
 from plocks._scripts import _step, _trigger
 from tests.test_scripts import ticks
@@ -14,6 +26,7 @@ from tests.test_scripts import ticks
 @pytest.fixture
 def game() -> Iterator[tuple[Stage, Sprite]]:
     stage = Stage()
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     hero = Sprite(Image.new("RGBA", (8, 8)))
     stage.add(hero)
     yield stage, hero
@@ -34,7 +47,7 @@ def test_startup_snapshot_and_attachment(game: tuple[Stage, Sprite]) -> None:
         hero.on_start(group)
     stage.remove(hero)
     with pytest.raises(StageError):
-        hero.on_key_down(Key.SPACE, group)
+        hero.on_button_down(GamepadButton.A, group, gamepad=stage.gamepads[0])
     stage.add(hero)
     ticks(stage, 2)
     assert hero.x == 14
@@ -43,23 +56,28 @@ def test_startup_snapshot_and_attachment(game: tuple[Stage, Sprite]) -> None:
 @pytest.mark.parametrize("busy", [WhenBusy.IGNORE, WhenBusy.RESTART])
 def test_busy_and_detach(game: tuple[Stage, Sprite], busy: WhenBusy) -> None:
     stage, hero = game
-    hero.on_key_down(Key.SPACE, Script(Sprite).glide_by(x=60, seconds=1), when_busy=busy)
+    hero.on_button_down(
+        GamepadButton.A,
+        Script(Sprite).glide_by(x=60, seconds=1),
+        when_busy=busy,
+        gamepad=stage.gamepads[0],
+    )
     stage._state = "running"
-    stage._pending.append(Key.SPACE)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.A))
     dispatch(stage)
     ticks(stage, 30)
     old = stage._actions[0]
-    stage._pending.append(Key.SPACE)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.A))
     dispatch(stage)
     assert old.cancelled is (busy is WhenBusy.RESTART)
     ticks(stage, 65)
     assert hero.x == (60 if busy is WhenBusy.IGNORE else 90)
-    stage._pending.append(Key.SPACE)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.A))
     dispatch(stage)
     ticks(stage, 3)
     stage.remove(hero)
     assert not stage._actions
-    stage._pending.append(Key.SPACE)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.A))
     dispatch(stage)
     assert not stage._actions
 

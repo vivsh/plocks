@@ -2,11 +2,23 @@
 
 from PIL import Image
 
-from plocks import Action, BodyType, Event, Key, Script, Sprite, Stage, TileMap
+from plocks import (
+    Action,
+    BodyType,
+    Event,
+    GamepadButton,
+    GamepadPress,
+    Key,
+    Script,
+    Sprite,
+    Stage,
+    TileMap,
+)
 
 
 def main() -> None:
     stage = Stage(physics=True, background="midnightblue")
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     floor = TileMap(
         ["##########"],
         {"#": Image.new("RGBA", (32, 32), "forestgreen")},
@@ -23,8 +35,8 @@ def main() -> None:
     hero.body.rotation_locked = True
     friend.on_start(Script(Sprite).repeat().glide_to(x=100, seconds=1).glide_to(x=-100, seconds=1))
 
-    @hero.on_key_down(Key.SPACE)
-    def jump(event: Event[Sprite, Key]) -> Action | None:
+    @hero.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+    def jump(event: Event[Sprite, GamepadPress]) -> Action | None:
         if hero.body.grounded:
             impulse = hero.body.impulse(y=350)
             return hero.say("Jump!", seconds=0.4, after=impulse)

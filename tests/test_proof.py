@@ -11,6 +11,8 @@ from plocks import (
     Canvas,
     Costume,
     Event,
+    GamepadButton,
+    GamepadPress,
     Key,
     Sound,
     Sprite,
@@ -41,14 +43,15 @@ def test_pillow_snapshot_and_bounds() -> None:
 def test_desktop_input_sound_render_cleanup() -> None:
     """A native event starts OGG playback and updates/draws before complete cleanup."""
     stage = Stage(background="navy")
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     sprite = Sprite(Image.new("RGBA", (12, 12), "orange"))
     stage.add(sprite)
     sound = Sound(Path(__file__).parents[1] / "tests/fixtures/games/proof/assets/tone.ogg")
     voices: list[Voice] = []
     canvases: list[Canvas] = []
 
-    @stage.on_key_down(Key.SPACE)
-    def pressed(event: Event[Stage, Key]) -> None:
+    @stage.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+    def pressed(event: Event[Stage, GamepadPress]) -> None:
         voices.append(stage.play(sound))
         assert not voices[-1].finished
 
@@ -82,6 +85,7 @@ def test_desktop_input_sound_render_cleanup() -> None:
 def test_callback_traceback_survives_cleanup() -> None:
     """A game exception remains its original type and always closes native resources."""
     stage = Stage()
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
 
     @stage.on_update
     def update(event: Event[Stage, float]) -> None:

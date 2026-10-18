@@ -1,11 +1,14 @@
 from PIL import Image, ImageDraw
 
-from plocks import Canvas, Click, Event, Key, Sound, Sprite, Stage
+from plocks import Canvas, Click, Event, GamepadButton, GamepadPress, Key, Sound, Sprite, Stage
 
 
 def main() -> None:
     """Move the Pillow sprite with arrows; press Space or click to play a tone."""
     stage = Stage(background="#102033")
+    stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     picture = Image.new("RGBA", (40, 40))
     ImageDraw.Draw(picture).rounded_rectangle((0, 0, 39, 39), radius=8, fill="#ffb454")
     hero = Sprite(picture)
@@ -17,9 +20,9 @@ def main() -> None:
     def update(event: Event[Stage, float]) -> None:
         """Move at 100 world pixels per simulated second."""
         dt = event.data
-        if stage.keyboard.is_down(Key.RIGHT):
+        if stage.gamepads[0].is_down(GamepadButton.RIGHT):
             hero.x += 100 * dt
-        if stage.keyboard.is_down(Key.LEFT):
+        if stage.gamepads[0].is_down(GamepadButton.LEFT):
             hero.x -= 100 * dt
 
     def play_tone_now() -> None:
@@ -28,8 +31,8 @@ def main() -> None:
         stage.play(tone, volume=0.3)
         sounds += 1
 
-    @stage.on_key_down(Key.SPACE)
-    def play_tone(event: Event[Stage, Key]) -> None:
+    @stage.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+    def play_tone(event: Event[Stage, GamepadPress]) -> None:
         play_tone_now()
 
     @stage.on_click

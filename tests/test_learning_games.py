@@ -10,7 +10,17 @@ from unittest.mock import patch
 import pygame
 import pytest
 
-from plocks import BodyType, Costume, Key, MouseButton, Sprite, Stage, TiledBackground, TileMap
+from plocks import (
+    BodyType,
+    Costume,
+    GamepadPress,
+    Key,
+    MouseButton,
+    Sprite,
+    Stage,
+    TiledBackground,
+    TileMap,
+)
 from plocks._render import frame
 from plocks._runtime import advance, close
 from plocks._scripts import _step, _trigger
@@ -67,9 +77,22 @@ def ticks(stage: Stage, count: int) -> None:
 
 def press(stage: Stage, key: Key) -> None:
     """Dispatch a key transition and leave it held until explicitly released."""
-    stage.keyboard._down.add(key)
-    stage._pending.append(key)
+    stage._held_keys.add(key)
+    stage._pending.append(GamepadPress(stage.gamepads[0], stage.gamepads[0]._key_buttons[key]))
     ticks(stage, 1)
+
+
+def test_workshop_keeps_independent_default_player_controls(
+    load_game: Callable[[str], Stage],
+) -> None:
+    """A migrated reset button must not remap player one's stick onto player two's keys."""
+    stage = load_game("asset_workshop")
+    one, two = stage.gamepads[:2]
+    stage._held_keys.add(Key.D)
+    assert one.left_stick == (1, 0) and two.left_stick == (0, 0)
+    stage._held_keys.clear()
+    stage._held_keys.add(Key.RIGHT)
+    assert one.left_stick == (0, 0) and two.left_stick == (1, 0)
 
 
 @pytest.mark.parametrize("name", TUTORIALS)
@@ -318,7 +341,9 @@ def temple_step(stage: Stage, *, skip: str = "") -> None:
         elif kind in ("left", "right") and ahead <= 45:
             key = Key.LEFT if kind == "left" else Key.RIGHT
         if key is not None and kind != skip:
-            stage._pending.append(key)
+            stage._pending.append(
+                GamepadPress(stage.gamepads[0], stage.gamepads[0]._key_buttons[key])
+            )
     ticks(stage, 1)
 
 

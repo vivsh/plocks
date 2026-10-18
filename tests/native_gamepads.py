@@ -49,11 +49,11 @@ def main() -> None:
         turbo: list[float] = []
         identity: list[object] = []
 
-        @stage.on_gamepad_button_down(GamepadButton.A)
+        @stage.on_button_down(GamepadButton.A)
         def pressed(event: Event[Stage, GamepadPress]) -> None:
             presses.append(event.data.gamepad.index)
 
-        @hero.on_gamepad_button_down(GamepadButton.B, gamepad=one, repeat=0.05)
+        @hero.on_button_down(GamepadButton.B, gamepad=one, repeat=0.05)
         def repeated(event: Event[Sprite, GamepadPress]) -> None:
             turbo.append(stage.time)
 

@@ -11,7 +11,15 @@ def test_negative_examples(tmp_path: Path) -> None:
     example = tmp_path / "invalid.py"
     example.write_bytes(fixture.read_bytes())
     result = subprocess.run(
-        [sys.executable, "-m", "mypy", "--strict", str(example)],
+        [
+            sys.executable,
+            "-m",
+            "mypy",
+            "--strict",
+            "--cache-dir",
+            str(tmp_path / "mypy"),
+            str(example),
+        ],
         capture_output=True,
         text=True,
         check=False,

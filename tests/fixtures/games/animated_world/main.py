@@ -8,9 +8,11 @@ from plocks import (
     Costume,
     Ease,
     Event,
+    GamepadButton,
+    GamepadDown,
+    GamepadPress,
     HumanJoint,
     Key,
-    KeyDown,
     Message,
     MouseButton,
     Not,
@@ -28,6 +30,11 @@ from plocks import (
 def main() -> None:
     """Walk, edit the world, and meet a waving person. Works on desktop and the web."""
     stage = Stage(width=640, height=400, background="#122338")
+    stage.gamepads[0].map_key(Key.J, GamepadButton.A)
+    stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.P, GamepadButton.START)
+    stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     sky = Image.new("RGBA", (96, 96), "#122338")
     sky_pen = ImageDraw.Draw(sky)
     for x, y in ((12, 24), (62, 70), (85, 14)):
@@ -81,15 +88,15 @@ def main() -> None:
         .glide_by(y=80, seconds=0.3, easing=Ease.OUT)
         .glide_by(y=-80, seconds=0.3, easing=Ease.IN)
     )
-    hero.on_key_down(Key.J, jump)
+    hero.on_button_down(GamepadButton.A, jump, gamepad=stage.gamepads[0])
 
     walking = (
         Script(Sprite)
         .repeat()
         .when(
-            Not(KeyDown(Key.RIGHT)),
+            Not(GamepadDown(GamepadButton.RIGHT, gamepad=stage.gamepads[0])),
             then=Script(Sprite).when(
-                KeyDown(Key.LEFT),
+                GamepadDown(GamepadButton.LEFT, gamepad=stage.gamepads[0]),
                 then=Script(Sprite).costumes(sheet.frames(), fps=8),
                 either=Script(Sprite).set_costume(idle),
             ),
@@ -102,17 +109,23 @@ def main() -> None:
     def update(event: Event[Stage, float]) -> None:
         """Move the hero and derive scrolling from its world position."""
         dt = event.data
-        direction = int(stage.keyboard.is_down(Key.RIGHT)) - int(stage.keyboard.is_down(Key.LEFT))
+        direction = int(stage.gamepads[0].is_down(GamepadButton.RIGHT)) - int(
+            stage.gamepads[0].is_down(GamepadButton.LEFT)
+        )
         hero.x = max(-290, min(900, hero.x + direction * 160 * dt))
         stage.camera = (max(0, hero.x - 50), 0)
         background.offset = (-stage.camera[0] * 0.25, 0)
         badge.y = 70 + sin(stage.time * 2) * 12
         badge.direction += 45 * dt
 
-    hero.on_key_down(Key.SPACE, Script(Sprite).play_sound(tone, volume=0.25, wait=False))
+    hero.on_button_down(
+        GamepadButton.A,
+        Script(Sprite).play_sound(tone, volume=0.25, wait=False),
+        gamepad=stage.gamepads[0],
+    )
 
-    @stage.on_key_down(Key.P)
-    def toggle_pause(event: Event[Stage, Key]) -> None:
+    @stage.on_button_down(GamepadButton.START, gamepad=stage.gamepads[0])
+    def toggle_pause(event: Event[Stage, GamepadPress]) -> None:
         """Input callbacks keep working while simulation is paused."""
         if stage.paused:
             stage.resume()

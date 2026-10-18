@@ -314,6 +314,31 @@ def test_tile_edits_and_movement_retire_old_contact_resources(scene: Stage) -> N
     assert hero.body.grounded
 
 
+def test_cloned_platforms_keep_configuration_but_have_independent_bodies(scene: Stage) -> None:
+    """Clones preserve one-way admission and physical shape without sharing contacts or resources."""
+    source = platform(scene, moving=True)
+    source.body.friction = 0.4
+    copied = source.clone()
+    copied.x = 200
+    assert copied.one_way and copied.body is not source.body
+    assert copied.body.shape == source.body.shape and copied.body.friction == 0.4
+    first = rider(scene)
+    second = rider(scene, x=200)
+    ticks(scene, 60)
+    assert first.body.grounded and second.body.grounded
+    old = source.body
+    scene.remove(source)
+    assert not first.body.grounded and second.body.grounded
+    with pytest.raises(PhysicsError):
+        _ = old.velocity
+    scene.add(source)
+    source.body.shape = Box(160, 16)
+    first.position = (0, 60)
+    first.body.velocity = (0, 0)
+    ticks(scene, 60)
+    assert source.one_way and first.body.grounded
+
+
 def test_configuration_snapshots_and_nonphysical_overlap_queries() -> None:
     """One-way metadata is immutable and geometric touching remains independent of physics."""
     keys = {"P"}
@@ -460,3 +485,144 @@ def test_stacked_rows_land_on_the_highest_cleared_platform(scene: Stage) -> None
         maximum = max(maximum, hero.y)
     assert maximum > 100 and hero.body.grounded
     assert hero.y == pytest.approx(58, abs=0.3)
+
+
+@pytest.mark.parametrize("speed", [-600.0, -200.0, 200.0, 600.0])
+def test_circle_crosses_tile_seams_without_losing_support(speed: float, scene: Stage) -> None:
+    """Joined top edges must behave like one floor rather than bumping at every cell."""
+    world = TileMap(
+        ["P" * 160],
+        {"P": ASSETS / "platform.png"},
+        tile_size=(16, 16),
+        one_way={"P"},
+        x=-1280,
+        y=8,
+    )
+    scene.add(world)
+    hero = rider(scene, x=-400 if speed > 0 else 400, y=18)
+    hero.body.shape = Circle(10)
+    ticks(scene, 30)
+    for _ in range(120):
+        hero.body.velocity = (speed, hero.body.velocity[1])
+        ticks(scene, 1)
+        assert hero.body.grounded
+        assert hero.y == pytest.approx(18, abs=0.2)
+
+
+@pytest.mark.parametrize("kind", ["sprite", "tiles"])
+@pytest.mark.parametrize("circle", [False, True])
+@pytest.mark.parametrize("height,speed", [(2, 1000), (2, 12000), (8, 3000), (20, 6000)])
+def test_fast_small_riders_land_instead_of_tunneling(
+    kind: str,
+    circle: bool,
+    height: int,
+    speed: int,
+    scene: Stage,
+) -> None:
+    """Native substeps account for collider size and travel, not only the public tick rate."""
+    surface: Sprite | TileMap = platform(scene) if kind == "sprite" else tiles(scene)
+    hero = Sprite(Costume(ASSETS / "hero.png").resized(12, height), y=80)
+    scene.add(hero)
+    hero.body.rotation_locked = True
+    if circle:
+        hero.body.shape = Circle(height / 2)
+    hero.body.velocity = (0, -speed)
+    ticks(scene, 60)
+    assert hero.body.grounded
+    assert hero.y == pytest.approx(8 + height / 2, abs=0.3)
+    assert hero.body.touching(surface.body if isinstance(surface, Sprite) else surface)
+
+
+@pytest.mark.parametrize("kind", ["sprite", "tiles"])
+def test_fast_riders_still_pass_through_from_below(kind: str, scene: Stage) -> None:
+    """Additional sampling must preserve native rejection of upward crossings."""
+    if kind == "sprite":
+        platform(scene)
+    else:
+        tiles(scene)
+    hero = Sprite(Costume(ASSETS / "hero.png").resized(12, 2), y=-80)
+    scene.add(hero)
+    hero.body.rotation_locked = True
+    hero.body.velocity = (0, 12000)
+    ticks(scene, 1)
+    assert hero.y > 100 and not hero.body.grounded
+
+
+def test_seam_neighbors_preserve_real_gaps_after_editing(scene: Stage) -> None:
+    """Rebuilding neighbor hints must not leave invisible support over an erased tile."""
+    world = TileMap(
+        ["PPPPPP"],
+        {"P": ASSETS / "platform.png"},
+        tile_size=(32, 16),
+        one_way={"P"},
+        x=-96,
+        y=8,
+    )
+    scene.add(world)
+    hero = rider(scene, x=0, y=18)
+    hero.body.shape = Circle(6)
+    hero.y = 14
+    ticks(scene, 30)
+    assert hero.body.grounded
+    world.set_tile(row=0, column=2, tile=None)
+    world.set_tile(row=0, column=3, tile=None)
+    ticks(scene, 30)
+    assert hero.y < -50 and not hero.body.grounded
+
+
+@pytest.mark.parametrize("rate", [30, 120])
+def test_precision_follows_configured_tick_rate(rate: int) -> None:
+    """Changing the public update rate does not reintroduce the missed landing."""
+    scene = Stage(physics=True, tick_rate=rate)
+    scene._state, scene._last_wall = "running", 0
+    try:
+        platform(scene)
+        hero = Sprite(Costume(ASSETS / "hero.png").resized(12, 2), y=80)
+        scene.add(hero)
+        hero.body.rotation_locked = True
+        hero.body.velocity = (0, -6000)
+        ticks(scene, rate)
+        assert hero.body.grounded and hero.y == pytest.approx(9, abs=0.3)
+    finally:
+        close(scene)
+
+
+def test_accelerating_small_rider_uses_force_aware_precision(scene: Stage) -> None:
+    """A force starting from rest must not evade the size-aware travel calculation."""
+    platform(scene)
+    hero = Sprite(Costume(ASSETS / "hero.png").resized(12, 2), y=80)
+    scene.add(hero)
+    hero.body.rotation_locked = True
+    hero.body.force(y=-200000, seconds=0.025)
+    ticks(scene, 60)
+    assert hero.body.grounded and hero.y == pytest.approx(9, abs=0.3)
+
+
+def test_extreme_motion_fails_with_cleanup_instead_of_unbounded_work() -> None:
+    """The work budget raises a useful error and the shared driver still releases resources."""
+    scene = Stage(physics=True)
+    platform(scene)
+    hero = Sprite(Costume(ASSETS / "hero.png").resized(12, 2), y=80)
+    scene.add(hero)
+    hero.body.velocity = (0, -1e9)
+    with pytest.raises(PhysicsError, match="1024 physics substeps.*reduce speed"):
+        scene.run()
+    assert scene._state == "closed" and scene.physics._space is None
+    assert not scene.objects and hero._stage is None
+
+
+@pytest.mark.parametrize("lift_speed,rider_speed", [(6000, 0), (-6000, -12000)])
+def test_fast_moving_lift_uses_relative_travel(
+    lift_speed: int,
+    rider_speed: int,
+    scene: Stage,
+) -> None:
+    """Precision includes the moving edge, both when it rises and when a rider catches it."""
+    lift = platform(scene, moving=True)
+    lift.y = -80
+    lift.body.velocity = (0, lift_speed)
+    hero = rider(scene, y=60)
+    hero.body.velocity = (0, rider_speed)
+    ticks(scene, 30)
+    assert hero.body.grounded and hero.body.touching(lift.body)
+    assert hero.y == pytest.approx(lift.y + 18, abs=0.3)

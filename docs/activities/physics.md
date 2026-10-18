@@ -64,3 +64,6 @@ For tiles, use `one_way={"P"}` and put `P` cells in your map. Keep those keys ou
 of `solid`: solid tiles block every side. Both need `Stage(physics=True)` for
 automatic landing. One-way platforms stay horizontal; moving lifts use
 `BodyType.KINEMATIC`.
+
+If a tiny hit box moves too fast, Plocks may ask for more physics steps than it
+can safely run. Slow the object down or give it a larger hit box.

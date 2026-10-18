@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import Enum
 from math import hypot
 from typing import TYPE_CHECKING
@@ -44,13 +45,44 @@ class GamepadButton(Enum):
     SELECT = "select"
 
 
+@dataclass(frozen=True, slots=True)
+class GamepadInput:
+    """An immutable logical input sample for automated and remote players.
+
+    Sticks use x right/y up with length at most one; triggers are in 0..1.
+    Invalid values raise before any existing held controls are changed.
+    """
+
+    buttons: frozenset[GamepadButton] = frozenset()
+    left_stick: Point = (0.0, 0.0)
+    right_stick: Point = (0.0, 0.0)
+    left_trigger: float = 0.0
+    right_trigger: float = 0.0
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.buttons, frozenset) or any(
+            not isinstance(button, GamepadButton) for button in self.buttons
+        ):
+            raise TypeError("buttons must be a frozenset of GamepadButton values")
+        for name, stick in (("left_stick", self.left_stick), ("right_stick", self.right_stick)):
+            if not isinstance(stick, tuple) or len(stick) != 2:
+                raise TypeError(f"{name} must be an (x, y) tuple")
+            x, y = (_number(value, name) for value in stick)
+            if hypot(x, y) > 1 + 1e-12:
+                raise ValueError(f"{name} length must be at most one")
+        for value in (self.left_trigger, self.right_trigger):
+            if not 0 <= _number(value, "trigger") <= 1:
+                raise ValueError("Trigger pressure must be in 0..1")
+
+
 class Gamepad:
     """One stable player slot, obtained from stage.gamepads (zero-based).
 
     The first two slots start with keyboard controls (WASD/Space/F and
     arrows/Enter/Right Shift). Later slots start unbound. Buttons combine all contributors;
     mapped direction keys take over their stick while any direction is held.
-    Button/stick reads use the stage's physical snapshot; device metadata is derived.
+    Local slots combine keyboard and hardware. Remote/automated slots use their
+    exclusive logical source; device metadata remains about physical hardware.
     """
 
     __slots__ = (
@@ -94,6 +126,24 @@ class Gamepad:
         return bool(self._device.attached())
 
     @property
+    def remote_connected(self) -> bool:
+        """Whether this slot has an active remote player with a live game view."""
+        if self._stage._network is None:
+            return False
+        from ._network import remote_connected
+
+        return remote_connected(self)
+
+    def _nonlocal(self) -> bool:
+        if self in self._stage._bots:
+            return True
+        if self._stage._network is None:
+            return False
+        from ._network import nonlocal_slot
+
+        return nonlocal_slot(self)
+
+    @property
     def name(self) -> str | None:
         """The hardware's diagnostic name, or None without an attached device."""
         if self._device is None:
@@ -129,36 +179,39 @@ class Gamepad:
     @property
     def left_stick(self) -> Point:
         """Combined left stick: x right/y up, with vector magnitude at most one."""
-        return self._stick(self._left, self._left_keys)
+        return self._left if self._nonlocal() else self._stick(self._left, self._left_keys)
 
     @property
     def right_stick(self) -> Point:
         """Combined right stick; keyboard mapping and dead zone match left_stick."""
-        return self._stick(self._right, self._right_keys)
+        return self._right if self._nonlocal() else self._stick(self._right, self._right_keys)
 
     @property
     def left_trigger(self) -> float:
-        """Physical left trigger pressure in [0, 1], zero when unavailable."""
+        """Current left trigger pressure in [0, 1], zero when unavailable."""
         return self._triggers[0]
 
     @property
     def right_trigger(self) -> float:
-        """Physical right trigger pressure in [0, 1], zero when unavailable."""
+        """Current right trigger pressure in [0, 1], zero when unavailable."""
         return self._triggers[1]
 
     def is_down(self, button: GamepadButton) -> bool:
         """True while the physical button or any mapped key is held."""
         if not isinstance(button, GamepadButton):
             raise TypeError("Use a GamepadButton enum value")
-        return _button_index(button, self.layout) in self._buttons or any(
-            mapped is button and self._stage.keyboard.is_down(key)
-            for key, mapped in self._key_buttons.items()
+        return _button_index(button, self.layout) in self._buttons or (
+            not self._nonlocal()
+            and any(
+                mapped is button and key in self._stage._held_keys
+                for key, mapped in self._key_buttons.items()
+            )
         )
 
     def map_key(self, key: Key, button: GamepadButton | None) -> None:
         """Map one key to a logical button; None removes that key's button mapping.
 
-        Several keys may hold one button. Ordinary keyboard handlers still fire.
+        Several keys may hold one button; gameplay observes logical button events.
         Configuration edits require a fresh press before they produce events.
         """
         self._open()
@@ -208,6 +261,8 @@ class Gamepad:
     def _open(self) -> None:
         if self._stage._state == "closed":
             raise StageError("This gamepad's stage is closed")
+        if self._stage._state == "running" and self._nonlocal():
+            raise StageError("Remote/automated slot settings cannot change during play")
 
     def _rebaseline(self) -> None:
         from ._gamepads import _rebaseline
@@ -215,7 +270,7 @@ class Gamepad:
         _rebaseline(self)
 
     def _stick(self, physical: Point, keys: _StickKeys) -> Point:
-        held = tuple(key is not None and self._stage.keyboard.is_down(key) for key in keys)
+        held = tuple(key is not None and key in self._stage._held_keys for key in keys)
         if any(held):
             x, y = float(held[1]) - held[0], float(held[2]) - held[3]
             magnitude = max(1.0, hypot(x, y))

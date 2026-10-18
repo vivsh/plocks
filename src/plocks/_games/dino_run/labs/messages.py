@@ -48,8 +48,8 @@ def clicked(event: Event[Sprite[PlayerMemory], Click]) -> None:
     event.target.broadcast(reward, 1, to=event.target)
 
 
-@one.on_gamepad_button_down(GamepadButton.A, gamepad=first, repeat=0.25)
-@two.on_gamepad_button_down(GamepadButton.A, gamepad=second, repeat=0.25)
+@one.on_button_down(GamepadButton.A, gamepad=first, repeat=0.25)
+@two.on_button_down(GamepadButton.A, gamepad=second, repeat=0.25)
 def turbo(event: Event[Sprite[PlayerMemory], GamepadPress]) -> None:
     event.target.broadcast(reward, 1, to=event.target)
 

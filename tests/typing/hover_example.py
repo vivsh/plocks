@@ -12,8 +12,10 @@ from plocks import (
     Click,
     Ease,
     Event,
+    GamepadButton,
+    GamepadDown,
+    GamepadPress,
     Key,
-    KeyDown,
     Message,
     Not,
     Puppet,
@@ -26,6 +28,10 @@ from plocks import (
 
 def main() -> None:
     stage = Stage(physics=True)
+    stage.gamepads[0].map_key(Key.F, GamepadButton.B)
+    stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
+    stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     hero = Sprite(Path("hero.png"), body_type=BodyType.NONE)
     person = Puppet.stick_figure()
     stage.add(hero)
@@ -34,7 +40,9 @@ def main() -> None:
     hero.on_start(patrol)
     hero.sequence().set_costume(hero.costume)
     person.repeat(2).poses((person.pose,), fps=2)
-    common = Script().when(Not(KeyDown(Key.LEFT)), then=Script().wait(0.1))
+    common = Script().when(
+        Not(GamepadDown(GamepadButton.LEFT, gamepad=stage.gamepads[0])), then=Script().wait(0.1)
+    )
     hero.act(common)
     person.act(common)
     hero.costume = (
@@ -45,15 +53,15 @@ def main() -> None:
         .resized(width=16, height=16)
     )
 
-    @hero.on_key_down(Key.SPACE)
-    def jump(event: Event[Sprite, Key]) -> Action:
+    @hero.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+    def jump(event: Event[Sprite, GamepadPress]) -> Action:
         actor = event.target
         up = actor.glide_by(y=100, seconds=0.3, easing=Ease.OUT)
         return actor.glide_by(y=-100, seconds=0.3, easing=Ease.IN, after=up)
 
-    key_command = Message[Key]("key command")
+    key_command = Message[GamepadPress]("button command")
     hero.on_broadcast(key_command)(jump)
-    hero.broadcast(key_command, Key.SPACE, to=hero)
+    hero.broadcast(key_command, GamepadPress(stage.gamepads[0], GamepadButton.A), to=hero)
 
     steps = Message[int]("steps")
 
@@ -85,7 +93,7 @@ def main() -> None:
 
     person.body.shape = Box(20, 80)
     person.body.rotation_locked = True
-    target: Actor = hero if stage.keyboard.is_down(Key.H) else person
+    target: Actor = hero if stage.gamepads[0].is_down(GamepadButton.Y) else person
     target.wait(0.2)
 
 
@@ -111,6 +119,10 @@ def state_example() -> None:
     from plocks import Joint, Skeleton
 
     stage = Stage(state=GameState)
+    stage.gamepads[0].map_key(Key.F, GamepadButton.B)
+    stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
+    stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     hero = Sprite(Path("hero.png"), state=PlayerState)
     person = Puppet(
         Skeleton({"root": Joint(parent=None)}),
@@ -157,10 +169,14 @@ def state_example() -> None:
         if event.target.state.health <= 0:
             event.target.state.alive = False
 
-    hero.on_key_down(Key.H, Script().wait(0.1).broadcast(health_changed, -10, to=hero))
+    hero.on_button_down(
+        GamepadButton.Y,
+        Script().wait(0.1).broadcast(health_changed, -10, to=hero),
+        gamepad=stage.gamepads[0],
+    )
 
-    @person.on_key_down(Key.H)
-    def puppet_key(event: Event[Puppet[PlayerState], Key]) -> None:
+    @person.on_button_down(GamepadButton.Y, gamepad=stage.gamepads[0])
+    def puppet_key(event: Event[Puppet[PlayerState], GamepadPress]) -> None:
         event.target.state.health -= 1
 
     @person.on_start
@@ -194,6 +210,10 @@ def imported_controls() -> None:
     )
 
     stage = Stage(state=GameState, gamepad_count=2, gamepad_layout=GamepadLayout.XBOX)
+    stage.gamepads[0].map_key(Key.F, GamepadButton.B)
+    stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
+    stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     art = PixeloramaSheet(Path("hero.png"))
     level = TiledMap(Path("level.tmj"))
     hero = Sprite(art.frames[0], state=PlayerState)
@@ -208,26 +228,28 @@ def imported_controls() -> None:
     player.map_right_stick(left=Key.A, right=Key.D)
     hero.costumes(art.frames, durations=art.durations)
     hero.sequence().costumes(art.frames, fps=10)
-    hero.on_key_down(Key.F, hero.sequence().move(1), repeat=0.1)
-    hero.on_gamepad_button_down(GamepadButton.A, art.animation(), gamepad=player)
+    hero.on_button_down(
+        GamepadButton.B, hero.sequence().move(1), repeat=0.1, gamepad=stage.gamepads[0]
+    )
+    hero.on_button_down(GamepadButton.A, art.animation(), gamepad=player)
 
-    @hero.on_gamepad_button_down(GamepadButton.B, gamepad=player, repeat=0.2)
+    @hero.on_button_down(GamepadButton.B, gamepad=player, repeat=0.2)
     def shoot(event: Event[Sprite[PlayerState], GamepadPress]) -> Script[Sprite]:
         assert_type(event.data, GamepadPress)
         assert_type(event.target.state, PlayerState)
         event.target.state.health -= 1
         return event.target.sequence().say(event.data.button.name, seconds=0.1)
 
-    @stage.on_gamepad_button_down(GamepadButton.START)
+    @stage.on_button_down(GamepadButton.START)
     def start(event: Event[Stage[GameState], GamepadPress]) -> None:
         event.target.state.score += event.data.gamepad.index
 
-    @person.on_gamepad_button_down(GamepadButton.A)
+    @person.on_button_down(GamepadButton.A)
     def pose(event: Event[Puppet, GamepadPress]) -> Script[Puppet]:
         return event.target.sequence().set_pose(event.target.pose)
 
-    person.on_gamepad_button_down(GamepadButton.B, person.sequence().wait(1))
-    stage.on_gamepad_button_down(GamepadButton.X, hero, hero.sequence().wait(1), gamepad=player)
+    person.on_button_down(GamepadButton.B, person.sequence().wait(1))
+    stage.on_button_down(GamepadButton.X, hero, hero.sequence().wait(1), gamepad=player)
     hero.sequence().when(GamepadDown(GamepadButton.A, player), then=hero.sequence().move(1))
 
 
@@ -236,9 +258,68 @@ def interactive(stage: Stage) -> None:
     assert_type(stage.run(interactive=True), None)
 
 
+def clone_example() -> None:
+    """Clone results and cloned-event receivers retain their actor and dataclass types."""
+    from plocks import Joint, Skeleton
+
+    stage = Stage(physics=True)
+    stage.gamepads[0].map_key(Key.F, GamepadButton.B)
+    stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
+    stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
+    enemy = Sprite(Path("enemy.png"), state=PlayerState)
+    person = Puppet(
+        Skeleton({"root": Joint(None)}),
+        parts={"root": Path("body.png")},
+        state=PlayerState,
+    )
+    stage.add(enemy)
+    stage.add(person)
+    assert_type(enemy.clone(), Sprite[PlayerState])
+    assert_type(person.clone(), Puppet[PlayerState])
+    assert_type(enemy.clone().state.health, int)
+    assert_type(person.clone().state.coins, list[int])
+    assert_type(enemy.is_clone, bool)
+    enemy.on_clone(enemy.sequence().wait(0.2))
+    person.on_clone(person.sequence().wait(0.2))
+
+    @enemy.on_clone
+    def launched(event: Event[Sprite[PlayerState], None]) -> None:
+        assert_type(event.target, Sprite[PlayerState])
+        assert_type(event.data, None)
+        event.target.body.velocity = (200, 0)
+        event.target.state.coins = list(event.target.state.coins)
+
+    @person.on_clone
+    def animated(event: Event[Puppet[PlayerState], None]) -> Script[Puppet]:
+        event.target.state.health = 50
+        return event.target.sequence().wait(1)
+
+
 def one_way_platforms() -> None:
-    """Platform configuration remains fully typed through generic actors."""
+    """Platform configuration remains fully typed through generic state and clones."""
     lift = Sprite("platform.png", body_type=BodyType.KINEMATIC, one_way=True)
     assert_type(lift.one_way, bool)
+    assert_type(lift.clone().one_way, bool)
     terrain = TileMap(["P"], {"P": "platform.png"}, tile_size=(32, 16), one_way={"P"})
     assert_type(terrain.one_way, frozenset[str])
+
+
+def multiplayer_and_automated_players() -> None:
+    """All input sources preserve typed state, event payloads, and logical samples."""
+    from plocks import GamepadInput, Multiplayer, RemoteChange
+
+    stage = Stage(gamepad_count=3, state=PlayerState)
+
+    @stage.on_bot(gamepad=stage.gamepads[2])
+    def opponent(event: Event[Stage[PlayerState], float]) -> GamepadInput:
+        assert_type(event.target.state.health, int)
+        return GamepadInput(left_stick=(0.5, 0))
+
+    @stage.on_remote_change
+    def connected(event: Event[Stage[PlayerState], RemoteChange]) -> None:
+        assert_type(event.data.slot, int)
+        assert_type(event.target.state.health, int)
+
+    assert_type(stage.gamepads[1].remote_connected, bool)
+    stage.run(multiplayer=Multiplayer(slots=(1,)))

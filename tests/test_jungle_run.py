@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from plocks import Event, Key, Sprite, Stage
+from plocks import Event, GamepadPress, Key, Sprite, Stage
 from plocks._runtime import close, dispatch
 from plocks._scripts import _deliver, _sample, _step, _trigger
 
@@ -53,8 +53,8 @@ def advance(stage: Stage, ticks: int) -> None:
 
 def press(stage: Stage, key: Key) -> None:
     """Send a new key press and hold it for subsequent simulation ticks."""
-    stage.keyboard._down.add(key)
-    stage._pending.append(key)
+    stage._held_keys.add(key)
+    stage._pending.append(GamepadPress(stage.gamepads[0], stage.gamepads[0]._key_buttons[key]))
 
 
 def test_running_jump_and_airborne_shooting(game: Stage) -> None:
@@ -69,7 +69,7 @@ def test_running_jump_and_airborne_shooting(game: Stage) -> None:
     press(game, Key.SPACE)
     advance(game, 12)
     assert hero.y < -5  # A second Space cannot restart the ascent.
-    game.keyboard._down.clear()
+    game._held_keys.clear()
     advance(game, 50)
     assert hero.y == -150
 
@@ -95,7 +95,7 @@ def test_projectiles_defeat_sentry_and_restart(game: Stage) -> None:
     advance(game, 65)
     assert cast(int, state(game)["defeated"]) >= 1
     assert len(cast(list[Sprite], state(game)["enemies"])) < 6
-    game.keyboard._down.clear()
+    game._held_keys.clear()
     press(game, Key.R)
     advance(game, 1)
     assert len(cast(list[Sprite], state(game)["enemies"])) == 6

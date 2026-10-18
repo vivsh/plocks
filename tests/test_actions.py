@@ -5,7 +5,7 @@ from collections.abc import Iterator
 import pytest
 from PIL import Image
 
-from plocks import Action, Event, Key, Sprite, Stage, StageError
+from plocks import Action, Event, GamepadButton, GamepadPress, Key, Sprite, Stage, StageError
 from plocks._runtime import close, dispatch
 from plocks._scripts import _sample, _step
 
@@ -13,6 +13,8 @@ from plocks._scripts import _sample, _step
 @pytest.fixture
 def stage() -> Iterator[Stage]:
     value = Stage()
+    value.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+    value.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     value._state = "running"
     yield value
     close(value)
@@ -47,18 +49,18 @@ def test_callback_adopts_chain_and_busy_ignores(stage: Stage) -> None:
     actor = sprite(stage)
     calls = 0
 
-    @actor.on_key_down(Key.SPACE)
-    def jump(event: Event[Sprite, Key]) -> Action:
+    @actor.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+    def jump(event: Event[Sprite, GamepadPress]) -> Action:
         actor = event.target
         nonlocal calls
         calls += 1
         up = actor.glide_by(y=100, seconds=0.3)
         return actor.glide_by(y=-100, seconds=0.3, after=up)
 
-    stage._pending.append(Key.SPACE)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.A))
     dispatch(stage)
     ticks(stage, 10)
-    stage._pending.append(Key.SPACE)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.A))
     dispatch(stage)
     assert calls == 1 and actor.y > 0
     actor.stop()
@@ -83,11 +85,11 @@ def test_callback_return_observes_one_execution(stage: Stage) -> None:
     actor = sprite(stage)
     existing = actor.glide_by(x=30, seconds=0.3)
 
-    @actor.on_key_down(Key.A)
-    def move(event: Event[Sprite, Key]) -> Action:
+    @actor.on_button_down(GamepadButton.LEFT, gamepad=stage.gamepads[0])
+    def move(event: Event[Sprite, GamepadPress]) -> Action:
         return existing
 
-    stage._pending.append(Key.A)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.LEFT))
     dispatch(stage)
     ticks(stage, 45)
     assert actor.x == 30 and not stage._actions
@@ -104,6 +106,8 @@ def test_pause_and_invalid_admission(stage: Stage) -> None:
     with pytest.raises(ValueError):
         actor.glide_by(x=float("nan"), seconds=1)
     foreign = Stage()
+    foreign.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+    foreign.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     other = sprite(foreign)
     try:
         with pytest.raises(StageError, match="same stage"):
@@ -118,12 +122,12 @@ def test_failure_is_observed_and_cleanup_retires_children(stage: Stage) -> None:
     actor = sprite(stage)
     error = ValueError("original")
 
-    @actor.on_key_down(Key.A)
-    def fail(event: Event[Sprite, Key]) -> None:
+    @actor.on_button_down(GamepadButton.LEFT, gamepad=stage.gamepads[0])
+    def fail(event: Event[Sprite, GamepadPress]) -> None:
         actor.glide_by(x=100, seconds=1)
         raise error
 
-    stage._pending.append(Key.A)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.LEFT))
     with pytest.raises(ValueError) as caught:
         dispatch(stage)
     close(stage)

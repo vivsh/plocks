@@ -2,11 +2,31 @@
 
 from pathlib import Path
 
-from plocks import Action, Bounds, Canvas, Costume, Ease, Event, Key, Script, Sprite, Stage
+from plocks import (
+    Action,
+    Bounds,
+    Canvas,
+    Costume,
+    Ease,
+    Event,
+    GamepadButton,
+    GamepadPress,
+    Key,
+    Script,
+    Sprite,
+    Stage,
+)
 
 # Find assets beside this script, even when running from another folder.
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=800, height=450, background="#234b43")
+
+# Keys feed logical controls; gamepads and remote players work too.
+stage.gamepads[0].map_key(Key.DOWN, GamepadButton.DOWN)
+stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
+stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
+stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
 # A dictionary lets us choose a picture by its name.
 roads = {
     "straight": Costume(assets / "road_straight.png"),
@@ -108,16 +128,16 @@ def reset() -> None:
 
 
 # @ connects the function to a key. A held key does not start another jump.
-@hero.on_key_down(Key.SPACE)
-def start_jump(event: Event[Sprite, Key]) -> None:
+@hero.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+def start_jump(event: Event[Sprite, GamepadPress]) -> None:
     # global changes the game's action; .done tells us when it has finished.
     global maneuver
     if outcome == "playing" and (maneuver is None or maneuver.done):
         maneuver = hero.act(jump)
 
 
-@hero.on_key_down(Key.DOWN)
-def start_slide(event: Event[Sprite, Key]) -> None:
+@hero.on_button_down(GamepadButton.DOWN, gamepad=stage.gamepads[0])
+def start_slide(event: Event[Sprite, GamepadPress]) -> None:
     # global changes the game's action; .done tells us when it has finished.
     global maneuver
     if outcome == "playing" and (maneuver is None or maneuver.done):
@@ -148,13 +168,13 @@ def steer(direction: int) -> None:
     hero.x = max(-145, min(145, hero.x + direction * 145))
 
 
-@hero.on_key_down(Key.LEFT)
-def left(event: Event[Sprite, Key]) -> None:
+@hero.on_button_down(GamepadButton.LEFT, gamepad=stage.gamepads[0])
+def left(event: Event[Sprite, GamepadPress]) -> None:
     steer(-1)
 
 
-@hero.on_key_down(Key.RIGHT)
-def right(event: Event[Sprite, Key]) -> None:
+@hero.on_button_down(GamepadButton.RIGHT, gamepad=stage.gamepads[0])
+def right(event: Event[Sprite, GamepadPress]) -> None:
     steer(1)
 
 
@@ -232,8 +252,8 @@ def draw(canvas: Canvas) -> None:
         canvas.text("Press R to run again", (-150, 25), size=22, color="#ffe19a")
 
 
-@stage.on_key_down(Key.R)
-def restart(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+def restart(event: Event[Stage, GamepadPress]) -> None:
     reset()
 
 

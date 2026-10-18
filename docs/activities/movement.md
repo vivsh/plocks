@@ -11,7 +11,7 @@
 ```python
 from pathlib import Path
 
-from plocks import Costume, Ease, Key, Sprite, Stage
+from plocks import Costume, Ease, GamepadButton, Sprite, Stage
 
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(background="skyblue")
@@ -29,7 +29,7 @@ hero.on_start(patrol)
 hop = hero.sequence()
 hop.glide_by(y=80, seconds=0.3, easing=Ease.OUT)
 hop.glide_by(y=-80, seconds=0.3, easing=Ease.IN)
-hero.on_key_down(Key.SPACE, hop)
+hero.on_button_down(GamepadButton.A, hop, gamepad=stage.gamepads[0])
 
 if __name__ == "__main__":
     stage.run()

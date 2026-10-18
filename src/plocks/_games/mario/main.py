@@ -7,6 +7,8 @@ from plocks import (
     Canvas,
     Costume,
     Event,
+    GamepadButton,
+    GamepadPress,
     Key,
     RotationStyle,
     Script,
@@ -19,6 +21,13 @@ from plocks import (
 # Find assets beside this script, even when running from another folder.
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=800, height=450, background="#82bbcf")
+
+# Keys feed logical controls; gamepads and remote players work too.
+stage.gamepads[0].map_left_stick(left=Key.LEFT, right=Key.RIGHT, up=Key.UP, down=Key.DOWN)
+stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
+stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
+stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
 # A row is a line of tiles: G = grass, D = dirt, S = stone, . = empty.
 rows: list[str] = []
 for _ in range(14):
@@ -105,8 +114,8 @@ def tile_bounds(row: int, column: int) -> Bounds:
 
 
 # @ tells Plocks when to call jump. A held key is handled separately in update.
-@hero.on_key_down(Key.SPACE)
-def jump(event: Event[Sprite, Key]) -> None:
+@hero.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+def jump(event: Event[Sprite, GamepadPress]) -> None:
     # Change the variables at the top of this file, rather than creating new ones here.
     global speed_y, on_ground
     if on_ground and outcome == "playing":
@@ -122,9 +131,9 @@ def update(event: Event[Stage, float]) -> None:
     if outcome != "playing":
         return
     direction = 0
-    if stage.keyboard.is_down(Key.RIGHT):
+    if stage.gamepads[0].left_stick[0] > 0:
         direction += 1
-    if stage.keyboard.is_down(Key.LEFT):
+    if stage.gamepads[0].left_stick[0] < 0:
         direction -= 1
     hero.x = max(-380, min(1600, hero.x + direction * 200 * dt))
     if direction > 0:
@@ -187,8 +196,8 @@ def draw(canvas: Canvas) -> None:
         canvas.text("Press R to try again", (-150, 0), size=24)
 
 
-@stage.on_key_down(Key.R)
-def restart(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+def restart(event: Event[Stage, GamepadPress]) -> None:
     reset()
 
 

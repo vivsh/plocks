@@ -16,7 +16,8 @@ python labs/scripts.py
 3. Press H to hop, or R to return home.
 
 A **condition** is a question with a yes/no answer. This script asks whether Up is
-held when it reaches the choice. Try changing the key in `KeyDown(Key.UP)`.
+held when it reaches the choice. Try another button in
+`GamepadDown(GamepadButton.UP, gamepad=stage.gamepads[0])`.
 [Make your own script](../activities/movement.md).
 
 ## Make a Puppet wave

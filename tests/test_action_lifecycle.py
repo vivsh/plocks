@@ -13,6 +13,8 @@ from plocks import (
     Actor,
     Canvas,
     Event,
+    GamepadButton,
+    GamepadPress,
     Key,
     Message,
     Script,
@@ -31,6 +33,7 @@ from tests.test_scripts import ticks
 @pytest.fixture
 def game() -> Iterator[tuple[Stage, Sprite]]:
     stage = Stage()
+    stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
     hero = Sprite(Image.new("RGBA", (8, 8)))
     stage.add(hero)
     stage._state = "running"
@@ -83,11 +86,11 @@ def test_borrowed_action_survives_observer_cancellation(game: tuple[Stage, Sprit
     stage, hero = game
     shared = hero.glide_by(x=20, seconds=1)
 
-    @stage.on_key_down(Key.A)
-    def observe(event: Event[Stage, Key]) -> Action:
+    @stage.on_button_down(GamepadButton.LEFT, gamepad=stage.gamepads[0])
+    def observe(event: Event[Stage, GamepadPress]) -> Action:
         return shared
 
-    stage._pending.append(Key.A)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.LEFT))
     dispatch(stage)
     ticks(stage, 2)
     observer = next(a for a in stage._actions if a is not shared)

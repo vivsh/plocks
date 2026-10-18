@@ -26,6 +26,11 @@ from plocks import (
 # Keep the pictures beside this file. No drawing program is needed in our code.
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=800, height=450, physics=True, background="#fff0cc")
+
+# Keys feed logical controls; gamepads and remote players work too.
+stage.gamepads[0].map_key(Key.DOWN, GamepadButton.DOWN)
+stage.gamepads[0].map_key(Key.P, GamepadButton.START)
+stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
 player = stage.gamepads[0]
 player.map_key(Key.UP, GamepadButton.A)
 GROUND = -130
@@ -110,7 +115,7 @@ def try_jump() -> None:
         dino.body.impulse(y=460)
 
 
-@dino.on_gamepad_button_down(GamepadButton.A, gamepad=player)
+@dino.on_button_down(GamepadButton.A, gamepad=player)
 def jump(event: Event[Sprite, GamepadPress]) -> None:
     try_jump()
 
@@ -121,13 +126,13 @@ def click_to_jump(event: Event[Stage, Click]) -> None:
         try_jump()
 
 
-@stage.on_key_down(Key.R)
-def restart(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+def restart(event: Event[Stage, GamepadPress]) -> None:
     reset()
 
 
-@stage.on_key_down(Key.P)
-def pause(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.START, gamepad=stage.gamepads[0])
+def pause(event: Event[Stage, GamepadPress]) -> None:
     if playing:
         if stage.paused:
             stage.resume()
@@ -181,7 +186,11 @@ def update(event: Event[Stage, float]) -> None:
 
     # Holding Down, S or gamepad B makes us small enough to pass a high bird.
     wants_duck = player.left_stick[1] < -0.5 or player.is_down(GamepadButton.B)
-    wants_duck = wants_duck or stage.keyboard.is_down(Key.DOWN)
+    wants_duck = (
+        wants_duck
+        or stage.gamepads[0].is_down(GamepadButton.DOWN)
+        or (stage.gamepads[0].left_stick[1] < 0)
+    )
     if wants_duck != crouching and (crouching or dino.body.grounded):
         crouching = wants_duck
         dino.costume = ducking if crouching else standing

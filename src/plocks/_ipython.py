@@ -11,12 +11,13 @@ from typing import TYPE_CHECKING, cast
 
 from ._runtime import _acquire, _check_start, close, drive
 from .errors import StageError
+from .multiplayer import Multiplayer
 
 if TYPE_CHECKING:
     from .stage import Stage
 
 
-def _start(stage: Stage) -> None:
+def _start(stage: Stage, multiplayer: Multiplayer | None = None) -> None:
     """Validate the shell before opening a window, then admit one observed driver task."""
     _check_start(stage)
     try:
@@ -46,7 +47,7 @@ def _start(stage: Stage) -> None:
         raise StageError("Another IPython GUI loop is active; use %gui to disable it first")
     shell.enable_gui("asyncio")
     loop = cast(Callable[[], asyncio.AbstractEventLoop], get_asyncio_loop)()
-    _acquire(stage)
+    _acquire(stage, multiplayer)
 
     def completed(task: asyncio.Task[None]) -> None:
         error = None if task.cancelled() else task.exception()

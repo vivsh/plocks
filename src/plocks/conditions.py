@@ -7,22 +7,10 @@ from typing import TYPE_CHECKING
 
 from .errors import StageError
 from .gamepads import Gamepad, GamepadButton
-from .input import Key
 
 if TYPE_CHECKING:
     from ._commands import Actor
     from .tiling import TileMap
-
-
-@dataclass(frozen=True, slots=True)
-class KeyDown:
-    """Test whether a key is held at branch execution, not at construction."""
-
-    key: Key
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.key, Key):
-            raise TypeError("KeyDown requires a Key")
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,7 +55,7 @@ class Not:
         _validate(self.condition)
 
 
-type Condition = KeyDown | GamepadDown | Touching | Grounded | Not
+type Condition = GamepadDown | Touching | Grounded | Not
 
 
 def _validate(condition: object) -> None:
@@ -77,7 +65,7 @@ def _validate(condition: object) -> None:
         if depth >= 32:
             raise ValueError("Conditions allow at most 32 nesting levels")
         condition = condition.condition
-    if not isinstance(condition, (KeyDown, GamepadDown, Touching, Grounded)):
+    if not isinstance(condition, (GamepadDown, Touching, Grounded)):
         raise TypeError("Use a runtime Condition, not a bool or function")
 
 
@@ -87,8 +75,6 @@ def _test(condition: Condition, actor: Actor) -> bool:
         raise StageError("Branch target must belong to its executing stage")
     if isinstance(condition, Not):
         return not _test(condition.condition, actor)
-    if isinstance(condition, KeyDown):
-        return stage.keyboard.is_down(condition.key)
     if isinstance(condition, GamepadDown):
         if condition.gamepad._stage is not stage:
             raise StageError("GamepadDown must use a slot belonging to the executing stage")

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import cast
 
 from ._examples import _copy, _example, _names
+from .errors import NetworkError
 
 
 def _linked(path: Path) -> bool:
@@ -73,8 +74,22 @@ def main() -> int:
     examples = commands.add_parser("examples", help="List or copy bundled examples")
     examples.add_argument("name", nargs="?")
     examples.add_argument("--copy-to", type=Path, metavar="FOLDER")
+    joining = commands.add_parser("join", help="Play on a host's shared LAN game view")
+    joining.add_argument("address", help="Host's numeric LAN address")
+    joining.add_argument("--player", required=True, type=int, help="Player number, starting at 1")
+    joining.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     try:
+        if args.command == "join":
+            try:
+                from ._join import configuration, join
+            except ImportError as error:
+                raise NetworkError(
+                    "Joining needs Plocks installed with its [network] extra"
+                ) from error
+            code = input("Host connection code: ")
+            join(configuration(args.address, args.port, args.player, code))
+            return 0
         if args.command == "examples":
             if (args.name is None) != (args.copy_to is None):
                 parser.error("Use 'plocks examples NAME --copy-to FOLDER' to copy an example")
@@ -97,6 +112,6 @@ def main() -> int:
             return _run(root)
     except KeyboardInterrupt:
         return 130
-    except (ValueError, OSError, subprocess.SubprocessError) as error:
+    except (ValueError, OSError, NetworkError, EOFError, subprocess.SubprocessError) as error:
         print(f"plocks: {error}", file=sys.stderr)
         return 1

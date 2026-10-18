@@ -9,9 +9,8 @@ import pygame
 
 from .errors import StageError
 from .events import GamepadPress
-from .gamepads import Gamepad, GamepadButton
+from .gamepads import Gamepad, GamepadButton, GamepadInput, _button_index
 from .geometry import _number
-from .input import Key
 
 if TYPE_CHECKING:
     from ._scripts import _InputBinding
@@ -46,6 +45,29 @@ def _transitions(
     for button in before - after:
         for binding in slot._stage._gamepad_handlers.get((slot, button), ()):
             binding.next_repeat = None
+    if before != after and slot._stage._network is not None:
+        from ._network import source_transition
+
+        source_transition(slot)
+
+
+def _sample(slot: Gamepad) -> GamepadInput:
+    return GamepadInput(
+        frozenset(button for button in GamepadButton if slot.is_down(button)),
+        slot.left_stick,
+        slot.right_stick,
+        slot.left_trigger,
+        slot.right_trigger,
+    )
+
+
+def _apply(slot: Gamepad, sample: GamepadInput, *, baseline: bool = False) -> None:
+    sample.__post_init__()
+    before = _held(slot)
+    slot._buttons = frozenset(_button_index(button, slot.layout) for button in sample.buttons)
+    slot._left, slot._right = sample.left_stick, sample.right_stick
+    slot._triggers = sample.left_trigger, sample.right_trigger
+    _transitions(slot, before, baseline=baseline)
 
 
 def _clear_sample(slot: Gamepad) -> None:
@@ -119,14 +141,16 @@ def _native_refresh(stage: Stage) -> None:
     if not controller.get_init():
         return
     for index in range(controller.get_count()):
-        if not any(slot._device is None for slot in stage.gamepads):
+        if not any(slot._device is None and not slot._nonlocal() for slot in stage.gamepads):
             break
         if not controller.is_controller(index):
             continue
         device = controller.Controller(index)
         if any(slot._device is device for slot in stage.gamepads):
             continue
-        slot = next(slot for slot in stage.gamepads if slot._device is None)
+        slot = next(
+            slot for slot in stage.gamepads if slot._device is None and not slot._nonlocal()
+        )
         slot._device = device
         _sample_native(slot)
 
@@ -148,15 +172,13 @@ def _poll_devices(stage: Stage, *, baseline: bool = False, refresh: bool = False
         if slot._device is not None:
             _sample_native(slot)
     for slot, held in zip(stage.gamepads, before):
+        if slot._nonlocal():
+            continue
         _transitions(slot, held, baseline=baseline or slot in new_slots)
 
 
 def _input_bindings(stage: Stage) -> tuple[_InputBinding, ...]:
-    return tuple(
-        binding
-        for bindings in (*stage._keys.values(), *stage._gamepad_handlers.values())
-        for binding in bindings
-    )
+    return tuple(binding for bindings in stage._gamepad_handlers.values() for binding in bindings)
 
 
 def _clear_repeats(stage: Stage) -> None:
@@ -173,13 +195,10 @@ def _arm(stage: Stage, binding: _InputBinding, held: bool) -> None:
 def _repeat(stage: Stage) -> None:
     from ._scripts import _trigger
 
-    sources: list[tuple[Key | GamepadPress, tuple[_InputBinding, ...], bool]] = [
-        (key, tuple(bindings), stage.keyboard.is_down(key)) for key, bindings in stage._keys.items()
-    ]
-    sources.extend(
+    sources = [
         (GamepadPress(slot, button), tuple(bindings), slot.is_down(button))
         for (slot, button), bindings in stage._gamepad_handlers.items()
-    )
+    ]
     for payload, bindings, held in sources:
         for binding in bindings:
             if not stage.running or stage.paused:
@@ -198,9 +217,6 @@ def _repeat(stage: Stage) -> None:
 
 
 def _resume_repeats(stage: Stage) -> None:
-    for key, bindings in stage._keys.items():
-        for binding in bindings:
-            _arm(stage, binding, stage.keyboard.is_down(key))
     for (slot, button), bindings in stage._gamepad_handlers.items():
         for binding in bindings:
             if binding.handler.actor is None or binding.handler.actor._stage is stage:

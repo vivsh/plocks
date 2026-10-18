@@ -8,6 +8,7 @@ import pytest
 
 from plocks import (
     Event,
+    GamepadButton,
     GamepadDown,
     GamepadLayout,
     GamepadPress,
@@ -76,7 +77,7 @@ def test_keyboard_and_physical_or_preserve_one_press(world: tuple[Stage, Sprite]
     pad.map_key(Key.ENTER, Button.A)
     events: list[GamepadPress] = []
 
-    @actor.on_gamepad_button_down(Button.A, gamepad=pad)
+    @actor.on_button_down(Button.A, gamepad=pad)
     def receive(event: Event[Sprite, GamepadPress]) -> None:
         assert event.source is stage and event.target is actor
         events.append(event.data)
@@ -138,19 +139,22 @@ def test_turbo_uses_simulation_time_and_key_repeat_is_optional(world: tuple[Stag
     pad = stage.gamepads[0]
     pad.map_key(Key.F, Button.B)
     times: list[float] = []
-    plain: list[Key] = []
-    stage.on_gamepad_button_down(Button.B, gamepad=pad, repeat=0.1)(
-        lambda event: times.append(stage.time)
+    plain: list[GamepadPress] = []
+    stage.on_button_down(Button.B, gamepad=pad, repeat=0.1)(lambda event: times.append(stage.time))
+    stage.on_button_down(GamepadButton.B, gamepad=stage.gamepads[0])(
+        lambda event: plain.append(event.data)
     )
-    stage.on_key_down(Key.F)(lambda event: plain.append(event.data))
     key(stage, Key.F)
     ticks(stage, 20)
-    assert times == pytest.approx([0, 0.1, 0.2, 0.3]) and plain == [Key.F]
+    assert times == pytest.approx([0, 0.1, 0.2, 0.3]) and plain == [GamepadPress(pad, Button.B)]
     key(stage, Key.F, False)
     ticks(stage, 20)
     assert len(times) == 4
     repeated: list[float] = []
-    stage.on_key_down(Key.G, repeat=0.05)(lambda event: repeated.append(stage.time))
+    pad.map_key(Key.G, Button.L)
+    stage.on_button_down(GamepadButton.L, repeat=0.05, gamepad=stage.gamepads[0])(
+        lambda event: repeated.append(stage.time)
+    )
     key(stage, Key.G)
     ticks(stage, 7)
     assert len(repeated) == 3
@@ -159,7 +163,9 @@ def test_turbo_uses_simulation_time_and_key_repeat_is_optional(world: tuple[Stag
 def test_turbo_pause_catchup_limit_and_removal(world: tuple[Stage, Sprite]) -> None:
     stage, actor = world
     calls: list[float] = []
-    actor.on_key_down(Key.F, repeat=0.001)(lambda event: calls.append(stage.time))
+    actor.on_button_down(GamepadButton.B, repeat=0.001, gamepad=stage.gamepads[0])(
+        lambda event: calls.append(stage.time)
+    )
     key(stage, Key.F)
     advance(stage, 10)
     assert len(calls) <= 6
@@ -182,15 +188,22 @@ def test_turbo_pause_catchup_limit_and_removal(world: tuple[Stage, Sprite]) -> N
 
 def test_busy_ignore_and_restart_remain_registration_owned(world: tuple[Stage, Sprite]) -> None:
     stage, actor = world
-    actor.on_key_down(Key.F, actor.sequence().wait(0.5).move(10), repeat=0.05)
+    stage.gamepads[0].map_key(Key.G, Button.L)
+    actor.on_button_down(
+        GamepadButton.B, actor.sequence().wait(0.5).move(10), repeat=0.05, gamepad=stage.gamepads[0]
+    )
     key(stage, Key.F)
     ticks(stage, 20)
     assert len(stage._actions) == 1 and actor.x == 0
     key(stage, Key.F, False)
     ticks(stage, 20)
     assert actor.x == 10
-    actor.on_key_down(
-        Key.G, actor.sequence().wait(0.2).move(20), repeat=0.05, when_busy=WhenBusy.RESTART
+    actor.on_button_down(
+        GamepadButton.L,
+        actor.sequence().wait(0.2).move(20),
+        repeat=0.05,
+        when_busy=WhenBusy.RESTART,
+        gamepad=stage.gamepads[0],
     )
     key(stage, Key.G)
     ticks(stage, 25)
@@ -209,12 +222,8 @@ def test_wildcard_and_filtered_slots_have_independent_repeat_clocks(
     two.map_key(Key.B, Button.A)
     all_presses: list[int] = []
     filtered: list[int] = []
-    stage.on_gamepad_button_down(Button.A, repeat=0.1)(
-        lambda e: all_presses.append(e.data.gamepad.index)
-    )
-    stage.on_gamepad_button_down(Button.A, gamepad=two)(
-        lambda e: filtered.append(e.data.gamepad.index)
-    )
+    stage.on_button_down(Button.A, repeat=0.1)(lambda e: all_presses.append(e.data.gamepad.index))
+    stage.on_button_down(Button.A, gamepad=two)(lambda e: filtered.append(e.data.gamepad.index))
     key(stage, Key.A)
     ticks(stage, 3)
     key(stage, Key.B)
@@ -230,13 +239,13 @@ def test_configuration_validation_is_atomic_and_cross_stage_rejected(
     pad.map_key(Key.A, Button.A)
     for invalid in (0, -1, float("nan"), float("inf")):
         with pytest.raises(ValueError):
-            actor.on_gamepad_button_down(Button.A, repeat=invalid)
+            actor.on_button_down(Button.A, repeat=invalid)
         with pytest.raises(ValueError):
-            stage.on_key_down(Key.SPACE, repeat=invalid)
+            stage.on_button_down(GamepadButton.A, repeat=invalid, gamepad=stage.gamepads[0])
     with pytest.raises(TypeError):
-        stage.on_key_down(Key.SPACE, repeat=True)
+        stage.on_button_down(GamepadButton.A, repeat=True, gamepad=stage.gamepads[0])
     with pytest.raises(StageError):
-        actor.on_gamepad_button_down(Button.A, gamepad=Stage().gamepads[0])
+        actor.on_button_down(Button.A, gamepad=Stage().gamepads[0])
     condition = GamepadDown(Button.A, pad)
     key(stage, Key.A)
     assert _test(condition, actor)
@@ -249,12 +258,14 @@ def test_clear_and_close_retire_all_input(world: tuple[Stage, Sprite]) -> None:
     pad = stage.gamepads[0]
     pad.map_key(Key.A, Button.A)
     key(stage, Key.A)
-    stage.on_key_down(Key.A, repeat=0.1)(lambda event: None)
+    stage.on_button_down(GamepadButton.LEFT, repeat=0.1, gamepad=stage.gamepads[0])(
+        lambda event: None
+    )
     _clear_input(stage)
     assert not pad.is_down(Button.A) and pad.left_stick == (0, 0)
     close(stage)
     assert not pad.connected and pad.name is None and not stage._gamepad_handlers
-    assert not stage._keys and not stage._pending
+    assert not stage._gamepad_handlers and not stage._pending
     with pytest.raises(StageError):
         pad.map_key(Key.A, Button.B)
     close(stage)
@@ -270,11 +281,11 @@ def test_puppet_events_and_registration_snapshots(world: tuple[Stage, Sprite]) -
     slot.map_key(Key.A, Button.A)
     calls: list[str] = []
 
-    @person.on_gamepad_button_down(Button.A, gamepad=slot)
+    @person.on_button_down(Button.A, gamepad=slot)
     def first(event: Event[Puppet, GamepadPress]) -> None:
         assert event.target is person and event.source is stage
         calls.append("first")
-        person.on_gamepad_button_down(Button.A, gamepad=slot)(lambda e: calls.append("later"))
+        person.on_button_down(Button.A, gamepad=slot)(lambda e: calls.append("later"))
 
     key(stage, Key.A)
     assert calls == ["first"]
@@ -289,13 +300,13 @@ def test_automatic_suspension_clears_then_rearms_without_press(
     from plocks._runtime import poll
 
     stage, _ = world
-    stage.on_key_down(Key.F, repeat=0.1)(lambda e: None)
+    stage.on_button_down(GamepadButton.B, repeat=0.1, gamepad=stage.gamepads[0])(lambda e: None)
     key(stage, Key.F)
     with monkeypatch.context() as patch:
         patch.setattr(pygame.event, "get", lambda: [pygame.event.Event(pygame.WINDOWFOCUSLOST)])
         poll(stage)
-        assert stage.paused and not stage.keyboard.is_down(Key.F)
-        assert stage._keys[Key.F][0].next_repeat is None
+        assert stage.paused and not stage.gamepads[0].is_down(GamepadButton.B)
+        assert stage._gamepad_handlers[(stage.gamepads[0], GamepadButton.B)][0].next_repeat is None
         patch.setattr(pygame.event, "get", lambda: [pygame.event.Event(pygame.WINDOWFOCUSGAINED)])
         patch.setattr(_gamepads, "_poll_devices", lambda *a, **kw: None)
         poll(stage)
@@ -311,7 +322,7 @@ def test_native_acquisition_and_callback_failures_release_resources(
     stage = Stage()
     actor = Sprite(IMAGE)
     stage.add(actor)
-    actor.on_gamepad_button_down(Button.A, actor.sequence().wait(1))
+    actor.on_button_down(Button.A, actor.sequence().wait(1))
     if failure == "startup":
         original = _gamepads._open_devices
 
@@ -374,9 +385,7 @@ def test_default_keyboard_controls_are_independent_under_both_layouts(
     one.layout = two.layout = layout
     calls: list[tuple[int, Button]] = []
     for button in (Button.A, Button.B):
-        stage.on_gamepad_button_down(button)(
-            lambda e: calls.append((e.data.gamepad.index, e.data.button))
-        )
+        stage.on_button_down(button)(lambda e: calls.append((e.data.gamepad.index, e.data.button)))
     key(stage, Key.SPACE)
     assert one.is_down(Button.A) and not two.is_down(Button.A)
     key(stage, Key.ENTER)
@@ -416,7 +425,7 @@ def test_default_mappings_can_be_cleared_or_overridden(world: tuple[Stage, Sprit
     one.map_key(Key.H, Button.A)
     key(stage, Key.H)
     assert one.is_down(Button.A)
-    assert stage.keyboard.is_down(Key.H)
+    assert Key.H in stage._held_keys
 
 
 def test_native_hotplug_keeps_slots_and_limits_devices(

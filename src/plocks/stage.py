@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from typing import Generic, Literal, Self, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Generic, Literal, Self, TypeVar, cast, overload
 
 import pygame
 
+from ._cloning import _CloneStart
 from ._commands import Actor, _Command
 from ._operations import _Delivery
 from ._scripts import WhenBusy, _admit, _detach, _Handler, _InputBinding
@@ -16,11 +17,12 @@ from .audio import Sound, Voice, _play, _volume
 from .callbacks import ActorUpdateCallback, UpdateCallback
 from .canvas import Canvas
 from .errors import StageError
-from .events import Click, Event, GamepadPress
-from .gamepads import Gamepad, GamepadButton, GamepadLayout, _new_gamepad
+from .events import Click, Event, GamepadPress, RemoteChange
+from .gamepads import Gamepad, GamepadButton, GamepadInput, GamepadLayout, _new_gamepad
 from .geometry import Bounds, Color, Point, _integer, _point
-from .input import Key, Keyboard, Mouse, MouseButton
+from .input import Key, Mouse, MouseButton
 from .messages import Message
+from .multiplayer import Multiplayer
 from .physics import Physics
 from .puppets import Puppet
 from .scripts import Script, _message_arguments, _snapshot
@@ -32,7 +34,10 @@ type _Result = None | Action
 _D = TypeVar("_D")
 _R = TypeVar("_R", bound=_Result)
 type _Draw = Callable[[Canvas], None]
-type _InputEvent = Key | tuple[Point, MouseButton] | GamepadPress
+if TYPE_CHECKING:
+    from ._network import _Client, _Host
+
+type _InputEvent = tuple[Point, MouseButton] | GamepadPress | _CloneStart | RemoteChange
 type _StageObject = Sprite | Puppet | TileMap | TiledBackground
 
 
@@ -47,24 +52,27 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         "_accumulator",
         "_actions",
         "_background",
+        "_bots",
         "_bubble_text_size",
         "_camera",
         "_clicks",
+        "_clone_handlers",
         "_draws",
         "_game_state",
         "_gamepad_handlers",
         "_gamepads",
         "_height",
-        "_keyboard",
-        "_keys",
+        "_held_keys",
         "_last_wall",
         "_members",
         "_message_handlers",
         "_messages",
         "_mouse",
+        "_network",
         "_pause_reasons",
         "_pending",
         "_physics",
+        "_remote_handlers",
         "_starts",
         "_state",
         "_target",
@@ -129,10 +137,10 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         self._volume = 1.0
         self._members: list[_StageObject] = []
         self._updates: list[tuple[Actor | None, UpdateCallback | ActorUpdateCallback[Actor]]] = []
-        self._keys: dict[Key, list[_InputBinding]] = {}
         self._gamepad_handlers: dict[tuple[Gamepad, GamepadButton], list[_InputBinding]] = {}
         self._actions: list[Action] = []
         self._starts: list[_Handler] = []
+        self._clone_handlers: list[_Handler] = []
         self._clicks: dict[Actor | None, list[_Handler]] = {}
         self._messages: list[_Delivery] = []
         self._message_handlers: dict[Message[object], list[_Handler]] = {}
@@ -143,7 +151,10 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         if not isinstance(gamepad_layout, GamepadLayout):
             raise TypeError("Use a GamepadLayout")
         self._gamepads = tuple(_new_gamepad(self, gamepad_layout, index) for index in range(count))
-        self._keyboard = Keyboard()
+        self._held_keys: set[Key] = set()
+        self._network: _Host | _Client | None = None
+        self._bots: dict[Gamepad, Callable[[Event[Self, float]], GamepadInput]] = {}
+        self._remote_handlers: list[Callable[[Event[Self, RemoteChange]], None]] = []
         self._mouse = Mouse()
         self._pending: list[_InputEvent] = []
         self._state: Literal["new", "running", "closed"] = "new"
@@ -162,6 +173,47 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
     def gamepads(self) -> tuple[Gamepad, ...]:
         """Stable player slots (four by default); keyboard mapping needs no hardware."""
         return self._gamepads
+
+    def on_remote_change(
+        self, callback: Callable[[Event[Self, RemoteChange]], None]
+    ) -> Callable[[Event[Self, RemoteChange]], None]:
+        """Observe a remote player's live-view activation or disconnection.
+
+        The slot is zero-based. Basic connection status is visible even without
+        a handler. This callback is synchronous and must return None.
+        """
+        _open(self)
+        _sync(callback, "remote change")
+        self._remote_handlers.append(callback)
+        return callback
+
+    def on_bot(
+        self, *, gamepad: Gamepad
+    ) -> Callable[
+        [Callable[[Event[Self, float]], GamepadInput]],
+        Callable[[Event[Self, float]], GamepadInput],
+    ]:
+        """Supply computer-player controls once per simulation step, before updates.
+
+        Register before run. The driver receives fixed dt and returns immutable
+        GamepadInput. It pauses with the game and uses the human player's mechanics.
+        Ordinary patrolling enemies can keep using actor updates and scripts.
+        """
+
+        def register(
+            callback: Callable[[Event[Self, float]], GamepadInput],
+        ) -> Callable[[Event[Self, float]], GamepadInput]:
+            if self._state != "new":
+                raise StageError("Register automated controls before run")
+            if not isinstance(gamepad, Gamepad) or gamepad._stage is not self:
+                raise StageError("Use a gamepad belonging to this stage")
+            if gamepad in self._bots:
+                raise StageError("This gamepad already has an automated driver")
+            _sync(callback, "bot")
+            self._bots[gamepad] = callback
+            return callback
+
+        return register
 
     @property
     def state(self) -> _State_co:
@@ -226,11 +278,6 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         return bool(self._pause_reasons)
 
     @property
-    def keyboard(self) -> Keyboard:
-        """Held-key input. Use is_down(Key.RIGHT) for continuous movement."""
-        return self._keyboard
-
-    @property
     def mouse(self) -> Mouse:
         """Mouse position in stage coordinates, and held mouse buttons."""
         return self._mouse
@@ -293,6 +340,10 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         if isinstance(obj, (Sprite, Puppet, TileMap)):
             if obj._stage is not None:
                 raise StageError("An actor belongs to at most one stage")
+            if isinstance(obj, (Sprite, Puppet)) and obj.is_clone:
+                from ._cloning import _check_quota
+
+                _check_quota(self)
             if self._physics is not None:
                 from ._physics import _attach, _terrain
 
@@ -304,7 +355,11 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         self._members.append(obj)
 
     def remove(self, obj: _StageObject) -> None:
-        """Detach an object; removing a nonmember raises ValueError."""
+        """Detach an object and cancel its work; nonmembers raise ValueError.
+
+        Removing a clone also retires its event registrations and pending clone
+        start. Ordinary actors retain registrations for a possible re-addition.
+        """
         if obj not in self._members:
             raise ValueError("This object is not in the stage")
         try:
@@ -324,6 +379,16 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         finally:
             if obj in self._members:
                 self._members.remove(obj)
+            if isinstance(obj, (Sprite, Puppet)) and obj.is_clone:
+                from ._cloning import _forget
+
+                _forget(self, obj)
+
+    def _on_actor_clone(self, actor: Actor, work: object) -> object:
+        _open(self)
+        _actor(self, actor)
+        self._clone_handlers.append(_work_handler(self, actor, work, WhenBusy.IGNORE))
+        return None if isinstance(work, Script) else work
 
     def clear(self) -> None:
         """Detach all objects without changing their positions or visuals."""
@@ -373,66 +438,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         return None if isinstance(work, Script) else work
 
     @overload
-    def on_key_down(
-        self, key: Key, *, repeat: float | None = None, when_busy: WhenBusy = WhenBusy.IGNORE
-    ) -> Callable[[Callable[[Event[Self, Key]], _R]], Callable[[Event[Self, Key]], _R]]: ...
-    @overload
-    def on_key_down(
-        self,
-        key: Key,
-        actor: Sprite,
-        script: Script[Actor] | Script[Sprite],
-        *,
-        repeat: float | None = None,
-        when_busy: WhenBusy = WhenBusy.IGNORE,
-    ) -> None: ...
-    @overload
-    def on_key_down(
-        self,
-        key: Key,
-        actor: Puppet,
-        script: Script[Actor] | Script[Puppet],
-        *,
-        repeat: float | None = None,
-        when_busy: WhenBusy = WhenBusy.IGNORE,
-    ) -> None: ...
-    def on_key_down(
-        self,
-        key: Key,
-        actor: object = None,
-        script: object = None,
-        *,
-        repeat: float | None = None,
-        when_busy: WhenBusy = WhenBusy.IGNORE,
-    ) -> object:
-        """Bind a Script or callback(event) to a fresh key transition."""
-        _open(self)
-        repeat = _repeat_interval(repeat)
-        if not isinstance(key, Key):
-            raise TypeError("Use a Key enum value")
-        if actor is not None:
-            handler = _binding(self, actor, script, when_busy)
-            self._keys.setdefault(key, []).append(_InputBinding(handler, repeat))
-            return None
-        return self._key_decorator(key, None, when_busy, repeat)
-
-    def _key_decorator(
-        self, key: Key, actor: Actor | None, when_busy: WhenBusy, repeat: float | None = None
-    ) -> Callable[[object], object]:
-        repeat = _repeat_interval(repeat)
-
-        def register(callback: object) -> object:
-            _open(self)
-            if not isinstance(key, Key):
-                raise TypeError("Use a Key enum value")
-            handler = _callback_handler(callback, actor, when_busy)
-            self._keys.setdefault(key, []).append(_InputBinding(handler, repeat))
-            return callback
-
-        return register
-
-    @overload
-    def on_gamepad_button_down(
+    def on_button_down(
         self,
         button: GamepadButton,
         *,
@@ -443,7 +449,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         [Callable[[Event[Self, GamepadPress]], _R]], Callable[[Event[Self, GamepadPress]], _R]
     ]: ...
     @overload
-    def on_gamepad_button_down(
+    def on_button_down(
         self,
         button: GamepadButton,
         actor: Sprite,
@@ -454,7 +460,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         when_busy: WhenBusy = WhenBusy.IGNORE,
     ) -> None: ...
     @overload
-    def on_gamepad_button_down(
+    def on_button_down(
         self,
         button: GamepadButton,
         actor: Puppet,
@@ -464,7 +470,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         repeat: float | None = None,
         when_busy: WhenBusy = WhenBusy.IGNORE,
     ) -> None: ...
-    def on_gamepad_button_down(
+    def on_button_down(
         self,
         button: GamepadButton,
         actor: object = None,
@@ -737,7 +743,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
 
             _stop(self)
 
-    def run(self, *, interactive: bool = False) -> None:
+    def run(self, *, interactive: bool = False, multiplayer: Multiplayer | None = None) -> None:
         """Open a desktop window once; optionally keep a terminal IPython prompt usable.
 
         With interactive=False (default), return after the window closes and
@@ -750,17 +756,30 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         plain Python shells do not support interactive=True. Long Python commands
         block the shared main thread. Raises StageError for unsupported contexts,
         reuse, conflicting event loops, or already-active native resources.
+
+        multiplayer=Multiplayer(slots=(1,)) reserves player two for a remote
+        controller and shares this game's rendered view. Requires the network
+        extra and a trusted LAN or independently configured encrypted tunnel.
+        Joining players share the host's scores and camera; audio is host-only.
+        Connection failures raise NetworkError and release acquired resources.
         """
         if not isinstance(interactive, bool):
             raise TypeError("interactive must be bool")
+        if multiplayer is not None:
+            if not isinstance(multiplayer, Multiplayer):
+                raise TypeError("multiplayer must be a Multiplayer configuration")
+            if max(multiplayer.slots) >= len(self.gamepads):
+                raise ValueError("Remote slot does not exist; increase gamepad_count")
+            if any(self.gamepads[index] in self._bots for index in multiplayer.slots):
+                raise StageError("A gamepad cannot be both remote and automated")
         if interactive:
             from ._ipython import _start
 
-            _start(self)
+            _start(self, multiplayer)
         else:
             from ._runtime import start
 
-            start(self)
+            start(self, multiplayer)
 
 
 def _open(stage: Stage) -> None:
@@ -783,8 +802,8 @@ def _binding(stage: Stage, actor: object, script: object, when_busy: WhenBusy) -
     recipe = cast(Script[Actor], script)
     _snapshot(recipe, target)
 
-    def start(_: Event[Stage | Actor, object]) -> _Command[Actor]:
-        return _snapshot(recipe, target)
+    def start(event: Event[Stage | Actor, object]) -> _Command[Actor]:
+        return _snapshot(recipe, _actor(stage, event.target))
 
     return _Handler(start, target, when_busy)
 
@@ -807,11 +826,11 @@ def _callback_handler(callback: object, actor: Actor | None, when_busy: WhenBusy
         if result is None or isinstance(result, Action):
             return result
         if isinstance(result, Script):
-            if actor is None:
+            if isinstance(event.target, Stage):
                 raise TypeError(
                     "A Stage callback cannot return an unbound Script; return actor.act(script)"
                 )
-            return _snapshot(cast(Script[Actor], result), actor)
+            return _snapshot(cast(Script[Actor], result), event.target)
         _reject_result(
             result,
             "Event callbacks must return None, a same-stage Action, or an actor-compatible Script",

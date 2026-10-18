@@ -1,6 +1,11 @@
 from PIL import Image
-from plocks import Actor, Action, Box, Canvas, Costume, Key, Event, Message, Script, KeyDown, MouseButton, Point, Puppet, Sprite, Stage, TileMap
+from plocks import GamepadButton, GamepadPress
+from plocks import Actor, Action, Box, Canvas, Costume, Key, Event, Message, Script, GamepadDown, MouseButton, Point, Puppet, Sprite, Stage, TileMap
 stage = Stage()
+stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+stage.gamepads[0].map_key(Key.C, GamepadButton.X)
+stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
+stage.gamepads[0].map_key(Key.Z, GamepadButton.R)
 hero = Sprite(Image.new("RGBA", (8, 8)))
 person = Puppet.stick_figure()
 stage.add(hero)
@@ -16,7 +21,7 @@ stage.broadcast(message, "bad")  # error
 @hero.on_broadcast(message)  # error
 def wrong_payload(event: Event[Sprite, str]) -> None:
     pass
-@hero.on_key_down(Key.A)  # error
+@hero.on_button_down(GamepadButton.LEFT, gamepad=stage.gamepads[0])  # error
 def wrong_key(value: int) -> None:
     pass
 @stage.on_update  # error
@@ -51,11 +56,11 @@ common.call(Script(Sprite))  # error
 Script().call(Script(Sprite))  # error
 Script().when(True, then=Script())  # error
 Script(Puppet).set_costume(hero.costume)  # error
-@hero.on_key_down(Key.Z)  # error
-async def async_key(event: Event[Sprite, Key]) -> None:
+@hero.on_button_down(GamepadButton.R, gamepad=stage.gamepads[0])  # error
+async def async_key(event: Event[Sprite, GamepadPress]) -> None:
     pass
-@stage.on_key_down(Key.Z)  # error
-def targetless(event: Event[Stage, Key]) -> Script[Sprite]:
+@stage.on_button_down(GamepadButton.R, gamepad=stage.gamepads[0])  # error
+def targetless(event: Event[Stage, GamepadPress]) -> Script[Sprite]:
     return Script(Sprite)
 async def cannot_await() -> None:
     await hero.wait(1)  # error
@@ -65,8 +70,8 @@ hero.act(person.repeat(2))  # error
 hero.sequence().set_pose(person.pose)  # error
 person.sequence().set_costume(hero.costume)  # error
 
-@hero.on_key_down(Key.H)  # error
-def wrong_receiver(event: Event[Puppet, Key]) -> None:
+@hero.on_button_down(GamepadButton.Y, gamepad=stage.gamepads[0])  # error
+def wrong_receiver(event: Event[Puppet, GamepadPress]) -> None:
     pass
 @stage.on_broadcast(message)  # error
 def wrong_message_receiver(event: Event[Sprite, int]) -> None:
@@ -75,8 +80,8 @@ def wrong_message_receiver(event: Event[Sprite, int]) -> None:
 def old_update(actor: Sprite, dt: float) -> None:
     pass
 
-@hero.on_key_down(Key.C)
-def cannot_change_event(event: Event[Sprite, Key]) -> None:
+@hero.on_button_down(GamepadButton.X, gamepad=stage.gamepads[0])
+def cannot_change_event(event: Event[Sprite, GamepadPress]) -> None:
     event.target = person  # error
     event.data = Key.A  # error
 @hero.on_broadcast(message)
@@ -124,26 +129,26 @@ plocks.StageStateEquals  # error
 plocks.StageStateLessThan  # error
 
 
-from plocks import GamepadButton, GamepadDown, GamepadPress, PixeloramaSheet
+from plocks import PixeloramaSheet
 pad = stage.gamepads[0]
 pad.map_key("space", GamepadButton.A)  # error
 pad.map_key(Key.SPACE, Key.A)  # error
 pad.map_left_stick(left=GamepadButton.LEFT)  # error
 stage.gamepads = ()  # error
-stage.on_gamepad_button_down(Key.A)  # error
-hero.on_gamepad_button_down(GamepadButton.A, gamepad=1)  # error
-hero.on_key_down(Key.A, repeat="fast")  # error
+stage.on_button_down(Key.A)  # error
+hero.on_button_down(GamepadButton.A, gamepad=1)  # error
+hero.on_button_down(GamepadButton.LEFT, repeat="fast", gamepad=stage.gamepads[0])  # error
 GamepadDown(Key.A, pad)  # error
-@hero.on_gamepad_button_down(GamepadButton.A)  # error
-def wrong_gamepad_payload(event: Event[Sprite, Key]) -> None:
+@hero.on_button_down(GamepadButton.A)  # error
+def wrong_gamepad_payload(event: Event[Sprite, int]) -> None:
     pass
-@hero.on_gamepad_button_down(GamepadButton.B)  # error
+@hero.on_button_down(GamepadButton.B)  # error
 async def async_gamepad(event: Event[Sprite, GamepadPress]) -> None:
     pass
-@person.on_gamepad_button_down(GamepadButton.A)  # error
+@person.on_button_down(GamepadButton.A)  # error
 def wrong_gamepad_receiver(event: Event[Sprite, GamepadPress]) -> None:
     pass
-person.on_gamepad_button_down(GamepadButton.A, hero.sequence())  # error
+person.on_button_down(GamepadButton.A, hero.sequence())  # error
 art = PixeloramaSheet("hero.png")
 person.act(art.animation())  # error
 hero.costumes(art.frames)  # error
@@ -156,7 +161,45 @@ hero.costumes(art.frames, durations=("slow",))  # error
 stage.run(interactive="yes")  # error
 stage.run(True)  # error
 
+# Clones preserve dataclass types and require actor-compatible clone handlers.
+stateful.clone().state.health = "bad"  # error
+stateful.clone().state.health = 1.5  # error
+hero.clone().state.health = 1  # error
+stateful.is_clone = False  # error
+hero.on_clone(person.sequence())  # error
+person.on_clone(hero.sequence())  # error
+@stateful.on_clone  # error
+def bad_clone_receiver(event: Event[Puppet[PlayerState], None]) -> None:
+    pass
+@stateful.on_clone  # error
+def bad_clone_data(event: Event[Sprite[PlayerState], int]) -> None:
+    pass
+@hero.on_clone  # error
+async def async_clone(event: Event[Sprite, None]) -> None:
+    pass
+
 Sprite("platform.png", one_way="yes")  # error
 TileMap(["P"], {"P": "platform.png"}, tile_size=(32, 16), one_way=1)  # error
 hero.one_way = True  # error
 TileMap(["P"], {"P": "platform.png"}, tile_size=(32, 16)).one_way = frozenset({"P"})  # error
+
+from plocks import GamepadInput, Multiplayer, RemoteChange
+
+stage.keyboard  # error
+hero.on_key_down  # error
+stage.on_gamepad_button_down  # error
+Multiplayer(slots=("two",))  # error
+GamepadInput(buttons={GamepadButton.A})  # error
+GamepadInput(left_stick="left")  # error
+
+@stage.on_bot(gamepad=stage.gamepads[0])  # error
+def wrong_bot(event: Event[Stage, float]) -> None:
+    pass
+
+@stage.on_bot(gamepad=stage.gamepads[0])  # error
+async def async_bot(event: Event[Stage, float]) -> GamepadInput:
+    return GamepadInput()
+
+@stage.on_remote_change  # error
+def wrong_status(event: Event[Stage, RemoteChange]) -> Action:
+    return hero.wait(1)

@@ -180,16 +180,18 @@ def _live_game(command: Callable[[str], None], child: pexpect.spawn[str]) -> Non
     command("assert motion.done and hero.x==60 and hero._bubble is None")
     command(
         "hop=hero.sequence(); hop.glide_by(y=40,seconds=.1); "
-        "hop.wait(.35); hop.glide_by(y=-40,seconds=.1); hero.on_key_down(Key.SPACE,hop)"
+        "from plocks import GamepadButton; hop.wait(.35); hop.glide_by(y=-40,seconds=.1); hero.on_button_down(GamepadButton.A,hop,gamepad=stage.gamepads[0])"
     )
     command("pygame.event.post(pygame.event.Event(pygame.KEYDOWN,key=pygame.K_SPACE))")
     time.sleep(0.1)
     command("assert hero.y>0")
     time.sleep(0.55)
-    command("assert hero.y==0 and not stage._actions; assert stage.keyboard.is_down(Key.SPACE)")
+    command(
+        "assert hero.y==0 and not stage._actions; assert stage.gamepads[0].is_down(GamepadButton.A)"
+    )
     command("pygame.event.post(pygame.event.Event(pygame.WINDOWFOCUSLOST))")
     time.sleep(0.1)
-    command("assert not stage.paused and not stage.keyboard.is_down(Key.SPACE)")
+    command("assert not stage.paused and not stage.gamepads[0].is_down(GamepadButton.A)")
     command("points=Message[int]('points'); received=[]")
     command(
         "@hero.on_broadcast(points)\n"

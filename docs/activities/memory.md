@@ -12,7 +12,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from plocks import Costume, Event, Key, Sprite, Stage
+from plocks import Costume, Event, GamepadButton, Sprite, Stage, GamepadPress
 
 
 @dataclass
@@ -29,9 +29,9 @@ stage.add(hero)
 stage.add(friend)
 
 
-@hero.on_key_down(Key.SPACE)
-@friend.on_key_down(Key.ENTER)
-def collect(event: Event[Sprite[Memory], Key]) -> None:
+@hero.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+@friend.on_button_down(GamepadButton.A, gamepad=stage.gamepads[1])
+def collect(event: Event[Sprite[Memory], GamepadPress]) -> None:
     event.target.state.coins += 1
     event.target.say(f"Coins: {event.target.state.coins}", seconds=1)
 

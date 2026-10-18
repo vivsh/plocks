@@ -8,7 +8,7 @@ from .geometry import Point
 
 
 class Key(StrEnum):
-    """A supported keyboard key. Hold keys with keyboard.is_down(Key.RIGHT)."""
+    """A keyboard key used to configure logical gamepad mappings."""
 
     UP = "up"
     DOWN = "down"
@@ -74,19 +74,6 @@ class MouseButton(IntEnum):
     LEFT = 1
     MIDDLE = 2
     RIGHT = 3
-
-
-class Keyboard:
-    """Read held keys. Only stage input processing changes this state."""
-
-    __slots__ = ("_down",)
-
-    def __init__(self) -> None:
-        self._down: set[Key] = set()
-
-    def is_down(self, key: Key) -> bool:
-        """True while a key is held; use on_key_down for a single press."""
-        return key in self._down
 
 
 class Mouse:

@@ -12,6 +12,8 @@ from plocks import (
     Canvas,
     Costume,
     Event,
+    GamepadButton,
+    GamepadPress,
     Key,
     Message,
     RotationStyle,
@@ -25,6 +27,15 @@ from plocks import (
 # Find assets beside this script, even when running from another folder.
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=800, height=450, background="#102735")
+
+# Keys feed logical controls; gamepads and remote players work too.
+stage.gamepads[0].map_left_stick(left=Key.LEFT, right=Key.RIGHT, up=Key.UP, down=Key.DOWN)
+stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+stage.gamepads[0].map_key(Key.P, GamepadButton.START)
+stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
+stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
+stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
+stage.gamepads[0].map_key(Key.X, GamepadButton.X)
 backdrop = TiledBackground(assets / "jungle.png")
 stage.add(backdrop)
 
@@ -158,16 +169,16 @@ def hurt() -> None:
 
 
 # @ connects a function to a key press. Holding X is checked in update instead.
-@stage.on_key_down(Key.SPACE)
-def jump(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+def jump(event: Event[Stage, GamepadPress]) -> None:
     # global lets this helper change the jump speed at the top of this file.
     global vertical_speed
     if not finished() and grounded():
         vertical_speed = 650
 
 
-@stage.on_key_down(Key.R)
-def restart(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+def restart(event: Event[Stage, GamepadPress]) -> None:
     global health, defeated, vertical_speed, next_shot, protected_until
     hero.stop()
     for enemy in enemies:
@@ -189,8 +200,8 @@ def restart(event: Event[Stage, Key]) -> None:
     spawn_enemies()
 
 
-@stage.on_key_down(Key.P)
-def toggle_pause(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.START, gamepad=stage.gamepads[0])
+def toggle_pause(event: Event[Stage, GamepadPress]) -> None:
     if stage.paused:
         stage.resume()
     else:
@@ -209,9 +220,9 @@ def update(event: Event[Stage, float]) -> None:
         hero.visible = True
         return
     direction = 0
-    if stage.keyboard.is_down(Key.RIGHT):
+    if stage.gamepads[0].left_stick[0] > 0:
         direction += 1
-    if stage.keyboard.is_down(Key.LEFT):
+    if stage.gamepads[0].left_stick[0] < 0:
         direction -= 1
     hero.x = max(-365, min(1770, hero.x + direction * 220 * dt))
     if direction > 0:
@@ -244,7 +255,7 @@ def update(event: Event[Stage, float]) -> None:
         vertical_speed = 0
     # Blink during the safe moment after a hit. % 2 alternates between zero and one.
     hero.visible = stage.time >= protected_until or int(stage.time * 12) % 2 == 0
-    if stage.keyboard.is_down(Key.X) and stage.time >= next_shot:
+    if stage.gamepads[0].is_down(GamepadButton.X) and stage.time >= next_shot:
         fire(hero, True)
         next_shot = stage.time + 0.16
 

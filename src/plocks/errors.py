@@ -7,6 +7,10 @@ class PlocksError(Exception):
     """Base exception for a Plocks operation that cannot be completed."""
 
 
+class NetworkError(PlocksError):
+    """A multiplayer operation failed; the original cause remains available."""
+
+
 class AssetError(PlocksError):
     """An image, sound, or font cannot be read or decoded."""
 

@@ -6,13 +6,25 @@ from pathlib import Path
 import pygame
 import pytest
 
-from plocks import AudioError, Bounds, Event, Key, Sound, Stage, StageError
+from plocks import (
+    AudioError,
+    Bounds,
+    Event,
+    GamepadButton,
+    GamepadPress,
+    Key,
+    Sound,
+    Stage,
+    StageError,
+)
 from plocks._runtime import advance, close, dispatch, drive, poll
 
 
 def test_fixed_steps_and_bounded_backlog() -> None:
     """A stalled frame advances at most five ticks and discards whole-step excess."""
     stage = Stage()
+    stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     stage._state = "running"
     times: list[float] = []
 
@@ -30,6 +42,8 @@ def test_fixed_steps_and_bounded_backlog() -> None:
 def test_pause_sources_and_resume_baseline() -> None:
     """Automatic resume cannot remove user pause or consume paused wall time."""
     stage = Stage()
+    stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     stage._state = "running"
     advance(stage, 0)
     advance(stage, 0.05)
@@ -49,22 +63,26 @@ def test_pause_sources_and_resume_baseline() -> None:
 def test_input_edges_repeat_and_focus_clear() -> None:
     """Repeated keydown is one edge; independent hide/focus reasons do not cancel each other."""
     stage = Stage()
+    stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     stage._state = "running"
     stage._target = pygame.display.set_mode((10, 10))
     pygame.event.clear()
     presses: list[int] = []
-    stage.on_key_down(Key.SPACE)(lambda event: presses.append(1))
+    stage.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])(
+        lambda event: presses.append(1)
+    )
     for _ in range(2):
         pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE))
     poll(stage)
     dispatch(stage)
     dispatch(stage)
-    assert presses == [1] and stage.keyboard.is_down(Key.SPACE)
+    assert presses == [1] and stage.gamepads[0].is_down(GamepadButton.A)
     pygame.event.post(pygame.event.Event(pygame.WINDOWFOCUSLOST))
     pygame.event.post(pygame.event.Event(pygame.WINDOWHIDDEN))
     pygame.event.post(pygame.event.Event(pygame.WINDOWSHOWN))
     poll(stage)
-    assert stage.paused and not stage.keyboard.is_down(Key.SPACE)
+    assert stage.paused and not stage.gamepads[0].is_down(GamepadButton.A)
     pygame.event.post(pygame.event.Event(pygame.WINDOWFOCUSGAINED))
     poll(stage)
     assert not stage.paused
@@ -74,21 +92,23 @@ def test_input_edges_repeat_and_focus_clear() -> None:
 def test_snapshot_callback_registration() -> None:
     """A callback registered during dispatch joins only a subsequent dispatch of that list."""
     stage = Stage()
+    stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     stage._state = "running"
     calls: list[str] = []
 
-    def later(event: Event[Stage, Key]) -> None:
+    def later(event: Event[Stage, GamepadPress]) -> None:
         calls.append("later")
 
-    @stage.on_key_down(Key.A)
-    def first(event: Event[Stage, Key]) -> None:
+    @stage.on_button_down(GamepadButton.LEFT, gamepad=stage.gamepads[0])
+    def first(event: Event[Stage, GamepadPress]) -> None:
         calls.append("first")
-        stage.on_key_down(Key.A)(later)
+        stage.on_button_down(GamepadButton.LEFT, gamepad=stage.gamepads[0])(later)
 
-    stage._pending.append(Key.A)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.LEFT))
     dispatch(stage)
     assert calls == ["first"]
-    stage._pending.append(Key.A)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.LEFT))
     dispatch(stage)
     assert calls == ["first", "first", "later"]
 
@@ -104,6 +124,8 @@ def test_existing_resources_are_not_closed_on_rejection() -> None:
 def test_cancelled_driver_releases_resources() -> None:
     """Cancellation has the same cleanup guarantees as normal closure and callback failure."""
     stage = Stage()
+    stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     stage._state = "running"
     stage._target = pygame.display.set_mode((10, 10))
 
@@ -123,6 +145,8 @@ def test_sound_overlap_limit_stale_handle_and_master_volume() -> None:
     """Playback does not steal channels, and a retired handle cannot stop its replacement."""
     sound = Sound(Path(__file__).parents[1] / "tests/fixtures/games/proof/assets/tone.ogg")
     stage = Stage()
+    stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     stage._state = "running"
     voices = [stage.play(sound, volume=0.3, loop=True) for _ in range(16)]
     with pytest.raises(AudioError):
@@ -152,6 +176,8 @@ def test_sound_snapshot_survives_source_removal(tmp_path: Path) -> None:
     sound = Sound(filename)
     filename.unlink()
     stage = Stage()
+    stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     with pytest.raises(StageError):
         stage.play(sound)
     stage._state = "running"
@@ -162,6 +188,8 @@ def test_sound_snapshot_survives_source_removal(tmp_path: Path) -> None:
 def test_coordinate_roundtrip_and_validation() -> None:
     """Camera conversions round-trip without storing synchronized bounds or positions."""
     stage = Stage()
+    stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     stage.camera = (100, -50)
     assert stage.from_screen(stage.to_screen((12, 34))) == (12, 34)
     assert stage.from_screen(stage.to_screen((12, 34), world=False), world=False) == (12, 34)

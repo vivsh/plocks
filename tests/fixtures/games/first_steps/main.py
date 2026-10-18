@@ -1,14 +1,17 @@
 from PIL import Image
 
-from plocks import Key, Script, Sprite, Stage
+from plocks import GamepadButton, Key, Script, Sprite, Stage
 
 
 def main() -> None:
     """Press Right to glide. Repeated presses wait until the current glide finishes."""
     stage = Stage()
+    stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
     cat = Sprite(Image.new("RGBA", (32, 32), "orange"))
     stage.add(cat)
-    cat.on_key_down(Key.RIGHT, Script(Sprite).glide_by(x=60, seconds=0.4))
+    cat.on_button_down(
+        GamepadButton.RIGHT, Script(Sprite).glide_by(x=60, seconds=0.4), gamepad=stage.gamepads[0]
+    )
     stage.run()
 
 

@@ -5,13 +5,29 @@ from pathlib import Path
 
 import pytest
 
-from plocks import Event, Key, KeyDown, Message, Script, Sprite, Stage
+from plocks import (
+    Event,
+    GamepadButton,
+    GamepadDown,
+    GamepadPress,
+    Key,
+    Message,
+    Script,
+    Sprite,
+    Stage,
+)
 from plocks._runtime import advance, close, dispatch
 
 
 @pytest.fixture
 def world() -> Iterator[tuple[Stage, Sprite, Sprite]]:
     stage = Stage()
+    stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
+    stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
+    stage.gamepads[0].map_key(Key.UP, GamepadButton.UP)
+    stage.gamepads[0].map_key(Key.Z, GamepadButton.R)
     # Existing ready-made pixels keep the integration path independent of artwork generation.
     image = Path(__file__).parents[1] / "src/plocks/_games/platformer/assets/hero.png"
     first, second = Sprite(image), Sprite(image, x=100)
@@ -43,13 +59,13 @@ def test_shared_script_branch_event_and_independent_completion(
     trip = (
         Script()
         .when(
-            KeyDown(Key.UP),
+            GamepadDown(GamepadButton.UP, gamepad=stage.gamepads[0]),
             then=Script().glide_by(y=60, seconds=0.2),
             either=Script().glide_by(y=-60, seconds=0.2),
         )
         .broadcast(finished)
     )
-    stage.keyboard._down.add(Key.UP)
+    stage._held_keys.add(Key.UP)
     one = first.act(trip)
     two = second.act(trip)
     ticks(stage, 20)
@@ -92,33 +108,33 @@ def test_callback_selects_script_and_busy_does_not_execute_twice(
     stage, first, _ = world
     calls = []
 
-    @first.on_key_down(Key.SPACE)
-    def start(event: Event[Sprite, Key]) -> Script[Sprite]:
+    @first.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+    def start(event: Event[Sprite, GamepadPress]) -> Script[Sprite]:
         calls.append(event.data)
         return Script(Sprite).glide_by(y=20, seconds=0.1)
 
-    stage._pending.append(Key.SPACE)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.A))
     dispatch(stage)
-    stage._pending.append(Key.SPACE)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.A))
     dispatch(stage)
     ticks(stage, 15)
-    assert calls == [Key.SPACE] and first.y == 20
+    assert calls == [GamepadPress(stage.gamepads[0], GamepadButton.A)] and first.y == 20
 
 
 def test_async_registration_and_return_rejected(world: tuple[Stage, Sprite, Sprite]) -> None:
     stage, first, _ = world
 
-    async def unsupported(event: Event[Stage, Key]) -> None:
+    async def unsupported(event: Event[Stage, GamepadPress]) -> None:
         pass
 
     with pytest.raises(TypeError, match="synchronous"):
-        stage.on_key_down(Key.Z)(unsupported)  # type: ignore[type-var]
+        stage.on_button_down(GamepadButton.R, gamepad=stage.gamepads[0])(unsupported)  # type: ignore[type-var]
 
-    @stage.on_key_down(Key.A)
-    def bad(event: Event[Stage, Key]) -> None:
+    @stage.on_button_down(GamepadButton.LEFT, gamepad=stage.gamepads[0])
+    def bad(event: Event[Stage, GamepadPress]) -> None:
         return unsupported(event)  # type: ignore[return-value]
 
-    stage._pending.append(Key.A)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.LEFT))
     with pytest.raises(TypeError, match="callbacks must return"):
         dispatch(stage)
     assert not hasattr(first.wait(0), "__await__")
@@ -131,13 +147,17 @@ def test_nested_snapshot_and_repeated_branch_selection(world: tuple[Stage, Sprit
         Script()
         .repeat(2)
         .call(child)
-        .when(KeyDown(Key.LEFT), then=Script().move(10), either=Script().move(-1))
+        .when(
+            GamepadDown(GamepadButton.LEFT, gamepad=stage.gamepads[0]),
+            then=Script().move(10),
+            either=Script().move(-1),
+        )
         .wait(0.05)
     )
     child.move(100)
     action = first.act(recipe)
     ticks(stage, 2)
-    stage.keyboard._down.add(Key.LEFT)
+    stage._held_keys.add(Key.LEFT)
     ticks(stage, 15)
     assert action.done and first.x == 13
 
@@ -157,6 +177,12 @@ def test_false_without_either_and_touching_reference_lifetime(
     ticks(stage, 2)
     assert first.x == 3
     other = Stage()
+    other.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
+    other.gamepads[0].map_key(Key.H, GamepadButton.Y)
+    other.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+    other.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
+    other.gamepads[0].map_key(Key.UP, GamepadButton.UP)
+    other.gamepads[0].map_key(Key.Z, GamepadButton.R)
     other.add(second)
     try:
         first.act(Script().when(Touching(second), then=Script().move(1)))
@@ -277,13 +303,13 @@ def test_callback_returned_script_scopes_other_new_actions(
 ) -> None:
     stage, first, _ = world
 
-    @first.on_key_down(Key.A)
-    def launch(event: Event[Sprite, Key]) -> Script[Sprite]:
+    @first.on_button_down(GamepadButton.LEFT, gamepad=stage.gamepads[0])
+    def launch(event: Event[Sprite, GamepadPress]) -> Script[Sprite]:
         actor = event.target
         actor.glide_by(x=500, seconds=10)
         return Script(Sprite).wait(0.1)
 
-    stage._pending.append(Key.A)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.LEFT))
     dispatch(stage)
     ticks(stage, 10)
     frozen = first.x
@@ -316,21 +342,23 @@ def test_async_callable_and_wrapped_coroutine_are_rejected(
 
     stage, _, _ = world
 
-    async def asynchronous(event: Event[Stage, Key]) -> None:
+    async def asynchronous(event: Event[Stage, GamepadPress]) -> None:
         pass
 
     @wraps(asynchronous)
-    def wrapped(event: Event[Stage, Key]) -> object:
+    def wrapped(event: Event[Stage, GamepadPress]) -> object:
         return asynchronous(event)
 
     class AsyncCallable:
-        async def __call__(self, event: Event[Stage, Key]) -> None:
+        async def __call__(self, event: Event[Stage, GamepadPress]) -> None:
             pass
 
     for callback in (wrapped, AsyncCallable()):
         with pytest.raises(TypeError, match="synchronous"):
-            stage.on_key_down(Key.A)(cast(Callable[[Event[Stage, Key]], None], callback))
-    assert not stage._keys
+            stage.on_button_down(GamepadButton.LEFT, gamepad=stage.gamepads[0])(
+                cast(Callable[[Event[Stage, GamepadPress]], None], callback)
+            )
+    assert not stage._gamepad_handlers
 
 
 def test_puppet_capability_and_skeleton_admission(world: tuple[Stage, Sprite, Sprite]) -> None:
@@ -360,13 +388,13 @@ def test_callback_cannot_leave_work_on_detached_receiver(
 
     stage, first, _ = world
 
-    @first.on_key_down(Key.A)
-    def remove_self(event: Event[Sprite, Key]) -> Script[Sprite]:
+    @first.on_button_down(GamepadButton.LEFT, gamepad=stage.gamepads[0])
+    def remove_self(event: Event[Sprite, GamepadPress]) -> Script[Sprite]:
         actor = event.target
         stage.remove(actor)
         return Script(Sprite).wait(1)
 
-    stage._pending.append(Key.A)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.LEFT))
     with pytest.raises(StageError, match="detached during"):
         dispatch(stage)
     assert not stage._actions
@@ -414,23 +442,23 @@ def test_engine_events_have_receiver_target_and_stage_source(
     from plocks import Event
 
     stage, first, _ = world
-    keys: list[Event[Stage | Sprite, Key]] = []
+    keys: list[Event[Stage | Sprite, GamepadPress]] = []
     updates: list[Event[Stage | Sprite, float]] = []
 
-    def pressed(event: Event[Stage | Sprite, Key]) -> None:
+    def pressed(event: Event[Stage | Sprite, GamepadPress]) -> None:
         keys.append(event)
 
     def updated(event: Event[Stage | Sprite, float]) -> None:
         updates.append(event)
 
-    stage.on_key_down(Key.SPACE)(pressed)
-    first.on_key_down(Key.SPACE)(pressed)
+    stage.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])(pressed)
+    first.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])(pressed)
     stage.on_update(updated)
     first.on_update(updated)
-    stage._pending.append(Key.SPACE)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.A))
     ticks(stage, 1)
     assert [event.target for event in keys] == [stage, first]
-    assert all(event.source is stage and event.data is Key.SPACE for event in keys)
+    assert all(event.source is stage and event.data.button is GamepadButton.A for event in keys)
     assert [event.target for event in updates] == [stage, first]
     assert all(event.source is stage and event.data == 1 / stage.tick_rate for event in updates)
     assert not hasattr(keys[0], "message") and not hasattr(keys[0], "event")
@@ -458,24 +486,24 @@ def test_one_callback_handles_keys_and_broadcasts_for_every_receiver(
     stage, first, second = world
     person = Puppet.stick_figure()
     stage.add(person)
-    channel = Message[Key]("key command")
-    seen: list[Event[Stage | Actor, Key]] = []
+    channel = Message[GamepadPress]("button command")
+    seen: list[Event[Stage | Actor, GamepadPress]] = []
 
-    def receive(event: Event[Stage | Actor, Key]) -> None:
+    def receive(event: Event[Stage | Actor, GamepadPress]) -> None:
         seen.append(event)
 
-    stage.on_key_down(Key.H)(receive)
+    stage.on_button_down(GamepadButton.Y, gamepad=stage.gamepads[0])(receive)
     stage.on_broadcast(channel)(receive)
     for actor in (first, person):
-        actor.on_key_down(Key.H)(receive)
+        actor.on_button_down(GamepadButton.Y, gamepad=stage.gamepads[0])(receive)
         actor.on_broadcast(channel)(receive)
-    stage._pending.append(Key.H)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.Y))
     dispatch(stage)
-    second.broadcast(channel, Key.H)
+    second.broadcast(channel, GamepadPress(stage.gamepads[0], GamepadButton.Y))
     ticks(stage, 3)
 
     assert [event.target for event in seen] == [stage, first, person] * 2
-    assert all(type(event) is Event and event.data is Key.H for event in seen)
+    assert all(type(event) is Event and event.data.button is GamepadButton.Y for event in seen)
     assert all(event.source is stage for event in seen[:3])
     assert all(event.source is second for event in seen[3:])
     assert all(not hasattr(event, "message") for event in seen)

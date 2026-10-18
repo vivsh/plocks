@@ -2,10 +2,26 @@
 
 from pathlib import Path
 
-from plocks import Costume, Ease, Event, Key, KeyDown, Sprite, Stage
+from plocks import (
+    Costume,
+    Ease,
+    Event,
+    GamepadButton,
+    GamepadDown,
+    GamepadPress,
+    Key,
+    Sprite,
+    Stage,
+)
 
 assets = Path(__file__).resolve().parents[1] / "assets"
 stage = Stage(background="#fff0cc")
+
+# Keys feed logical controls; gamepads and remote players work too.
+stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
+stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
+stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
+stage.gamepads[0].map_key(Key.UP, GamepadButton.UP)
 hero = Sprite(Costume(assets / "dinosaur.png").resized(width=72, height=72), x=-120)
 stage.add(hero)
 trip = hero.sequence().glide_to(x=120, seconds=1, easing=Ease.IN_OUT)
@@ -13,20 +29,24 @@ chat = hero.repeat().say("Coming through!", seconds=0.4).think("Whee!", seconds=
 together = hero.sequence().during(trip, meanwhile=chat)
 yes = hero.sequence().say("You held Up!", seconds=1)
 no = hero.sequence().say("Try holding Up next time.", seconds=1)
-outing = hero.sequence().call(together).when(KeyDown(Key.UP), then=yes, either=no)
-hero.on_key_down(Key.SPACE, outing)
+outing = (
+    hero.sequence()
+    .call(together)
+    .when(GamepadDown(GamepadButton.UP, gamepad=stage.gamepads[0]), then=yes, either=no)
+)
+hero.on_button_down(GamepadButton.A, outing, gamepad=stage.gamepads[0])
 
 
-@hero.on_key_down(Key.R)
-def return_home(event: Event[Sprite, Key]) -> None:
+@hero.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+def return_home(event: Event[Sprite, GamepadPress]) -> None:
     # stop cancels this character's work. Properties change immediately.
     event.target.stop()
     event.target.position = (-120, 0)
     event.target.clear_bubble()
 
 
-@hero.on_key_down(Key.H)
-def hop(event: Event[Sprite, Key]) -> None:
+@hero.on_button_down(GamepadButton.Y, gamepad=stage.gamepads[0])
+def hop(event: Event[Sprite, GamepadPress]) -> None:
     # after connects commands without a separate script or timer.
     up = event.target.glide_by(y=80, seconds=0.3, easing=Ease.OUT)
     event.target.glide_by(y=-80, seconds=0.3, easing=Ease.IN, after=up)

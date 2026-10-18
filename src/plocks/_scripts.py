@@ -205,7 +205,12 @@ async def _observe(action: Action) -> None:
 
 
 def _trigger(
-    stage: Stage, handler: _Handler, data: object = None, *, delivery: _Delivery | None = None
+    stage: Stage,
+    handler: _Handler,
+    data: object = None,
+    *,
+    delivery: _Delivery | None = None,
+    source: Stage | Sprite | Puppet | None = None,
 ) -> Action | None:
     if not stage.running or (handler.actor is not None and handler.actor._stage is not stage):
         return None
@@ -217,7 +222,7 @@ def _trigger(
     before = _actions(stage)
     target = stage if handler.actor is None else handler.actor
     occurrence = (
-        Event(stage, target, data)
+        Event(stage if source is None else source, target, data)
         if delivery is None
         else Event(delivery.source, target, delivery.data)
     )

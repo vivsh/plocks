@@ -57,7 +57,13 @@ class Circle:
 
 
 class Physics:
-    """The native world belonging to one enabled Stage. Access through stage.physics."""
+    """The native world belonging to one enabled Stage. Access through stage.physics.
+
+    One-way worlds adapt native precision to motion and collider size, without
+    changing simulation time. PhysicsError stops execution if safe stepping would
+    require more than 1024 native substeps per tick. Reduce speed/force, enlarge
+    very small colliders, or increase the stage's tick_rate for that workload.
+    """
 
     __slots__ = ("_bodies", "_space", "_stage", "_terrain")
 

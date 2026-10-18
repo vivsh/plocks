@@ -23,10 +23,12 @@ _D = TypeVar("_D")
 class Event(Generic[_R_co, _D]):  # noqa: UP046 -- explicit receiver and payload types preserve callback checking
     """One callback occurrence: source, receiving target, and typed data.
 
-    Startup data is None, key data is Key, click data is (position, button), and
+    Startup and clone-start data are None; key data is Key, click data is
+    (position, button), and
     update data is simulated seconds. Broadcast data has its Message payload type
     and is passed by reference. Engine sources are Stage; broadcast sources are
-    their senders. Targets retain their exact Sprite/Puppet/Stage type for editor
+    their senders. Clone-start sources are the copied actors and targets are their
+    new clones. Targets retain their exact Sprite/Puppet/Stage type for editor
     completion. Each receiver gets an immutable envelope with no execution history.
     The Message channel is selected by registration, not stored on this occurrence.
     """
@@ -37,6 +39,15 @@ class Event(Generic[_R_co, _D]):  # noqa: UP046 -- explicit receiver and payload
 
 
 type Click = tuple[Point, MouseButton]
+
+
+@dataclass(frozen=True, slots=True)
+class RemoteChange:
+    """A zero-based remote slot became ready or disconnected, with a safe reason."""
+
+    slot: int
+    connected: bool
+    reason: str | None
 
 
 @dataclass(frozen=True, slots=True)

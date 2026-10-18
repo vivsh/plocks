@@ -7,7 +7,20 @@ from typing import cast
 
 import pytest
 
-from plocks import Event, Joint, Key, Message, Puppet, Script, Skeleton, Sprite, Stage, StageError
+from plocks import (
+    Event,
+    GamepadButton,
+    GamepadPress,
+    Joint,
+    Key,
+    Message,
+    Puppet,
+    Script,
+    Skeleton,
+    Sprite,
+    Stage,
+    StageError,
+)
 from plocks._runtime import close, dispatch
 from tests.test_scripts import ticks
 
@@ -30,6 +43,7 @@ class GameState:
 @pytest.fixture
 def world() -> Iterator[tuple[Stage[GameState], Sprite[PlayerState], Sprite[PlayerState]]]:
     stage = Stage(state=GameState)
+    stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
     first, second = Sprite(IMAGE, state=PlayerState), Sprite(IMAGE, state=PlayerState)
     stage.add(first)
     stage.add(second)
@@ -66,6 +80,7 @@ def test_float_annotation_accepts_integer_default_and_decimal_assignment(kind: s
         owner = Puppet(Skeleton({"root": Joint(None)}), parts={"root": IMAGE}, state=PlayerState)
     else:
         owner = Stage(state=PlayerState)
+        owner.gamepads[0].map_key(Key.H, GamepadButton.Y)
     assert owner.state.speed == 1 and type(owner.state.speed) is int
     owner.state.speed = 0.5
     owner.state.speed += 0.25
@@ -180,6 +195,7 @@ def test_slotted_inherited_and_frozen_dataclasses_keep_normal_behavior() -> None
         name: str = "visitor"
 
     stage = Stage(state=ReadOnly)
+    stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
     assert stage.state.name == "visitor"
     with pytest.raises(FrozenInstanceError):
         setattr(stage.state, "name", "changed")  # noqa: B010 -- ordinary frozen dataclass behavior
@@ -236,14 +252,14 @@ def test_paused_input_updates_state_while_script_waits_and_cancellation_stops_de
     def hurt(event: Event[Sprite[PlayerState], int]) -> None:
         event.target.state.health -= event.data
 
-    @first.on_key_down(Key.H)
-    def hit(event: Event[Sprite[PlayerState], Key]) -> None:
+    @first.on_button_down(GamepadButton.Y, gamepad=stage.gamepads[0])
+    def hit(event: Event[Sprite[PlayerState], GamepadPress]) -> None:
         event.target.state.health -= 1
 
     action = first.act(Script().wait(0.1).broadcast(damage, 10, to=first))
     ticks(stage, 2)
     stage.pause()
-    stage._pending.append(Key.H)
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.Y))
     dispatch(stage)
     ticks(stage, 20)
     assert first.state.health == 99 and not action.done
@@ -303,6 +319,7 @@ def test_callback_failures_keep_original_exception_and_already_written_values(
 def test_puppet_and_stage_events_preserve_their_dataclass_state_types() -> None:
     """Every receiver kind uses its constructed state directly in typed callbacks."""
     stage = Stage(state=GameState)
+    stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
     person = Puppet(Skeleton({"root": Joint(None)}), parts={"root": IMAGE}, state=PlayerState)
     stage.add(person)
     stage._state = "running"
@@ -312,12 +329,12 @@ def test_puppet_and_stage_events_preserve_their_dataclass_state_types() -> None:
     def health(event: Event[Puppet[PlayerState], int]) -> None:
         event.target.state.health += event.data
 
-    @stage.on_key_down(Key.H)
-    def score(event: Event[Stage[GameState], Key]) -> None:
+    @stage.on_button_down(GamepadButton.Y, gamepad=stage.gamepads[0])
+    def score(event: Event[Stage[GameState], GamepadPress]) -> None:
         event.target.state.score += 3
 
     try:
-        stage._pending.append(Key.H)
+        stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.Y))
         dispatch(stage)
         stage.broadcast(message, -10, to=person)
         ticks(stage, 3)

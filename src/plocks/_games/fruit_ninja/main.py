@@ -3,7 +3,19 @@
 from pathlib import Path
 from random import choice, uniform
 
-from plocks import Canvas, Costume, Event, Key, MouseButton, Point, Sound, Sprite, Stage
+from plocks import (
+    Canvas,
+    Costume,
+    Event,
+    GamepadButton,
+    GamepadPress,
+    Key,
+    MouseButton,
+    Point,
+    Sound,
+    Sprite,
+    Stage,
+)
 
 
 def crosses(start: Point, end: Point, center: Point, radius: float) -> bool:
@@ -29,6 +41,9 @@ def crosses(start: Point, end: Point, center: Point, radius: float) -> bool:
 # Find assets beside this script, even when running from another folder.
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=800, height=450, background="#192b40")
+
+# Keys feed logical controls; gamepads and remote players work too.
+stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
 names = ("apple", "orange", "melon", "bomb")
 # Dictionaries let us look up the whole fruit and its two cut pieces by name.
 costumes: dict[str, Costume] = {}
@@ -69,8 +84,8 @@ def throw() -> None:
     flying.append((fruit, speed_x, speed_y, spin, name))
 
 
-@stage.on_key_down(Key.R)
-def restart(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+def restart(event: Event[Stage, GamepadPress]) -> None:
     global score, missed, over, thrown, next_throw, previous
     for item in flying:
         fruit = item[0]

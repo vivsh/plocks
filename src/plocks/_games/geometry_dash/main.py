@@ -2,11 +2,26 @@
 
 from pathlib import Path
 
-from plocks import Bounds, Canvas, Event, Key, Sound, Sprite, Stage, TileMap
+from plocks import (
+    Bounds,
+    Canvas,
+    Event,
+    GamepadButton,
+    GamepadPress,
+    Key,
+    Sound,
+    Sprite,
+    Stage,
+    TileMap,
+)
 
 # Find assets beside this script, even when running from another folder.
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=800, height=450, background="#19253d")
+
+# Keys feed logical controls; gamepads and remote players work too.
+stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
+stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
 # Repeat a stone tile to make the floor. layer=-1 puts it behind the hero.
 ground = TileMap(
     ["#" * 100] * 2,
@@ -34,16 +49,16 @@ attempts = 1
 
 
 # @ connects this function to Space. Only jump when the cube is on the floor.
-@hero.on_key_down(Key.SPACE)
-def jump(event: Event[Sprite, Key]) -> None:
+@hero.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+def jump(event: Event[Sprite, GamepadPress]) -> None:
     # global lets this helper change speed_y at the top of this file.
     global speed_y
     if outcome == "playing" and hero.y == -124:
         speed_y = 540
 
 
-@stage.on_key_down(Key.R)
-def restart(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+def restart(event: Event[Stage, GamepadPress]) -> None:
     global speed_y, outcome, attempts
     hero.position = (-240, -124)
     hero.direction = 90

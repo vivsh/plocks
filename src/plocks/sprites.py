@@ -13,7 +13,6 @@ from .events import Click, Event, GamepadPress
 from .gamepads import Gamepad, GamepadButton
 from .geometry import Bounds, Point, _integer, _number, _Placement, _point, _positive, _rotate
 from .imaging import Costume, CostumeSource, _costume
-from .input import Key
 from .messages import Message
 from .motion import (
     Ease,
@@ -50,6 +49,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
     __slots__ = (
         "_bubble",
+        "_is_clone",
         "_layer",
         "_one_way",
         "_rotation_style",
@@ -124,14 +124,55 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
             raise TypeError("Use a BodyType value")
         self._stage: Stage | None = None
         self._rotation_style = RotationStyle.ALL_AROUND
+        self._is_clone = False
         self._bubble: _Say | _Think | _BubbleRun | None = None
+
+    @property
+    def is_clone(self) -> bool:
+        """Whether this actor was created by clone(); removal does not change it."""
+        return self._is_clone
+
+    def clone(self) -> Sprite[_State_co]:
+        """Add an independent copy to the same stage and queue its clone-start event.
+
+        Copy current transforms and appearance, shallow-copy dataclass state, and
+        inherit actor-bound controls and handlers. Nested state values and immutable
+        assets are shared. Running actions, bubbles and voices are not copied.
+        Physics configuration is copied into a new body with zero initial velocity.
+        Clone-start handlers run later, allowing position changes before they start.
+
+        Raises StageError when detached, closed, or the 300-clone limit is reached.
+        Custom actor subclasses must implement their own factory. State-copy failures
+        retain their original exception. Removing a clone retires its registrations.
+        """
+        from ._cloning import _clone
+
+        return cast("Sprite[_State_co]", _clone(self))
+
+    @overload
+    def on_clone(
+        self, work: Callable[[Event[Self, None]], _R]
+    ) -> Callable[[Event[Self, None]], _R]: ...
+    @overload
+    def on_clone(self, work: Script[Sprite] | Script[Actor]) -> None: ...
+    def on_clone(self, work: object) -> object:
+        """Bind a script or callback(event) to each newly created clone.
+
+        event.target is the new clone, event.source is the actor it copied, and
+        event.data is None. Use event.target in inherited handlers. Attach before
+        registering. Each clone inherits a snapshot of existing registrations.
+        """
+        from .stage import _attached
+
+        return _attached(self)._on_actor_clone(self, work)
 
     @property
     def state(self) -> _State_co:
         """This owner's dataclass instance, or None when state was not supplied.
 
         The association is read-only; its fields follow ordinary Python behavior.
-        Each owner constructs its own instance. Values survive removal and closure.
+        Constructors create an instance; clone() shallow-copies its current values.
+        Values survive removal and closure.
         """
         return self._state
 
@@ -351,40 +392,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         return _attached(self)._on_actor_click(self, work, when_busy)
 
     @overload
-    def on_key_down(
-        self, key: Key, *, repeat: float | None = None, when_busy: WhenBusy = WhenBusy.IGNORE
-    ) -> Callable[[Callable[[Event[Self, Key]], _R]], Callable[[Event[Self, Key]], _R]]: ...
-    @overload
-    def on_key_down(
-        self,
-        key: Key,
-        script: Script[Sprite] | Script[Actor],
-        *,
-        repeat: float | None = None,
-        when_busy: WhenBusy = WhenBusy.IGNORE,
-    ) -> None: ...
-    def on_key_down(
-        self,
-        key: Key,
-        script: Script[Sprite] | Script[Actor] | None = None,
-        *,
-        repeat: float | None = None,
-        when_busy: WhenBusy = WhenBusy.IGNORE,
-    ) -> object:
-        """Bind Script or callback(event) to a fresh key transition.
-
-        Held movement belongs in update. event.data is Key; event.target is this actor. Returning a Script
-        selects it for this actor; an Action observes already admitted work.
-        """
-        from .stage import _attached
-
-        stage = _attached(self)
-        if script is not None:
-            return stage.on_key_down(key, self, script, repeat=repeat, when_busy=when_busy)
-        return stage._key_decorator(key, self, when_busy, repeat)
-
-    @overload
-    def on_gamepad_button_down(
+    def on_button_down(
         self,
         button: GamepadButton,
         *,
@@ -395,7 +403,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         [Callable[[Event[Self, GamepadPress]], _R]], Callable[[Event[Self, GamepadPress]], _R]
     ]: ...
     @overload
-    def on_gamepad_button_down(
+    def on_button_down(
         self,
         button: GamepadButton,
         script: Script[Sprite] | Script[Actor],
@@ -404,7 +412,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         repeat: float | None = None,
         when_busy: WhenBusy = WhenBusy.IGNORE,
     ) -> None: ...
-    def on_gamepad_button_down(
+    def on_button_down(
         self,
         button: GamepadButton,
         script: Script[Sprite] | Script[Actor] | None = None,
@@ -424,7 +432,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         repeat = _repeat_interval(repeat)
         _gamepad_selection(stage, button, gamepad)
         if script is not None:
-            return stage.on_gamepad_button_down(
+            return stage.on_button_down(
                 button, self, script, gamepad=gamepad, repeat=repeat, when_busy=when_busy
             )
         return stage._gamepad_decorator(button, self, gamepad, repeat, when_busy)

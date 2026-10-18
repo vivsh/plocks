@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from plocks import Canvas, Event, Key, Message, Script, Sprite, Stage
+from plocks import Canvas, Event, GamepadButton, GamepadPress, Key, Message, Script, Sprite, Stage
 
 
 @dataclass
@@ -22,6 +22,9 @@ class GameState:
 
 assets = Path(__file__).resolve().with_name("assets")
 stage = Stage(background="#172d46", state=GameState)
+stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
+stage.gamepads[0].map_key(Key.P, GamepadButton.START)
+stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
 first = Sprite(assets / "hero.png", x=-120, y=-40, state=PlayerState)
 second = Sprite(assets / "hero.png", x=40, y=40, state=PlayerState)
 second.state.health = 40
@@ -36,8 +39,8 @@ trip = (
     .glide_by(x=60, seconds=0.25)
     .broadcast(finished)
 )
-first.on_key_down(Key.SPACE, trip)
-second.on_key_down(Key.SPACE, trip)
+first.on_button_down(GamepadButton.A, trip, gamepad=stage.gamepads[0])
+second.on_button_down(GamepadButton.A, trip, gamepad=stage.gamepads[0])
 
 
 @first.on_broadcast(damage)
@@ -53,8 +56,8 @@ def take_damage(event: Event[Sprite[PlayerState], int]) -> None:
     actor.state.hits.append(event.data)
 
 
-@first.on_key_down(Key.H)
-def hit(event: Event[Sprite[PlayerState], Key]) -> None:
+@first.on_button_down(GamepadButton.Y, gamepad=stage.gamepads[0])
+def hit(event: Event[Sprite[PlayerState], GamepadPress]) -> None:
     event.target.state.health -= 1
 
 
@@ -64,8 +67,8 @@ def report(event: Event[Stage[GameState], None]) -> None:
     event.target.state.reports += 1
 
 
-@stage.on_key_down(Key.P)
-def pause(event: Event[Stage[GameState], Key]) -> None:
+@stage.on_button_down(GamepadButton.START, gamepad=stage.gamepads[0])
+def pause(event: Event[Stage[GameState], GamepadPress]) -> None:
     if event.target.paused:
         event.target.resume()
     else:

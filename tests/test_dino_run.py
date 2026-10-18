@@ -11,7 +11,7 @@ import pygame
 import pytest
 from PIL import Image
 
-from plocks import Box, GamepadButton, Key, Sprite, Stage
+from plocks import Box, GamepadButton, GamepadPress, Key, Sprite, Stage
 from plocks._render import frame
 from plocks._runtime import advance, close
 from plocks._scripts import _step, _trigger
@@ -45,7 +45,7 @@ def ticks(stage: Stage, count: int) -> None:
 
 def key(stage: Stage, pressed: Key) -> None:
     """Queue a raw key press, keeping UI controls available even while paused."""
-    stage._pending.append(pressed)
+    stage._pending.append(GamepadPress(stage.gamepads[0], stage.gamepads[0]._key_buttons[pressed]))
     ticks(stage, 1)
 
 
@@ -63,11 +63,11 @@ def test_jump_land_duck_and_pause(game: dict[str, object]) -> None:
     assert dino.y > y + 40 and not dino.body.grounded
     ticks(stage, 60)
     assert dino.body.grounded
-    stage.keyboard._down.add(Key.S)
+    stage._held_keys.add(Key.S)
     ticks(stage, 1)
     assert game["crouching"] and dino.costume.height == 38
     assert dino.body.shape == Box(52, 28, center=(6, 18))
-    stage.keyboard._down.clear()
+    stage._held_keys.clear()
     ticks(stage, 1)
     assert not game["crouching"] and dino.costume.height == 72
     key(stage, Key.P)
@@ -109,13 +109,13 @@ def test_bird_can_be_ducked_and_visuals_scroll(game: dict[str, object]) -> None:
     stage, dino = cast(Stage, game["stage"]), cast(Sprite, game["dino"])
     game["distance"] = 2100.0
     game["choice"] = lambda kinds: "bird"
-    stage.keyboard._down.add(Key.S)
+    stage._held_keys.add(Key.S)
     ticks(stage, 100)
     bird = cast(list[Sprite], game["obstacles"])[0]
     bird.x = dino.x
     ticks(stage, 2)
     assert game["playing"] and game["crouching"]
-    stage.keyboard._down.clear()
+    stage._held_keys.clear()
     ticks(stage, 4)
     assert not game["playing"]
 

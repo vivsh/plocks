@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 import pygame
 import pytest
 
-from plocks import Event, Key, Sound, Sprite, Stage, StageError
+from plocks import Event, GamepadButton, Key, Sound, Sprite, Stage, StageError
 
 
 @pytest.fixture
@@ -28,6 +28,8 @@ def console(
     monkeypatch.setattr("IPython.get_ipython", lambda: shell)
     monkeypatch.setattr("IPython.core.async_helpers.get_asyncio_loop", lambda: loop)
     stage = Stage()
+    stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     try:
         yield stage, shell, loop
     finally:
@@ -74,6 +76,34 @@ def test_stop_from_callback_waits_for_safe_driver_cleanup(
     shell.showtraceback.assert_not_called()
 
 
+def test_interactive_multiplayer_uses_and_retires_the_outer_driver(
+    console: tuple[Stage, Mock, asyncio.AbstractEventLoop],
+) -> None:
+    """Networking adds no prompt task and cancellation closes its listener and selector."""
+    import socket
+
+    pytest.importorskip("msgspec")
+    pytest.importorskip("websockets")
+    from plocks import Multiplayer
+    from plocks._network import _Host
+
+    stage, shell, loop = console
+    with socket.socket() as reserve:
+        reserve.bind(("127.0.0.1", 0))
+        port = reserve.getsockname()[1]
+    stage.run(interactive=True, multiplayer=Multiplayer(slots=(1,), bind="127.0.0.1", port=port))
+    owner, task = stage._network, stage._task
+    assert isinstance(owner, _Host) and task is not None
+    loop.run_until_complete(asyncio.sleep(0.03))
+    assert asyncio.all_tasks(loop) == {task} and stage.time > 0
+    task.cancel()
+    loop.run_until_complete(asyncio.sleep(0))
+    assert stage._network is None and stage._task is None
+    assert owner.listener.fileno() == -1 and owner.selector.get_map() is None
+    assert not asyncio.all_tasks(loop)
+    shell.showtraceback.assert_not_called()
+
+
 def test_external_cancellation_retires_actions_actors_and_audio(
     console: tuple[Stage, Mock, asyncio.AbstractEventLoop],
 ) -> None:
@@ -116,7 +146,7 @@ def test_original_callback_error_is_observed_after_complete_cleanup(
     elif event == "draw":
         stage.on_draw(fail)
     else:
-        stage.on_key_down(Key.SPACE)(fail)
+        stage.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])(fail)
     stage.run(interactive=True)
     task = stage._task
     if event == "key":
@@ -139,7 +169,7 @@ def test_interactive_focus_policy_keeps_hide_and_user_pause_independent(
     pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RIGHT))
     pygame.event.post(pygame.event.Event(pygame.WINDOWFOCUSLOST))
     loop.run_until_complete(asyncio.sleep(0.03))
-    assert not stage.paused and not stage.keyboard.is_down(Key.RIGHT)
+    assert not stage.paused and not stage.gamepads[0].is_down(GamepadButton.RIGHT)
     stage.pause()
     pygame.event.post(pygame.event.Event(pygame.WINDOWHIDDEN))
     pygame.event.post(pygame.event.Event(pygame.WINDOWMINIMIZED))
@@ -166,6 +196,8 @@ def test_rejected_second_stage_preserves_original_driver(
     assert stage.running and stage._task is task and pygame.display.get_surface() is target
     stage.stop()
     other = Stage()
+    other.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
+    other.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     try:
         other.run(interactive=True)
         assert other.running
@@ -201,6 +233,8 @@ def test_optional_dependency_failure_is_actionable_without_affecting_blocking_ru
     """IPython is imported only by the opt-in path; a plain game still runs without it."""
     monkeypatch.setitem(sys.modules, "IPython", None)
     stage = Stage()
+    stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     with pytest.raises(StageError, match="pip install"):
         stage.run(interactive=True)
     assert stage._state == "new" and not pygame.display.get_init()

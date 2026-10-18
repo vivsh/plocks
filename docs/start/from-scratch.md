@@ -10,7 +10,7 @@ Plocks keeps familiar ideas: sprites, costumes, the stage, and broadcasts.
 | Stage | `stage = Stage()` |
 | Add a sprite | `hero = Sprite(picture)` then `stage.add(hero)` |
 | When green flag clicked | `hero.on_start(script)` |
-| When Space pressed | `hero.on_key_down(Key.SPACE, script)` |
+| When Space pressed | `hero.on_button_down(GamepadButton.A, script, gamepad=stage.gamepads[0])` |
 | Move 10 steps | `hero.move(10)` |
 | Go to x/y | `hero.position = (100, 20)` |
 | Glide | `hero.glide_to(x=100, seconds=1)` |
@@ -30,7 +30,7 @@ Plocks keeps familiar ideas: sprites, costumes, the stage, and broadcasts.
 ```python
 from pathlib import Path
 
-from plocks import Costume, Ease, Key, Sprite, Stage
+from plocks import Costume, Ease, GamepadButton, Sprite, Stage
 
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(background="#fff0cc")
@@ -42,7 +42,7 @@ hop = hero.sequence()
 hop.say("Let's hop!", seconds=0.5)
 hop.glide_by(y=90, seconds=0.3, easing=Ease.OUT)
 hop.glide_by(y=-90, seconds=0.3, easing=Ease.IN)
-hero.on_key_down(Key.SPACE, hop)
+hero.on_button_down(GamepadButton.A, hop, gamepad=stage.gamepads[0])
 
 if __name__ == "__main__":
     stage.run()
@@ -58,9 +58,9 @@ Change both `90` values to `120` for a bigger hop.
 - **Scripts connect time.** Script lines run in order. Two ordinary glide calls
   schedule work together unless you connect them with `after=first_action`.
 
-A function is a named job. A decorator such as `@hero.on_key_down(...)` connects
+A function is a named job. A decorator such as `@hero.on_button_down(...)` connects
 that job to an event. Functions receive one `event`: its `target` is the receiver,
-`source` is who caused it, and `data` is the key, message, or other information.
+`source` is who caused it, and `data` is the button, message, or other information.
 You will meet these step by step in the [Dino Dash course](../dino-run/index.md).
 
 Scratch's stage is 480 × 360; that is Plocks' default too. Its centre is `(0, 0)`;

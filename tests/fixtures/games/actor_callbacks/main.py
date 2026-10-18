@@ -4,12 +4,26 @@ from math import sin
 
 from PIL import Image
 
-from plocks import Canvas, Click, Event, Key, Puppet, Script, Sprite, Stage
+from plocks import (
+    Canvas,
+    Click,
+    Event,
+    GamepadButton,
+    GamepadPress,
+    Key,
+    Puppet,
+    Script,
+    Sprite,
+    Stage,
+)
 
 
 def main() -> None:
     """Attach callbacks to actors; keep the score overlay and global clicks on Stage."""
     stage = Stage(width=640, height=360, background="midnightblue")
+    stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
+    stage.gamepads[0].map_key(Key.P, GamepadButton.START)
+    stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
     hero = Sprite(Image.new("RGBA", (40, 48), "orange"), x=-100)
     friend = Sprite(Image.new("RGBA", (40, 40), "skyblue"), x=100)
     stage.add(hero)
@@ -23,7 +37,9 @@ def main() -> None:
     @hero.on_update
     def move(event: Event[Sprite, float]) -> None:
         dt = event.data
-        direction = int(stage.keyboard.is_down(Key.RIGHT)) - int(stage.keyboard.is_down(Key.LEFT))
+        direction = int(stage.gamepads[0].is_down(GamepadButton.RIGHT)) - int(
+            stage.gamepads[0].is_down(GamepadButton.LEFT)
+        )
         hero.x = max(-280, min(280, hero.x + direction * 160 * dt))
 
     hero.on_click(
@@ -52,8 +68,8 @@ def main() -> None:
         nonlocal clicks
         clicks += 1
 
-    @stage.on_key_down(Key.P)
-    def pause(event: Event[Stage, Key]) -> None:
+    @stage.on_button_down(GamepadButton.START, gamepad=stage.gamepads[0])
+    def pause(event: Event[Stage, GamepadPress]) -> None:
         if stage.paused:
             stage.resume()
         else:

@@ -9,9 +9,12 @@ For the code activities, use the [Dino Dash download](../dino-run/assets.md).
 | --- | --- |
 | Move, wait, then move again | [Make a movement script](movement.md) |
 | Make characters talk or think | [Say hello](dialogue.md) |
+| Make copies of a character | [Launch some clones](clones.md) |
 | Jump and land on platforms | [Give your dinosaur a bigger jump](physics.md) |
 | Remember coins or health | [Give a character a memory](memory.md) |
 | Play with a friend | [Two players, keys or controllers](controls.md) |
+| Play from another computer | [LAN multiplayer](multiplayer.md) |
+| Let the computer be a player | [Computer players and ordinary enemies](computer-players.md) |
 | Change costumes or make a Puppet wave | [Try the art lab](../dino-run/06-more-plocks.md#make-a-puppet-wave) |
 | Send a message to another character | [Try the messages lab](../dino-run/06-more-plocks.md#give-coins-to-two-players) |
 | Make a choice in a script | [Try the scripts lab](../dino-run/06-more-plocks.md#make-your-character-choose) |

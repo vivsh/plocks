@@ -19,6 +19,8 @@ from plocks import (
 
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=480, height=360, background="#203548")
+stage.gamepads[0].map_key(Key.ESCAPE, GamepadButton.START)
+stage.gamepads[0].map_key(Key.P, GamepadButton.START)
 level = TiledMap(assets / "jungle.tmj", x=-160, y=64, layer=-1)
 for tilemap in level.layers.values():
     stage.add(tilemap)
@@ -44,19 +46,19 @@ second.map_key(Key.ENTER, GamepadButton.A)
 player.map_key(Key.F, GamepadButton.B)
 
 
-@friend.on_gamepad_button_down(GamepadButton.A, gamepad=second)
+@friend.on_button_down(GamepadButton.A, gamepad=second)
 def second_pressed(event: Event[Sprite, GamepadPress]) -> None:
     global second_presses
     second_presses += 1
 
 
-@hero.on_gamepad_button_down(GamepadButton.B, gamepad=player, repeat=0.05)
+@hero.on_button_down(GamepadButton.B, gamepad=player, repeat=0.05)
 def turbo_pressed(event: Event[Sprite, GamepadPress]) -> None:
     global turbo_presses
     turbo_presses += 1
 
 
-@hero.on_gamepad_button_down(GamepadButton.A, gamepad=player)
+@hero.on_button_down(GamepadButton.A, gamepad=player)
 def jump_pressed(event: Event[Sprite, GamepadPress]) -> Action:
     global presses
     presses += 1
@@ -68,16 +70,16 @@ def patrol(event: Event[Sprite, float]) -> None:
     event.target.x = -150 + (stage.time * 60) % 300
 
 
-@stage.on_key_down(Key.P)
-def pause(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.START, gamepad=stage.gamepads[0])
+def pause(event: Event[Stage, GamepadPress]) -> None:
     if stage.paused:
         stage.resume()
     else:
         stage.pause()
 
 
-@stage.on_key_down(Key.ESCAPE)
-def quit_game(event: Event[Stage, Key]) -> None:
+@stage.on_button_down(GamepadButton.START, gamepad=stage.gamepads[0])
+def quit_game(event: Event[Stage, GamepadPress]) -> None:
     stage.stop()
 
 

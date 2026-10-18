@@ -12,13 +12,15 @@ from typing import TYPE_CHECKING, cast
 import pygame
 
 from . import _gamepads
+from ._cloning import _CloneStart, _start_clone
 from ._render import frame
 from ._scripts import _cancel, _deliver, _sample, _step, _trigger
 from .callbacks import ActorUpdateCallback, UpdateCallback
 from .errors import StageError
-from .events import Event, GamepadPress
+from .events import Event, GamepadPress, RemoteChange
 from .geometry import Point
 from .input import Key, MouseButton
+from .multiplayer import Multiplayer
 
 if TYPE_CHECKING:
     from ._commands import Actor
@@ -35,10 +37,20 @@ def _check_start(stage: Stage) -> None:
         raise StageError("Another Pygame audio session is already active")
 
 
-def _acquire(stage: Stage) -> None:
+def _acquire(stage: Stage, multiplayer: Multiplayer | None = None) -> None:
     """Acquire the same desktop resources for blocking and interactive execution."""
     _gamepads._check_devices()
     try:
+        if multiplayer is not None:
+            try:
+                from ._network import _host
+            except ImportError as error:
+                from .errors import NetworkError
+
+                raise NetworkError(
+                    "Multiplayer needs Plocks installed with its [network] extra"
+                ) from error
+            stage._network = _host(stage, multiplayer)
         pygame.display.init()
         with files("plocks").joinpath("assets/icon.png").open("rb") as source:
             pygame.display.set_icon(pygame.image.load(source, "icon.png"))
@@ -53,7 +65,7 @@ def _acquire(stage: Stage) -> None:
         raise
 
 
-def start(stage: Stage) -> None:
+def start(stage: Stage, multiplayer: Multiplayer | None = None) -> None:
     """Acquire one desktop display and block until closure, releasing owned resources."""
     _check_start(stage)
     try:
@@ -62,7 +74,7 @@ def start(stage: Stage) -> None:
         pass
     else:
         raise StageError("Desktop run() requires a script outside an existing asyncio loop")
-    _acquire(stage)
+    _acquire(stage, multiplayer)
     try:
         asyncio.run(drive(stage))
     except BaseException:
@@ -71,9 +83,11 @@ def start(stage: Stage) -> None:
 
 
 def _clear_input(stage: Stage) -> None:
-    stage.keyboard._down.clear()
+    stage._held_keys.clear()
     stage.mouse._down.clear()
-    stage._pending.clear()
+    stage._pending[:] = [
+        event for event in stage._pending if stage.running and isinstance(event, _CloneStart)
+    ]
     _gamepads._clear_repeats(stage)
     for slot in stage.gamepads:
         _gamepads._clear_sample(slot)
@@ -141,13 +155,9 @@ def _key(stage: Stage, event: pygame.event.Event) -> None:
         return
     before = tuple(_gamepads._held(slot) for slot in stage.gamepads)
     if event.type == pygame.KEYDOWN:
-        if key not in stage.keyboard._down:
-            stage._pending.append(key)
-        stage.keyboard._down.add(key)
+        stage._held_keys.add(key)
     else:
-        stage.keyboard._down.discard(key)
-        for binding in stage._keys.get(key, ()):
-            binding.next_repeat = None
+        stage._held_keys.discard(key)
     for slot, held in zip(stage.gamepads, before):
         _gamepads._transitions(slot, held)
 
@@ -166,26 +176,32 @@ def _mouse(stage: Stage, event: pygame.event.Event) -> None:
         stage.mouse._down.discard(button)
 
 
-def dispatch(stage: Stage) -> None:
-    """Consume edge events once, with snapshot callback lists."""
+def dispatch(stage: Stage, *, simulation: bool = True) -> None:
+    """Consume edge events once; clone starts wait for an eligible simulation phase."""
     pending = tuple(stage._pending)
     stage._pending.clear()
+    clone_ready = simulation and not stage.paused
     for event in pending:
         if not stage.running:
             break
-        if isinstance(event, (Key, GamepadPress)):
-            bindings = (
-                tuple(stage._keys.get(event, ()))
-                if isinstance(event, Key)
-                else tuple(stage._gamepad_handlers.get((event.gamepad, event.button), ()))
-            )
+        if isinstance(event, RemoteChange):
+            from .stage import _check_callback_result
+
+            for callback in tuple(stage._remote_handlers):
+                _check_callback_result(callback(Event(stage, stage, event)), "remote change")
+            continue
+        if isinstance(event, _CloneStart):
+            clone_ready = clone_ready and not stage.paused
+            if not clone_ready:
+                stage._pending.append(event)
+            else:
+                _start_clone(stage, event)
+            continue
+        if isinstance(event, GamepadPress):
+            bindings = tuple(stage._gamepad_handlers.get((event.gamepad, event.button), ()))
             for binding in bindings:
                 if stage.running:
-                    held = (
-                        stage.keyboard.is_down(event)
-                        if isinstance(event, Key)
-                        else event.gamepad.is_down(event.button)
-                    )
+                    held = event.gamepad.is_down(event.button)
                     _gamepads._arm(stage, binding, held)
                     _trigger(stage, binding.handler, event)
         if isinstance(event, tuple):
@@ -219,7 +235,7 @@ def advance(stage: Stage, now: float) -> None:
     stage._last_wall = now
     if stage.paused:
         _deliver(stage)
-        dispatch(stage)
+        dispatch(stage, simulation=False)
         return
     if previous is not None:
         stage._accumulator += min(0.25, max(0, now - previous))
@@ -229,6 +245,13 @@ def advance(stage: Stage, now: float) -> None:
         if not stage.running or stage.paused:
             break
         stage._accumulator -= dt
+        for slot, driver in tuple(stage._bots.items()):
+            sample = driver(Event(stage, stage, dt))
+            from .gamepads import GamepadInput
+
+            if not isinstance(sample, GamepadInput):
+                raise TypeError("An automated driver must return GamepadInput")
+            _gamepads._apply(slot, sample)
         _deliver(stage)
         dispatch(stage)
         _gamepads._repeat(stage)
@@ -268,6 +291,10 @@ async def drive(stage: Stage) -> None:
             poll(stage)
             if not stage.running:
                 break
+            if stage._network is not None:
+                from ._network import pump
+
+                pump(stage, time.monotonic())
             advance(stage, started)
             stage._voices[:] = [voice for voice in stage._voices if not voice.finished]
             if stage.running:
@@ -282,6 +309,18 @@ def close(stage: Stage) -> None:
     primary = sys.exception()
     errors: list[BaseException] = []
     stage._state = "closed"
+    if stage._network is not None:
+        from ._network import close as close_network
+
+        try:
+            close_network(
+                stage,
+                failed=primary is not None and not isinstance(primary, asyncio.CancelledError),
+            )
+        except BaseException as error:  # noqa: BLE001 -- finish independent cleanup, retain primary error
+            errors.append(error)
+    stage._remote_handlers.clear()
+    stage._bots.clear()
     task = stage._task
     stage._task = None
     if task is not None:
@@ -307,9 +346,9 @@ def close(stage: Stage) -> None:
             errors.append(error)
     stage._messages.clear()
     stage._message_handlers.clear()
-    stage._keys.clear()
     stage._gamepad_handlers.clear()
     stage._starts.clear()
+    stage._clone_handlers.clear()
     stage._clicks.clear()
     stage._updates.clear()
     stage._draws.clear()

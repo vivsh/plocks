@@ -2,12 +2,16 @@
 
 from PIL import Image
 
-from plocks import Event, Key, Puppet, Script, Sprite, Stage
+from plocks import Event, GamepadButton, GamepadPress, Key, Puppet, Script, Sprite, Stage
 
 
 def main() -> None:
     """Dialogue and movement share one behavior; the friend updates independently."""
     stage = Stage(background="midnightblue")
+    stage.gamepads[0].map_key(Key.C, GamepadButton.X)
+    stage.gamepads[0].map_key(Key.P, GamepadButton.START)
+    stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
+    stage.gamepads[0].map_key(Key.T, GamepadButton.SELECT)
     hero = Sprite(Image.new("RGBA", (32, 40), "orange"), x=-100, y=-20)
     friend = Sprite(Image.new("RGBA", (28, 28), "skyblue"), x=-160, y=-100)
     stage.add(hero)
@@ -15,24 +19,29 @@ def main() -> None:
     person = Puppet.stick_figure(color="lightgreen")
     person.position = (145, 15)
     stage.add(person)
-    person.on_key_down(Key.T, Script(Puppet).think("Where next?", seconds=2))
-    hero.on_key_down(
-        Key.SPACE,
+    person.on_button_down(
+        GamepadButton.SELECT,
+        Script(Puppet).think("Where next?", seconds=2),
+        gamepad=stage.gamepads[0],
+    )
+    hero.on_button_down(
+        GamepadButton.A,
         Script(Sprite).during(
             Script(Sprite).glide_by(x=100, seconds=1),
             meanwhile=Script(Sprite).say("Watch me walk!", seconds=1),
         ),
+        gamepad=stage.gamepads[0],
     )
 
-    @stage.on_key_down(Key.P)
-    def pause(event: Event[Stage, Key]) -> None:
+    @stage.on_button_down(GamepadButton.START, gamepad=stage.gamepads[0])
+    def pause(event: Event[Stage, GamepadPress]) -> None:
         if stage.paused:
             stage.resume()
         else:
             stage.pause()
 
-    @stage.on_key_down(Key.C)
-    def cancel(event: Event[Stage, Key]) -> None:
+    @stage.on_button_down(GamepadButton.X, gamepad=stage.gamepads[0])
+    def cancel(event: Event[Stage, GamepadPress]) -> None:
         hero.stop()
 
     @friend.on_update

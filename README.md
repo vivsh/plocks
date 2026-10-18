@@ -5,8 +5,27 @@
 <h1 align="center">Plocks</h1>
 <p align="center"><strong>Small games. Real Python. Your rules.</strong></p>
 
-Moving on from Scratch? Build desktop Python games with ready-made pictures and simple
-movement scripts. Start with an example, then make it your own!
+**Plocks is a Python game development library for Scratch developers ready for
+their next step.** Keep familiar ideas—sprites, costumes, scripts and broadcasts—
+while learning to write Python.
+
+Build desktop games with ready-made pictures, simple controls and helpful editor
+hints. Start with a bundled game, change one thing, and see what happens!
+
+## 🧩 Bring your Scratch ideas to Python
+
+| What you want to do | What Plocks gives you |
+| --- | --- |
+| Bring characters to life | Sprites, costumes, speech and thought bubbles, and jointed Puppets |
+| Give characters a plan | Movement scripts: glide, wait, repeat and react to events |
+| Make characters work together | Broadcasts, typed message data and clones with their own controls |
+| Build a world | Tile maps, scrolling cameras, parallax, and Tiled and Pixelorama artwork |
+| Jump and land | Built-in physics, moving platforms, and platforms you can jump through from below |
+| Play together | Logical gamepads with mapped keys or controllers, plus optional [LAN shared-view play](docs/activities/multiplayer.md) |
+| Give the computer a turn | [Automated gamepads](docs/activities/computer-players.md) that use the human player's controls |
+
+Try changes live at an [IPython prompt](#-try-ideas-live-with-ipython), or write a
+normal Python file. Both use the same game library.
 
 ## 🎮 Play your first game
 
@@ -90,7 +109,7 @@ Python command occupies the same thread as the game. Ordinary game files still u
 | Game | Your mission | New ideas to try |
 | --- | --- | --- |
 | [Dino Dash](src/plocks/_games/dino_run) | Jump cacti, duck birds and collect coins | A complete beginner course, physics, scores, restart |
-| [Sky Steps](src/plocks/_games/platformer) — start here | Ride a lift and reach the flag | Physics, repeating moves, checkpoints |
+| [Sky Steps](src/plocks/_games/platformer) — start here | Jump through a lift and reach the flag | Physics, one-way platforms, repeating moves, checkpoints |
 | [Beat Blocks](src/plocks/_games/geometry_dash) | Jump over spikes | Timing, gravity, crash checks |
 | [Asset Workshop](src/plocks/_games/asset_workshop) | Use Tiled and Pixelorama artwork | Exported levels, animation, two-player controls |
 | [Scrolling World](src/plocks/_games/scrolling_world) | Explore and paint a world | Tile grids, layers, a following camera |
@@ -122,7 +141,7 @@ Make the `my-game` copy above, replace its `main.py` with this code, and run
 `python main.py` inside that folder. Keep its `assets` folder.
 
 ```python
-from plocks import Key, Sprite, Stage
+from plocks import GamepadButton, Sprite, Stage
 
 # Make the stage and hero before connecting their controls.
 stage = Stage()
@@ -136,7 +155,7 @@ hop.glide_by(y=-60, seconds=0.3)
 
 
 # Bind the script directly. Extra presses are ignored until this hop finishes.
-hero.on_key_down(Key.SPACE, hop)
+hero.on_button_down(GamepadButton.A, hop, gamepad=stage.gamepads[0])
 
 # Start only when we run this file directly.
 if __name__ == "__main__":
@@ -150,6 +169,18 @@ Each example puts setup first, functions underneath, and the guarded `stage.run(
 last. Importing the file prepares its pictures and game objects, but does not start
 its window. Use `global score` to reassign the shared score inside a function;
 changing `hero.x` or adding to a list does not need `global`.
+
+## 🧬 Make a copy
+
+```python
+copy = hero.clone()
+copy.position = (100, 0)
+```
+
+Copies inherit the character's controls and get their own position. With physics
+enabled, each gets its own body too.
+Use `@hero.on_clone` to start each copy, and `event.target` inside inherited functions.
+Remove a copy with `stage.remove(copy)`. Try the [clone activity](docs/activities/clones.md).
 
 ## 🧰 Python tools you'll meet
 
@@ -165,11 +196,14 @@ changing `hero.x` or adding to a list does not need `global`.
 | `global` | Let a function change a game variable, such as `score`, from the top of the file |
 | f-strings (`f"Score: {score}"`) | Put a changing number into words on screen |
 
-**Events:** handlers receive `event.target` (who receives it), `event.source` (who caused it),
+**Events:** input, update and broadcast handlers receive `event.target` (who receives it),
+`event.source` (who caused it),
 and `event.data` (what happened). Broadcast messages use the same Event shape.
 **Timing:** an update's `event.data` is one game step's time; speed × time gives movement.
 **Type hints:** `: float` means a number with decimals; `-> None` means a function has no result.
-**Scripts:** one script can run on several characters; each gets its own turn.
+**Scripts:** one script can run on several characters; each runs independently.
+Build a script with `hero.sequence()` or `hero.repeat()`, then start it with
+`hero.act(script)`. You can also link individual actions with `after=previous_action`.
 Try [character memory](docs/activities/memory.md), such as
 `hero.state.health`. Declare it with a normal Python dataclass and change it in
 your functions. Use `stage.state.score` for a shared score.
@@ -184,5 +218,6 @@ Python editor for help.
 2. Play again and see what changed.
 3. Invent a new rule!
 
-Find small challenges in each game's README. These are keyboard/mouse games;
+Find small challenges in each game's README. Use mapped keys or controllers;
+Fruit Slice also uses the mouse.
 Snake Run and Temple Trail look 3D using flat pictures.
