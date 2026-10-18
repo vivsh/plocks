@@ -1,0 +1,153 @@
+from PIL import Image
+from plocks import Actor, Action, Box, Canvas, Costume, Key, Event, Message, Script, KeyDown, MouseButton, Point, Puppet, Sprite, Stage
+stage = Stage()
+hero = Sprite(Image.new("RGBA", (8, 8)))
+person = Puppet.stick_figure()
+stage.add(hero)
+stage.add(person)
+hero.act(Script(Puppet))  # error
+person.act(Script(Sprite))  # error
+Script(Puppet).set_costume(hero.costume)  # error
+Script(Sprite).poses((person.pose,), fps=2)  # error
+hero.glide_by(x="far", seconds=1)  # error
+hero.glide_by(x=10, seconds=1, after=1)  # error
+message = Message[int]("score")
+stage.broadcast(message, "bad")  # error
+@hero.on_broadcast(message)  # error
+def wrong_payload(event: Event[Sprite, str]) -> None:
+    pass
+@hero.on_key_down(Key.A)  # error
+def wrong_key(value: int) -> None:
+    pass
+@stage.on_update  # error
+async def async_update(dt: float) -> None:
+    pass
+@hero.on_update  # error
+def action_update(dt: float) -> Action:
+    return hero.wait(1)
+@stage.on_draw  # error
+async def async_draw(canvas: Canvas) -> None:
+    pass
+@person.on_click  # error
+def bad_click(position: str, button: int) -> None:
+    pass
+hero.costume = person.pose  # error
+person.pose = hero.costume  # error
+hero.body.velocity = "fast"  # error
+hero.body.shape = hero.costume  # error
+Script().call(42)  # error
+hero.wait(1).done = True  # error
+hero.position = (1, "up")  # error
+stage.join()  # error
+stage.broadcast(message)  # error
+hero.costume.flipped(horizontal="yes")  # error
+hero.costume.cropped(x=0.5, y=0, width=8, height=8)  # error
+hero.costume.with_anchor(x="center", y=0)  # error
+hero.costume.rotated("left")  # error
+hero.costume.resized(width=2.5, height=8)  # error
+
+common: Script[Actor] = Script()
+common.call(Script(Sprite))  # error
+Script().call(Script(Sprite))  # error
+Script().when(True, then=Script())  # error
+Script(Puppet).set_costume(hero.costume)  # error
+@hero.on_key_down(Key.Z)  # error
+async def async_key(event: Event[Sprite, Key]) -> None:
+    pass
+@stage.on_key_down(Key.Z)  # error
+def targetless(event: Event[Stage, Key]) -> Script[Sprite]:
+    return Script(Sprite)
+async def cannot_await() -> None:
+    await hero.wait(1)  # error
+
+person.act(hero.sequence())  # error
+hero.act(person.repeat(2))  # error
+hero.sequence().set_pose(person.pose)  # error
+person.sequence().set_costume(hero.costume)  # error
+
+@hero.on_key_down(Key.H)  # error
+def wrong_receiver(event: Event[Puppet, Key]) -> None:
+    pass
+@stage.on_broadcast(message)  # error
+def wrong_message_receiver(event: Event[Sprite, int]) -> None:
+    pass
+@hero.on_update  # error
+def old_update(actor: Sprite, dt: float) -> None:
+    pass
+
+@hero.on_key_down(Key.C)
+def cannot_change_event(event: Event[Sprite, Key]) -> None:
+    event.target = person  # error
+    event.data = Key.A  # error
+@hero.on_broadcast(message)
+def cannot_change_message(event: Event[Sprite, int]) -> None:
+    event.target = hero  # error
+    event.data = "wrong"  # error
+    event.message  # error
+stage.broadcast(Event(stage, stage, None))  # error
+
+
+from dataclasses import dataclass
+import plocks
+
+@dataclass
+class PlayerState:
+    health: int = 100
+    alive: bool = True
+    ratio: float = 1
+
+@dataclass
+class GameState:
+    score: int = 0
+
+stateful = Sprite(Image.new("RGBA", (8, 8)), state=PlayerState)
+stateful.state.health = "bad"  # error
+stateful.state.health = 1.5  # error
+stateful.state.misspelled = 1  # error
+stateful.state = PlayerState()  # error
+Stage(state=GameState())  # error
+Sprite(Image.new("RGBA", (8, 8)), state=PlayerState())  # error
+person.state.health = 1  # error
+@stateful.on_update  # error
+def wrong_state(event: Event[Sprite[GameState], float]) -> None:
+    pass
+
+Script().set_state(health=100)  # error
+Script().change_state(health=-10)  # error
+Script().set_stage_state(score=0)  # error
+Script().change_stage_state(score=1)  # error
+plocks.Field  # error
+plocks.State  # error
+plocks.StateEquals  # error
+plocks.StateLessThan  # error
+plocks.StageStateEquals  # error
+plocks.StageStateLessThan  # error
+
+
+from plocks import GamepadButton, GamepadDown, GamepadPress, PixeloramaSheet
+pad = stage.gamepads[0]
+pad.map_key("space", GamepadButton.A)  # error
+pad.map_key(Key.SPACE, Key.A)  # error
+pad.map_left_stick(left=GamepadButton.LEFT)  # error
+stage.gamepads = ()  # error
+stage.on_gamepad_button_down(Key.A)  # error
+hero.on_gamepad_button_down(GamepadButton.A, gamepad=1)  # error
+hero.on_key_down(Key.A, repeat="fast")  # error
+GamepadDown(Key.A, pad)  # error
+@hero.on_gamepad_button_down(GamepadButton.A)  # error
+def wrong_gamepad_payload(event: Event[Sprite, Key]) -> None:
+    pass
+@hero.on_gamepad_button_down(GamepadButton.B)  # error
+async def async_gamepad(event: Event[Sprite, GamepadPress]) -> None:
+    pass
+@person.on_gamepad_button_down(GamepadButton.A)  # error
+def wrong_gamepad_receiver(event: Event[Sprite, GamepadPress]) -> None:
+    pass
+person.on_gamepad_button_down(GamepadButton.A, hero.sequence())  # error
+art = PixeloramaSheet("hero.png")
+person.act(art.animation())  # error
+hero.costumes(art.frames)  # error
+hero.costumes(art.frames, fps=10, durations=art.durations)  # error
+hero.sequence().costumes(art.frames)  # error
+hero.sequence().costumes(art.frames, fps=10, durations=art.durations)  # error
+hero.costumes(art.frames, durations=("slow",))  # error

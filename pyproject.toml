@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling>=1.26,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "plocks"
+version = "0.3.0"
+description = "Small, typed desktop Python games with scripts, messages, Puppets, and physics."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["pygame-ce>=2.5.7,<2.6", "Pillow>=11.3,<13", "pymunk==6.11.1", "typing_extensions>=4.12,<5"]
+
+[project.urls]
+Repository = "https://github.com/vivsh/plocks"
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "mypy>=1.15,<3", "pyright>=1.1.400,<2", "ruff>=0.11,<1", "build>=1.2,<2"]
+
+[project.scripts]
+plocks = "plocks.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/plocks"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+explicit_package_bases = true
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
+files = ["src", "tests", "examples"]
+exclude = "(^|/)(dist|build|output)/"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+# Stateless implementation modules intentionally operate on the declared private owners.
+reportPrivateUsage = false
+# Exported internal helpers are used across modules, and runtime validation serves untyped callers.
+reportUnusedFunction = false
+reportUnnecessaryIsInstance = false
+include = ["src/plocks", "examples", "tests/typing/hover_example.py"]
+exclude = ["**/dist", "**/build", "**/output", "**/__pycache__"]

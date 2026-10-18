@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="10" height="5" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="2">
+ <tileset firstgid="1" name="Ground" tilewidth="32" tileheight="32" tilecount="1" columns="1"><image source="../games/integrations_proof/assets/ground.png" width="32" height="32"/></tileset>
+ <layer id="1" name="Ground" width="10" height="5"><data encoding="csv">0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1</data></layer>
+ <objectgroup id="2" name="Spawns"><object id="1" name="player_start" x="60" y="108"><point/></object></objectgroup>
+</map>

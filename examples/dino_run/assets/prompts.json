@@ -1,0 +1,38 @@
+{
+  "prompts": [
+    {
+      "name": "dinosaur",
+      "prompt": "Use case: illustration-story. Asset type: downloadable game sprite for a children's Python dinosaur endless runner. Create ONE original cute mint-green baby tyrannosaurus dinosaur facing RIGHT in side view, playful chunky retro pixel art, dark navy 2-pixel-looking outline, cream belly, tiny arms, big friendly eye, orange cheek, two clearly separated running feet. Limited palette, crisp square pixel clusters, no gradients, no shadows on the ground, no text, no logos. Full body entirely visible, centered, occupies 85 percent of a square canvas, otherwise real transparent background. Consistent game art palette: mint #50b890, dark navy #24384b, cream #fff0cc, orange #f0a45a. This is a usable isolated sprite, not a presentation sheet."
+    },
+    {
+      "name": "cloud",
+      "prompt": "Use case: illustration-story. Asset type: original downloadable game art for the same children's Python dinosaur runner. Cheerful chunky retro pixel art with crisp square pixel clusters, dark navy #24384b outline, cream #fff0cc and warm orange #f0a45a accents, mint #50b890 where appropriate. Limited palette. No text, logos, watermarks, border or ground shadow. One fluffy cream-white cloud in side view, several soft rounded pixel lobes with pale blue underside. Wide horizontal silhouette centered on transparent canvas. Isolated full cloud, large visible pixels, suitable for a bright desert sky.",
+      "transparent": true
+    },
+    {
+      "name": "bird",
+      "prompt": "Use case: illustration-story. Asset type: original downloadable game art for the same children's Python dinosaur runner. Cheerful chunky retro pixel art with crisp square pixel clusters, dark navy #24384b outline, cream #fff0cc and warm orange #f0a45a accents, mint #50b890 where appropriate. Limited palette. No text, logos, watermarks, border or ground shadow. One small funny purple desert bird flying LEFT, orange beak and tiny feet tucked under its cream belly, friendly visible eye, wings spread diagonally upwards. Side view isolated full-body game sprite centered, fills most of square canvas, real transparent background.",
+      "transparent": true
+    },
+    {
+      "name": "desert",
+      "prompt": "Use case: illustration-story. Asset type: original downloadable game art for the same children's Python dinosaur runner. Cheerful chunky retro pixel art with crisp square pixel clusters, dark navy #24384b outline, cream #fff0cc and warm orange #f0a45a accents, mint #50b890 where appropriate. Limited palette. No text, logos, watermarks, border or ground shadow. A wide side-scrolling desert background, 16:9 landscape. Pale cream sky in upper half, layered distant orange and golden dunes and flat sandy ground in lower half. Calm simple pixel-art shapes and subtle tiny stones; no characters, birds, plants, sun or clouds because those are separate sprites. Both left and right edges show a similar low dune height so it repeats unobtrusively. Full opaque scene edge to edge.",
+      "transparent": false
+    },
+    {
+      "name": "cactus",
+      "prompt": "Use case: illustration-story. Asset type: original downloadable game art for the same children's Python dinosaur runner. Cheerful chunky retro pixel art with crisp square pixel clusters, dark navy #24384b outline, cream #fff0cc and warm orange #f0a45a accents, mint #50b890 where appropriate. Limited palette. No text, logos, watermarks, border or ground shadow. One green saguaro cactus with a tall center stem and two asymmetric raised arms, small cream pixel needles and subtle mint highlights. Entire upright cactus isolated, centered, fill most of square canvas, true transparent background. Friendly stylized shape, strong readable silhouette.",
+      "transparent": true
+    },
+    {
+      "name": "rock",
+      "prompt": "Use case: illustration-story. Asset type: original downloadable game art for the same children's Python dinosaur runner. Cheerful chunky retro pixel art with crisp square pixel clusters, dark navy #24384b outline, cream #fff0cc and warm orange #f0a45a accents, mint #50b890 where appropriate. Limited palette. No text, logos, watermarks, border or ground shadow. One low squat rounded desert rock, terracotta-orange face, cream highlight, navy crack and outline. Side view, wide and not tall; isolated full rock centered in otherwise truly transparent square canvas. Large simple pixel clusters readable at tiny game sizes.",
+      "transparent": true
+    },
+    {
+      "name": "coin",
+      "prompt": "Use case: illustration-story. Asset type: original downloadable game art for the same children's Python dinosaur runner. Cheerful chunky retro pixel art with crisp square pixel clusters, dark navy #24384b outline, cream #fff0cc and warm orange #f0a45a accents, mint #50b890 where appropriate. Limited palette. No text, logos, watermarks, border or ground shadow. One large shiny golden coin collectible, almost circular with a thick orange rim, a cream sparkle and a simple embossed four-point star at center. Isolated full coin centered, fill most of square canvas. True transparent background.",
+      "transparent": true
+    }
+  ]
+}
