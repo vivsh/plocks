@@ -14,7 +14,8 @@ dependencies = ["pygame-ce>=2.5.7,<2.6", "Pillow>=11.3,<13", "pymunk==6.11.1", "
 Repository = "https://github.com/vivsh/plocks"
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "mypy>=1.15,<3", "pyright>=1.1.400,<2", "ruff>=0.11,<1", "build>=1.2,<2"]
+ipython = ["ipython>=9,<10"]
+dev = ["pytest>=8,<10", "mypy>=1.15,<3", "pyright>=1.1.400,<2", "ruff>=0.11,<1", "build>=1.2,<2", "ipython>=9,<10", "pexpect>=4.9,<5", "types-pexpect>=4.9,<5"]
 
 [project.scripts]
 plocks = "plocks.cli:main"
@@ -27,7 +28,7 @@ python_version = "3.12"
 strict = true
 explicit_package_bases = true
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
-files = ["src", "tests", "examples"]
+files = ["src", "tests"]
 exclude = "(^|/)(dist|build|output)/"
 
 [tool.pytest.ini_options]
@@ -47,5 +48,5 @@ reportPrivateUsage = false
 # Exported internal helpers are used across modules, and runtime validation serves untyped callers.
 reportUnusedFunction = false
 reportUnnecessaryIsInstance = false
-include = ["src/plocks", "examples", "tests/typing/hover_example.py"]
+include = ["src/plocks", "tests/typing/hover_example.py"]
 exclude = ["**/dist", "**/build", "**/output", "**/__pycache__"]

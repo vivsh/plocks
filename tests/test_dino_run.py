@@ -17,7 +17,7 @@ from plocks._runtime import advance, close
 from plocks._scripts import _step, _trigger
 
 ROOT = Path(__file__).parents[1]
-GAME = ROOT / "examples/dino_run"
+GAME = ROOT / "src/plocks/_games/dino_run"
 
 
 @pytest.fixture

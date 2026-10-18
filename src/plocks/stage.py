@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from typing import Generic, Literal, Self, TypeVar, cast, overload
 
@@ -67,6 +68,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         "_starts",
         "_state",
         "_target",
+        "_task",
         "_tick",
         "_tick_rate",
         "_updates",
@@ -151,6 +153,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         self._last_wall: float | None = None
         self._voices: list[Voice] = []
         self._target: pygame.Surface | None = None
+        self._task: asyncio.Task[None] | None = None
         if not isinstance(physics, bool):
             raise TypeError("physics must be bool")
         self._physics = Physics(self) if physics else None
@@ -723,18 +726,41 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         self._voices.clear()
 
     def stop(self) -> None:
-        """End this stage. Calling stop again is harmless; run cannot restart it."""
-        self._state = "closed"
+        """End this stage; an IPython prompt call also releases its window immediately.
 
-    def run(self) -> None:
-        """Open a desktop window and run once until closure.
-
-        Returns after the window closes and resources are released. Raises
-        StageError for reuse, an existing event loop or conflicting native resources.
+        Calling stop again is harmless. A closed stage cannot restart; make a new
+        Stage instead. A call inside a game callback cleans up after that callback.
         """
-        from ._runtime import start
+        self._state = "closed"
+        if self._task is not None:
+            from ._ipython import _stop
 
-        start(self)
+            _stop(self)
+
+    def run(self, *, interactive: bool = False) -> None:
+        """Open a desktop window once; optionally keep a terminal IPython prompt usable.
+
+        With interactive=False (default), return after the window closes and
+        resources are released. With interactive=True, return to terminal IPython
+        immediately; edit actors at the prompt and call stop() to close the game.
+        Switching to the terminal clears held input without suspending simulation.
+        Minimized/hidden windows and pause() still suspend simulation and audio.
+
+        IPython 9.x is optional and must use its full terminal prompt. Notebooks and
+        plain Python shells do not support interactive=True. Long Python commands
+        block the shared main thread. Raises StageError for unsupported contexts,
+        reuse, conflicting event loops, or already-active native resources.
+        """
+        if not isinstance(interactive, bool):
+            raise TypeError("interactive must be bool")
+        if interactive:
+            from ._ipython import _start
+
+            _start(self)
+        else:
+            from ._runtime import start
+
+            start(self)
 
 
 def _open(stage: Stage) -> None:

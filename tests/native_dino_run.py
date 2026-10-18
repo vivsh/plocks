@@ -13,7 +13,7 @@ from plocks import Event, Sprite, Stage
 def main() -> None:
     """Check a physical jump, landing, duck, scrolling and final resource cleanup."""
     root = Path(__file__).resolve().parents[1]
-    namespace = runpy.run_path(str(root / "examples/dino_run/main.py"))
+    namespace = runpy.run_path(str(root / "src/plocks/_games/dino_run/main.py"))
     stage = cast(Stage, namespace["stage"])
     game = stage._updates[0][1].__globals__
     dino = cast(Sprite, namespace["dino"])

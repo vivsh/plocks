@@ -4,7 +4,7 @@
 
 **Goal:** walk with held arrow keys and hop with Space.
 
-1. Run [02_controls.py](../../examples/dino_run/02_controls.py).
+1. Run [02_controls.py](../../src/plocks/_games/dino_run/02_controls.py).
 2. Hold Left or Right. Tap Space.
 3. Change `160` to `220` and try again.
 

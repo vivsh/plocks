@@ -11,17 +11,17 @@ The original PNGs are large; the lessons resize them through `Costume`.
 
 | Picture | Download | Job |
 | --- | --- | --- |
-| 🦖 | [dinosaur.png](../../examples/dino_run/assets/dinosaur.png) | Your runner |
-| ☁️ | [cloud.png](../../examples/dino_run/assets/cloud.png) | Slow-moving scenery |
-| 🐦 | [bird.png](../../examples/dino_run/assets/bird.png) | Duck underneath |
-| 🏜️ | [desert.png](../../examples/dino_run/assets/desert.png) | Repeating background |
-| 🌵 | [cactus.png](../../examples/dino_run/assets/cactus.png) | Jump over it |
-| 🪨 | [rock.png](../../examples/dino_run/assets/rock.png) | A smaller obstacle |
-| 🪙 | [coin.png](../../examples/dino_run/assets/coin.png) | Collect for points |
+| 🦖 | [dinosaur.png](../../src/plocks/_games/dino_run/assets/dinosaur.png) | Your runner |
+| ☁️ | [cloud.png](../../src/plocks/_games/dino_run/assets/cloud.png) | Slow-moving scenery |
+| 🐦 | [bird.png](../../src/plocks/_games/dino_run/assets/bird.png) | Duck underneath |
+| 🏜️ | [desert.png](../../src/plocks/_games/dino_run/assets/desert.png) | Repeating background |
+| 🌵 | [cactus.png](../../src/plocks/_games/dino_run/assets/cactus.png) | Jump over it |
+| 🪨 | [rock.png](../../src/plocks/_games/dino_run/assets/rock.png) | A smaller obstacle |
+| 🪙 | [coin.png](../../src/plocks/_games/dino_run/assets/coin.png) | Collect for points |
 
 Objects have transparent backgrounds. Desert is a full background.
 These are original generated designs, not Google's dinosaur or artwork.
-[Artwork notes and prompts](../../examples/dino_run/assets/README.md) explain their origin.
+[Artwork notes and prompts](../../src/plocks/_games/dino_run/assets/README.md) explain their origin.
 
 Want to draw your own? Try [Pixelorama](../art/pixelorama.md).
 Want to paint a whole level? Try [Tiled](../art/tiled.md).

@@ -8,7 +8,7 @@ Ask a grown-up if a message is confusing.
 ## Python cannot find plocks
 
 Check that your project's virtual environment is switched on.
-Follow [setup](../start/index.md) from inside the Plocks project folder.
+Follow [setup](../start/index.md). You do not need a repository checkout.
 For `python` not found or a blocked Windows command, ask for setup help.
 
 ## My picture or sound cannot be found

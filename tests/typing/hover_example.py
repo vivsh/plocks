@@ -231,6 +231,11 @@ def imported_controls() -> None:
     hero.sequence().when(GamepadDown(GamepadButton.A, player), then=hero.sequence().move(1))
 
 
+def interactive(stage: Stage) -> None:
+    """The same typed stage supports optional live terminal authoring."""
+    assert_type(stage.run(interactive=True), None)
+
+
 def one_way_platforms() -> None:
     """Platform configuration remains fully typed through generic actors."""
     lift = Sprite("platform.png", body_type=BodyType.KINEMATIC, one_way=True)

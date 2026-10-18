@@ -152,6 +152,10 @@ hero.sequence().costumes(art.frames)  # error
 hero.sequence().costumes(art.frames, fps=10, durations=art.durations)  # error
 hero.costumes(art.frames, durations=("slow",))  # error
 
+# Interactive mode is explicit and keyword-only.
+stage.run(interactive="yes")  # error
+stage.run(True)  # error
+
 Sprite("platform.png", one_way="yes")  # error
 TileMap(["P"], {"P": "platform.png"}, tile_size=(32, 16), one_way=1)  # error
 hero.one_way = True  # error

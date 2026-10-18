@@ -102,7 +102,7 @@ def test_image_and_sound_paths_resolve_from_working_directory(
     assets = tmp_path / "assets"
     assets.mkdir()
     copyfile(source / "tone.ogg", assets / "tone.ogg")
-    picture = Path(__file__).parents[1] / "examples/platformer/assets/hero.png"
+    picture = Path(__file__).parents[1] / "src/plocks/_games/platformer/assets/hero.png"
     copyfile(picture, assets / "hero.png")
     monkeypatch.chdir(tmp_path)
     costume = Costume("assets/hero.png")

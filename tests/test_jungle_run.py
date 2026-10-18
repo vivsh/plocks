@@ -21,7 +21,7 @@ def game() -> Iterator[Stage]:
     def capture(stage: Stage) -> None:
         stages.append(stage)
 
-    filename = Path(__file__).parents[1] / "examples/jungle_run/main.py"
+    filename = Path(__file__).parents[1] / "src/plocks/_games/jungle_run/main.py"
     with patch.object(Stage, "run", capture):
         runpy.run_path(str(filename), run_name="__main__")
     stage = stages[0]

@@ -20,7 +20,7 @@ def main() -> None:
         stages.append(stage)
 
     with patch.object(Stage, "run", capture):
-        runpy.run_path(str(root / "examples/temple_run/main.py"), run_name="__main__")
+        runpy.run_path(str(root / "src/plocks/_games/temple_run/main.py"), run_name="__main__")
     stage = stages[0]
     update = stage._updates[0][1]
     captured: set[str] = set()

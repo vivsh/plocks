@@ -10,22 +10,67 @@ movement scripts. Start with an example, then make it your own!
 
 ## 🎮 Play your first game
 
-You need **Python 3.12+** and this project. Ask a grown-up for setup help if needed.
+You need **Python 3.12+**. Ask a grown-up for setup help if needed.
 
 ```sh
 python -m venv .venv
 # macOS / Linux:
 source .venv/bin/activate
 # Windows PowerShell instead: .venv\Scripts\Activate.ps1
-python -m pip install -e .
-plocks run examples/platformer
+python -m pip install --upgrade "https://github.com/vivsh/plocks/archive/refs/heads/main.zip"
+plocks examples
+plocks run platformer
 ```
 
 **Arrows** move · **Space** jumps · **R** restarts. Can you reach the gold flag?
 
-Install from this checkout; Plocks is not on PyPI yet. It includes pygame-ce—
+This installs directly from GitHub; no clone or git pull is needed. Plocks is not
+on PyPI yet. The examples and pictures come with the install. It includes pygame-ce—
 keep the separate `pygame` package out of this environment.
 Games run in their own desktop window.
+
+## 🔬 Try ideas live with IPython
+
+Change a character and see what happens straight away—without restarting the game!
+With Plocks installed, make a playground and open IPython:
+
+```sh
+python -m pip install "ipython>=9,<10"
+plocks examples platformer --copy-to playground
+cd playground
+ipython
+```
+
+Enter these lines at the IPython prompt:
+
+```python
+from plocks import Sprite, Stage
+
+stage = Stage(background="midnightblue")
+hero = Sprite("assets/hero.png")
+stage.add(hero)
+stage.run(interactive=True)
+```
+
+The game stays open and the prompt comes back. Try each line and watch your hero:
+
+```python
+hero.x = 100
+hero.say("Hello!")
+hero.glide_by(x=-100, seconds=1)
+```
+
+Try `hero.glide_by?` to read its help.
+
+Use `stage.pause()` to freeze the game, `stage.resume()` to continue, and
+`stage.stop()` to close it. After closing, make a new `Stage` to play again.
+The game keeps running when you switch to the terminal. Hiding or minimizing its
+window pauses it.
+
+Use **terminal IPython** with its normal prompt. This mode opens a desktop window;
+notebook cells and `--simple-prompt` aren't supported. Keep commands short: a long
+Python command occupies the same thread as the game. Ordinary game files still use
+`stage.run()` and work as before.
 
 ## 📚 Learn step by step
 
@@ -44,28 +89,37 @@ Games run in their own desktop window.
 
 | Game | Your mission | New ideas to try |
 | --- | --- | --- |
-| [Dino Dash](examples/dino_run) | Jump cacti, duck birds and collect coins | A complete beginner course, physics, scores, restart |
-| [Sky Steps](examples/platformer) — start here | Ride a lift and reach the flag | Physics, repeating moves, checkpoints |
-| [Beat Blocks](examples/geometry_dash) | Jump over spikes | Timing, gravity, crash checks |
-| [Asset Workshop](examples/asset_workshop) | Use Tiled and Pixelorama artwork | Exported levels, animation, two-player controls |
-| [Scrolling World](examples/scrolling_world) | Explore and paint a world | Tile grids, layers, a following camera |
-| [Coin Quest](examples/mario) | Grab coins and stomp enemies | Lists, solid tiles, scoring |
-| [Temple Trail](examples/temple_run) | Jump, slide and turn corners | Movement scripts, costumes, perspective |
-| [Dojo Duel](examples/dojo_duel) | Win a two-player martial-arts match | Two sets of keys, scripts, health and hit checks |
-| [Sunset Sprint](examples/sunset_sprint) | Steer past three computer cars | Acceleration, steering, collisions and lap maths |
-| [Snake Run](examples/snake_run) | Eat apples and grow a tail | Remembering positions, size and distance |
-| [Fruit Slice](examples/fruit_ninja) | Swipe fruit, dodge bombs | Mouse input, randomness, swipe maths |
-| [Jungle Run](examples/jungle_run) | Run, jump and shoot robots | Bullets, health, several things moving together |
+| [Dino Dash](src/plocks/_games/dino_run) | Jump cacti, duck birds and collect coins | A complete beginner course, physics, scores, restart |
+| [Sky Steps](src/plocks/_games/platformer) — start here | Ride a lift and reach the flag | Physics, repeating moves, checkpoints |
+| [Beat Blocks](src/plocks/_games/geometry_dash) | Jump over spikes | Timing, gravity, crash checks |
+| [Asset Workshop](src/plocks/_games/asset_workshop) | Use Tiled and Pixelorama artwork | Exported levels, animation, two-player controls |
+| [Scrolling World](src/plocks/_games/scrolling_world) | Explore and paint a world | Tile grids, layers, a following camera |
+| [Coin Quest](src/plocks/_games/mario) | Grab coins and stomp enemies | Lists, solid tiles, scoring |
+| [Temple Trail](src/plocks/_games/temple_run) | Jump, slide and turn corners | Movement scripts, costumes, perspective |
+| [Snake Run](src/plocks/_games/snake_run) | Eat apples and grow a tail | Remembering positions, size and distance |
+| [Fruit Slice](src/plocks/_games/fruit_ninja) | Swipe fruit, dodge bombs | Mouse input, randomness, swipe maths |
+| [Jungle Run](src/plocks/_games/jungle_run) | Run, jump and shoot robots | Bullets, health, several things moving together |
 
 Each `main.py` has short comments. Start small; Fruit Slice and Jungle Run are
-stretch challenges. Copy a whole game folder into your project, including `assets/`,
-and run `python main.py` with Plocks installed. From another folder, use
-`python path/to/the/game/main.py` or `plocks run path/to/the/game`.
+stretch challenges. Run a bundled game from any folder with `plocks run NAME`.
+The older spelling `plocks run examples/NAME` works too.
+
+To change a game, make your own copy:
+
+```sh
+plocks examples platformer --copy-to my-game
+cd my-game
+python main.py
+```
+
+Choose a new folder name: Plocks never overwrites an existing game. Your copy
+includes its pictures and sounds. `plocks run path/to/my-game` also runs local
+projects; an existing local folder takes precedence over a bundled name.
 
 ## ✨ Make a character hop
 
-Copy `examples/platformer/assets` beside a new `main.py`. Save this code and run
-`python main.py` there.
+Make the `my-game` copy above, replace its `main.py` with this code, and run
+`python main.py` inside that folder. Keep its `assets` folder.
 
 ```python
 from plocks import Key, Sprite, Stage

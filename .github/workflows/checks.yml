@@ -19,10 +19,10 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: python -m pip install -e '.[dev]'
       - run: python -m pytest -q
-      - run: python -m mypy src tests examples
+      - run: python -m mypy src tests
       - run: pyright
-      - run: python -m ruff check src tests examples
-      - run: python -m ruff format --check src tests examples
+      - run: python -m ruff check src tests
+      - run: python -m ruff format --check src tests
   distributions:
     runs-on: ubuntu-latest
     steps:
@@ -38,6 +38,8 @@ jobs:
       - run: python -m build
       - run: python -m pip uninstall -y plocks
       - run: python -m pip install dist/*.whl
+      - run: python tests/installed_examples.py
+      - run: python tests/ipython_terminal.py --installed
       - run: cd /tmp && pyright --verifytypes plocks --ignoreexternal
       - uses: actions/upload-artifact@v4
         with:

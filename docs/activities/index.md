@@ -17,10 +17,10 @@ For the code activities, use the [Dino Dash download](../dino-run/assets.md).
 | Make a choice in a script | [Try the scripts lab](../dino-run/06-more-plocks.md#make-your-character-choose) |
 | Draw a costume or animate frames | [Pixelorama activity](../art/pixelorama.md) |
 | Paint a level from tiles | [Tiled activity](../art/tiled.md) |
-| Scroll a big world with layers | [Scrolling World](../../examples/scrolling_world/README.md) |
+| Scroll a big world with layers | [Scrolling World](../../src/plocks/_games/scrolling_world/README.md) |
 | Add a sound or a score | [Finish Dino Dash](../dino-run/05-finish-game.md) |
-| Draw a swipe trail | [Fruit Slice's drawing function](../../examples/fruit_ninja/main.py) |
-| Draw circles or boxes | [Dojo Duel's drawing function](../../examples/dojo_duel/main.py) |
+| Draw a swipe trail | [Fruit Slice's drawing function](../../src/plocks/_games/fruit_ninja/main.py) |
+| Draw circles or boxes | [Jungle Run's drawing function](../../src/plocks/_games/jungle_run/main.py) |
 
 **Small challenge:** pick one idea and add it to a game you already like.
 If a name is new, hover over it in your Python editor for a hint.

@@ -6,8 +6,11 @@ import argparse
 import subprocess
 import sys
 import tomllib
+from importlib.resources import as_file
 from pathlib import Path
 from typing import cast
+
+from ._examples import _copy, _example, _names
 
 
 def _linked(path: Path) -> bool:
@@ -46,25 +49,52 @@ def _entry(root: Path) -> Path:
     return path
 
 
+def _run(project: Path) -> int:
+    """Launch one validated project with its own working directory and module path."""
+    if _linked(project):
+        raise ValueError("The selected project must not be a symlink or junction")
+    root = project.resolve()
+    if not root.is_dir():
+        raise ValueError(f"Not a project directory: {root}")
+    entry = _entry(root)
+    code = (
+        f"import sys,runpy; sys.path.insert(0,{str(entry.parent)!r}); "
+        f"runpy.run_path({str(entry)!r},run_name='__main__')"
+    )
+    return subprocess.call([sys.executable, "-c", code], cwd=root)
+
+
 def main() -> int:
-    """Launch a game on desktop, returning its exit status or a useful command error."""
+    """Run local/bundled games, list examples, or copy one into a new editable folder."""
     parser = argparse.ArgumentParser(prog="plocks", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    run = commands.add_parser("run", help="Run a desktop game")
+    run = commands.add_parser("run", help="Run a local project or bundled example")
     run.add_argument("project", nargs="?", default=".", type=Path)
+    examples = commands.add_parser("examples", help="List or copy bundled examples")
+    examples.add_argument("name", nargs="?")
+    examples.add_argument("--copy-to", type=Path, metavar="FOLDER")
     args = parser.parse_args()
     try:
-        if _linked(args.project):
-            raise ValueError("The selected project must not be a symlink or junction")
-        root = args.project.resolve()
-        if not root.is_dir():
-            raise ValueError(f"Not a project directory: {root}")
-        entry = _entry(root)
-        code = (
-            f"import sys,runpy; sys.path.insert(0,{str(entry.parent)!r}); "
-            f"runpy.run_path({str(entry)!r},run_name='__main__')"
-        )
-        return subprocess.call([sys.executable, "-c", code], cwd=root)
+        if args.command == "examples":
+            if (args.name is None) != (args.copy_to is None):
+                parser.error("Use 'plocks examples NAME --copy-to FOLDER' to copy an example")
+            if args.name is None:
+                print("\n".join(_names()))
+            else:
+                print(f"Copied to {_copy(args.name, args.copy_to)}")
+            return 0
+        project = args.project
+        if project.exists() or _linked(project):
+            return _run(project)
+        parts = project.parts
+        if len(parts) == 1:
+            name = parts[0]
+        elif len(parts) == 2 and parts[0] == "examples":
+            name = parts[1]
+        else:
+            return _run(project)
+        with as_file(_example(name)) as root:
+            return _run(root)
     except KeyboardInterrupt:
         return 130
     except (ValueError, OSError, subprocess.SubprocessError) as error:

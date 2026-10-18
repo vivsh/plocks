@@ -21,7 +21,7 @@ from plocks import (
 )
 from plocks._runtime import advance, close
 
-ASSETS = Path(__file__).parents[1] / "examples/platformer/assets"
+ASSETS = Path(__file__).parents[1] / "src/plocks/_games/platformer/assets"
 
 
 def test_two_actors_jump_and_land_independently_through_the_shared_driver() -> None:

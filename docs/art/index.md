@@ -10,9 +10,13 @@ Then let Plocks put them on screen!
 Ask a grown-up to help set up Plocks, **Pixelorama 1.2.2**, and **Tiled 1.12.2**.
 These are the editor versions these activities use.
 
-Copy the whole [Asset Workshop folder](../../examples/asset_workshop) to a new
-folder called `my-game`. Keep its `assets` folder inside it.
-Work on this copy so you can always start again.
+Make your own copy of the included Asset Workshop:
+
+```sh
+plocks examples asset_workshop --copy-to my-game
+```
+
+Keep its `assets` folder. Work on this copy so you can always start again.
 
 ```text
 my-game/

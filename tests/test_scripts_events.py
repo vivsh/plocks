@@ -13,7 +13,7 @@ from plocks._runtime import advance, close, dispatch
 def world() -> Iterator[tuple[Stage, Sprite, Sprite]]:
     stage = Stage()
     # Existing ready-made pixels keep the integration path independent of artwork generation.
-    image = Path(__file__).parents[1] / "examples/platformer/assets/hero.png"
+    image = Path(__file__).parents[1] / "src/plocks/_games/platformer/assets/hero.png"
     first, second = Sprite(image), Sprite(image, x=100)
     stage.add(first)
     stage.add(second)

@@ -4,7 +4,7 @@
 
 **Goal:** open a window with your dinosaur in a desert.
 
-1. Open [01_hello.py](../../examples/dino_run/01_hello.py).
+1. Open [01_hello.py](../../src/plocks/_games/dino_run/01_hello.py).
 2. Run `python 01_hello.py` inside your downloaded `dino_run` folder.
 3. Change `x=-260` to `x=100`. Close the game and run it again.
 

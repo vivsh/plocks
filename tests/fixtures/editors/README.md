@@ -4,7 +4,7 @@ Tools: **Tiled 1.12.2** macOS and **Pixelorama v1.2.2-stable** (Godot 4.7.2).
 These tools are not test/runtime dependencies. Committed exports keep ordinary
 pytest independent of GUI installations.
 
-Hero artwork comes from this repository's `examples/platformer/assets/hero.png`.
+Hero artwork comes from this repository's `src/plocks/_games/platformer/assets/hero.png`.
 The three frame-corner markers are red, green, blue; the frame multipliers are
 1, 2, 1 at 10 FPS, tagged `walk`. `hero.pxo` is the native project. Pixelorama's
 own exporter produced the PNG/JSON in `../games/integrations_proof/assets/`:

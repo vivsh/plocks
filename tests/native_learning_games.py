@@ -19,7 +19,7 @@ def exercise_game(root: Path, output: Path, name: str) -> None:
         stages.append(stage)
 
     with patch.object(Stage, "run", capture):
-        runpy.run_path(str(root / "examples" / name / "main.py"), run_name="__main__")
+        runpy.run_path(str(root / "src/plocks/_games" / name / "main.py"), run_name="__main__")
     stage = stages[0]
 
     @stage.on_update
@@ -56,8 +56,6 @@ def main() -> None:
         "snake_run",
         "temple_run",
         "scrolling_world",
-        "dojo_duel",
-        "sunset_sprint",
     ):
         subprocess.run(
             [sys.executable, str(Path(__file__).resolve()), name], check=True, timeout=15

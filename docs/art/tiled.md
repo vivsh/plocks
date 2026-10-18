@@ -60,7 +60,7 @@ if __name__ == "__main__":
 Open a terminal in `my-game` and run `python main.py`.
 You should see your tiles and your hero at the starting spot.
 This little program draws the world; it does not move the hero yet.
-The original [Asset Workshop](../../examples/asset_workshop) adds movement and jumps.
+The original [Asset Workshop](../../src/plocks/_games/asset_workshop) adds movement and jumps.
 
 **Make it yours:** move `player_start`, save, and restart. Where does the hero appear?
 

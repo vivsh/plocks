@@ -38,7 +38,7 @@ Run it again. The dinosaur should fall more slowly. Try one change at a time!
 For a physical jumper, use pushes instead of glides. Glides are for a path you
 choose yourself, like the hop in [movement scripts](movement.md).
 
-**Next challenge:** play [Sky Steps](../../examples/platformer/README.md).
+**Next challenge:** play [Sky Steps](../../src/plocks/_games/platformer/README.md).
 Find `hero.body.rotation_locked = True`: it keeps the hero upright.
 The moving lift uses `BodyType.KINEMATIC`; the ground stays still.
 

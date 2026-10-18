@@ -4,7 +4,7 @@
 
 **Goal:** jump, fall, and land without writing a timer.
 
-1. Run [03_jump.py](../../examples/dino_run/03_jump.py).
+1. Run [03_jump.py](../../src/plocks/_games/dino_run/03_jump.py).
 2. Press Space after the dinosaur settles on the ground.
 3. Try changing the jump impulse from `460` to `520`.
 

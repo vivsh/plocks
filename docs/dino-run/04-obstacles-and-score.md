@@ -4,7 +4,7 @@
 
 **Goal:** run past obstacles and keep score.
 
-Run [main.py](../../examples/dino_run/main.py). You now have the complete game!
+Run [main.py](../../src/plocks/_games/dino_run/main.py). You now have the complete game!
 Read the named functions below in that file; you do not need to type it all at once.
 
 ## Make a cactus appear

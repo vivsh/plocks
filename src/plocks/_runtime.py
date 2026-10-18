@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import atexit
 import sys
 import time
 from importlib.resources import files
@@ -24,20 +25,18 @@ if TYPE_CHECKING:
     from .stage import Stage
 
 
-def start(stage: Stage) -> None:
-    """Acquire one desktop display and run until closure, releasing owned resources."""
+def _check_start(stage: Stage) -> None:
+    """Reject stage reuse and conflicting display/audio owners before acquisition."""
     if stage._state != "new":
         raise StageError("A stage can run once; create a new Stage to start again")
     if pygame.display.get_surface() is not None:
         raise StageError("Another Pygame display is already active")
     if pygame.mixer.get_init() is not None:
         raise StageError("Another Pygame audio session is already active")
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        pass
-    else:
-        raise StageError("Desktop run() requires a script outside an existing asyncio loop")
+
+
+def _acquire(stage: Stage) -> None:
+    """Acquire the same desktop resources for blocking and interactive execution."""
     _gamepads._check_devices()
     try:
         pygame.display.init()
@@ -48,9 +47,25 @@ def start(stage: Stage) -> None:
         pygame.event.clear()
         _gamepads._open_devices(stage)
         stage._state = "running"
-        asyncio.run(drive(stage))
     except BaseException:
         pygame.display.quit()
+        close(stage)
+        raise
+
+
+def start(stage: Stage) -> None:
+    """Acquire one desktop display and block until closure, releasing owned resources."""
+    _check_start(stage)
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        pass
+    else:
+        raise StageError("Desktop run() requires a script outside an existing asyncio loop")
+    _acquire(stage)
+    try:
+        asyncio.run(drive(stage))
+    except BaseException:
         close(stage)
         raise
 
@@ -83,7 +98,8 @@ def poll(stage: Stage) -> None:
                 pygame.WINDOWHIDDEN: "hidden",
                 pygame.WINDOWMINIMIZED: "minimized",
             }[event.type]
-            stage._set_pause(reason, True)
+            if reason != "focus" or stage._task is None:
+                stage._set_pause(reason, True)
         elif event.type in (
             pygame.WINDOWFOCUSGAINED,
             pygame.WINDOWSHOWN,
@@ -266,6 +282,12 @@ def close(stage: Stage) -> None:
     primary = sys.exception()
     errors: list[BaseException] = []
     stage._state = "closed"
+    task = stage._task
+    stage._task = None
+    if task is not None:
+        atexit.unregister(stage.stop)
+        if task is not asyncio.current_task(loop=task.get_loop()):
+            task.cancel()
     for root in tuple(stage._actions):
         try:
             _cancel(stage, root)

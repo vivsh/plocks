@@ -24,8 +24,6 @@ GAMES = (
     "snake_run",
     "temple_run",
     "scrolling_world",
-    "dojo_duel",
-    "sunset_sprint",
 )
 TUTORIALS = (*GAMES, "asset_workshop", "dino_run")
 ROOT = Path(__file__).parents[1]
@@ -42,7 +40,7 @@ def load_game(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Calla
             stages.append(stage)
 
         with patch.object(Stage, "run", capture):
-            runpy.run_path(str(ROOT / "examples" / name / "main.py"), run_name="__main__")
+            runpy.run_path(str(ROOT / "src/plocks/_games" / name / "main.py"), run_name="__main__")
         stage = stages[-1]
         stage._state = "running"
         for handler in tuple(stage._starts):
@@ -93,9 +91,13 @@ def test_games_render_and_close_from_another_folder(
 
 def test_collection_is_focused_games_and_workshop_without_artwork_code() -> None:
     """The teaching surface stays small, self-contained and free from image generation."""
-    assert {p.name for p in (ROOT / "examples").iterdir() if p.is_dir()} == set(TUTORIALS)
+    assert {
+        p.name
+        for p in (ROOT / "src/plocks/_games").iterdir()
+        if p.is_dir() and p.name != "__pycache__"
+    } == set(TUTORIALS)
     for name in TUTORIALS:
-        folder = ROOT / "examples" / name
+        folder = ROOT / "src/plocks/_games" / name
         tree = ast.parse((folder / "main.py").read_text())
         for node in ast.walk(tree):
             assert not isinstance(node, ast.Nonlocal)
@@ -110,53 +112,6 @@ def test_collection_is_focused_games_and_workshop_without_artwork_code() -> None
                 assert all(not alias.name.startswith(("PIL", "pygame")) for alias in node.names)
         assert (folder / "README.md").is_file()
         assert list((folder / "assets").glob("*.png"))
-
-
-def test_dojo_duel_two_players_attack_jump_and_restart(
-    load_game: Callable[[str], Stage],
-) -> None:
-    """Both keyboard players move, jump, land attacks, and reset a shared round."""
-    stage = load_game("dojo_duel")
-    game = state(stage)
-    blue = cast(Sprite, game["blue"])
-    ruby = cast(Sprite, game["ruby"])
-    ruby.position = (-80, -140)
-    press(stage, Key.F)
-    ticks(stage, 25)
-    assert state(stage)["ruby_health"] == 88
-    press(stage, Key.UP)
-    ticks(stage, 10)
-    assert ruby.y > -100
-    ticks(stage, 45)
-    assert ruby.y == -140
-    press(stage, Key.R)
-    assert state(stage)["blue_health"] == 100
-    assert state(stage)["ruby_health"] == 100
-    assert blue.position == (-190, -140)
-    assert ruby.position == (190, -140)
-
-
-def test_sunset_sprint_accelerates_bumps_and_restarts(
-    load_game: Callable[[str], Stage],
-) -> None:
-    """The player races bots, loses speed in a bump, then restores the full race."""
-    stage = load_game("sunset_sprint")
-    game = state(stage)
-    player = cast(Sprite, game["player"])
-    start = player.position
-    press(stage, Key.W)
-    ticks(stage, 30)
-    assert cast(float, state(stage)["speed"]) > 80
-    assert player.position != start
-    bots = cast(list[tuple[Sprite, float, float, float, str]], state(stage)["bots"])
-    player.position = bots[0][0].position
-    game["bump_until"] = 0.0
-    ticks(stage, 1)
-    assert cast(float, state(stage)["bump_until"]) > stage.time
-    stage.keyboard._down.clear()
-    press(stage, Key.R)
-    assert cast(float, state(stage)["player_progress"]) < 0.01
-    assert state(stage)["outcome"] == "Race to 3 laps!"
 
 
 def test_mario_jump_coin_stomp_gap_and_restart(load_game: Callable[[str], Stage]) -> None:
@@ -330,7 +285,7 @@ def test_later_asset_loads_survive_a_changed_cwd(
     def capture(stage: Stage) -> None:
         stages.append(stage)
 
-    monkeypatch.chdir(ROOT / "examples" / name)
+    monkeypatch.chdir(ROOT / "src/plocks/_games" / name)
     with patch.object(Stage, "run", capture):
         runpy.run_path("main.py", run_name="__main__")
     monkeypatch.chdir(tmp_path)
@@ -462,7 +417,7 @@ def test_importing_example_prepares_game_without_starting(
     name: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Module-level setup registers handlers; only the __main__ guard opens the game."""
-    filename = ROOT / "examples" / name / "main.py"
+    filename = ROOT / "src/plocks/_games" / name / "main.py"
     monkeypatch.chdir(tmp_path)
     with patch.object(Stage, "run") as start:
         namespace = runpy.run_path(str(filename), run_name="imported_example")

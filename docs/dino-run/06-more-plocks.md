@@ -52,4 +52,4 @@ Want to understand the memory? [Try the coin-counting activity](../activities/me
 ## Keep exploring
 
 [Choose a small activity](../activities/index.md), [paint a world](../art/tiled.md),
-or [pick another game](../../examples/README.md). Change one thing and play again!
+or [pick another game](../../src/plocks/_games/README.md). Change one thing and play again!

@@ -5,7 +5,7 @@
 **Goal:** make a game you want to play again.
 
 Use the [complete project download](../downloads/dino-dash.zip), or
-[read main.py](../../examples/dino_run/main.py).
+[read main.py](../../src/plocks/_games/dino_run/main.py).
 
 | Control | Action |
 | --- | --- |

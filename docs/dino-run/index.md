@@ -12,13 +12,16 @@ We will build it in small steps using real Python and ready-made pictures.
 Ask a grown-up to help install **Python 3.12+** and Plocks using the
 [setup steps](../start/index.md).
 
-[Download the whole project](../downloads/dino-dash.zip), unzip it, and open the
-`dino_run` folder in your editor. Activate the environment with Plocks installed.
-In a terminal inside that folder, try:
+Make a copy of the included game, then open its folder in your editor:
 
 ```sh
+plocks examples dino_run --copy-to dino_run
+cd dino_run
 python 01_hello.py
 ```
+
+You can also [download the whole project](../downloads/dino-dash.zip) and unzip it.
+Use the environment where Plocks is installed.
 
 Close one game window before starting another. You can also use
 `python path/to/dino_run/01_hello.py` from elsewhere: pictures live beside the code.

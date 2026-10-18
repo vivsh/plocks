@@ -71,7 +71,7 @@ def test_run_uses_main_and_preserves_child_exit_status(tmp_path: Path) -> None:
     assert result.returncode == 7
 
 
-def test_cli_exposes_only_desktop_run() -> None:
+def test_cli_exposes_desktop_run_and_bundled_examples() -> None:
     """Help and argument parsing no longer advertise or accept removed web commands."""
     for command in ("--help", "build", "serve"):
         result = subprocess.run(
@@ -86,7 +86,7 @@ def test_cli_exposes_only_desktop_run() -> None:
             check=False,
         )
         if command == "--help":
-            assert result.returncode == 0 and "{run}" in result.stdout
+            assert result.returncode == 0 and "{run,examples}" in result.stdout
             assert "serve" not in result.stdout and "build" not in result.stdout
         else:
             assert result.returncode == 2 and "invalid choice" in result.stderr
