@@ -20,6 +20,7 @@ from plocks import (
     Script,
     Sprite,
     Stage,
+    TileMap,
 )
 
 
@@ -228,3 +229,11 @@ def imported_controls() -> None:
     person.on_gamepad_button_down(GamepadButton.B, person.sequence().wait(1))
     stage.on_gamepad_button_down(GamepadButton.X, hero, hero.sequence().wait(1), gamepad=player)
     hero.sequence().when(GamepadDown(GamepadButton.A, player), then=hero.sequence().move(1))
+
+
+def one_way_platforms() -> None:
+    """Platform configuration remains fully typed through generic actors."""
+    lift = Sprite("platform.png", body_type=BodyType.KINEMATIC, one_way=True)
+    assert_type(lift.one_way, bool)
+    terrain = TileMap(["P"], {"P": "platform.png"}, tile_size=(32, 16), one_way={"P"})
+    assert_type(terrain.one_way, frozenset[str])

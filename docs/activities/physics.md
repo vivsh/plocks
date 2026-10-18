@@ -41,3 +41,26 @@ choose yourself, like the hop in [movement scripts](movement.md).
 **Next challenge:** play [Sky Steps](../../examples/platformer/README.md).
 Find `hero.body.rotation_locked = True`: it keeps the hero upright.
 The moving lift uses `BodyType.KINEMATIC`; the ground stays still.
+
+
+## Jump through a platform
+
+In Sky Steps, the lift has `one_way=True`. You can jump through it from below and
+land on top. Every player can use it independently.
+
+For a new platform in that game:
+
+```python
+ledge = Sprite(
+    assets / "platform.png",
+    body_type=BodyType.STATIC,
+    one_way=True,
+)
+ledge.position = (0, 30)
+stage.add(ledge)
+```
+
+For tiles, use `one_way={"P"}` and put `P` cells in your map. Keep those keys out
+of `solid`: solid tiles block every side. Both need `Stage(physics=True)` for
+automatic landing. One-way platforms stay horizontal; moving lifts use
+`BodyType.KINEMATIC`.

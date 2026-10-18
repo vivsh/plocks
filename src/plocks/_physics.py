@@ -18,6 +18,9 @@ if TYPE_CHECKING:
     from .tiling import TileMap
 
 
+_ONE_WAY = 1
+
+
 @dataclass(slots=True)
 class _TileBody:
     tilemap: TileMap
@@ -41,16 +44,40 @@ def _moment(shape: Box | Circle, scale: float, mass: float) -> float:
     return _positive(float(value), "scaled inertia")
 
 
-def _shape(native: pymunk.Body, definition: Box | Circle, scale: float) -> pymunk.Shape:
+def _one_way(actor: Actor) -> bool:
+    """Borrow immutable platform configuration; Puppets remain ordinary colliders."""
+    from .sprites import Sprite
+
+    return isinstance(actor, Sprite) and actor.one_way
+
+
+def _begin_one_way(arbiter: pymunk.Arbiter, space: pymunk.Space, data: object) -> bool:
+    """Reject underside/side pairs until separation; let the solver handle relative velocity.
+
+    Rejecting a separating top contact would latch an ignored pair when a lift
+    starts descending, preventing the rider from catching up and landing again.
+    """
+    return bool(arbiter.normal.y > 0.5)
+
+
+def _shape(
+    native: pymunk.Body, definition: Box | Circle, scale: float, *, one_way: bool = False
+) -> pymunk.Shape:
     import pymunk
 
     x, y = _point((definition.center[0] * scale, definition.center[1] * scale), "scaled center")
     if isinstance(definition, Circle):
+        if one_way:
+            raise PhysicsError("One-way platforms require a Box collision shape")
         return pymunk.Circle(native, _positive(definition.radius * scale, "scaled radius"), (x, y))
     w, h = (
         _positive(definition.width * scale, "scaled width") / 2,
         _positive(definition.height * scale, "scaled height") / 2,
     )
+    if one_way:
+        edge = pymunk.Segment(native, (x - w, y + h), (x + w, y + h), 0)
+        edge.collision_type = _ONE_WAY
+        return edge
     return pymunk.Poly(native, [(x - w, y - h), (x + w, y - h), (x + w, y + h), (x - w, y + h)])
 
 
@@ -97,7 +124,7 @@ def _attach(world: Physics, actor: Actor) -> None:
         definition.center[0] * actor.scale,
         definition.center[1] * actor.scale,
     )
-    shape = _shape(native, definition, actor.scale)
+    shape = _shape(native, definition, actor.scale, one_way=_one_way(actor))
     shape.friction, shape.elasticity = 0.7, 0
     _space(world).add(native, shape)
     body = object.__new__(Body)
@@ -114,7 +141,7 @@ def _replace_shape(body: Body, definition: Box | Circle, scale: float) -> None:
         else _moment(definition, scale, native.mass)
     )
     friction, bounce = body.friction, body.bounce
-    replacement = _shape(native, definition, scale)
+    replacement = _shape(native, definition, scale, one_way=_one_way(body._actor))
     replacement.friction, replacement.elasticity = friction, bounce
     space = _space(body._world)
     previous = tuple(native.shapes)
@@ -179,9 +206,13 @@ def _contacts(body: Body) -> list[tuple[pymunk.Body, Point, Point]]:
         a, b = arbiter.shapes
         mine, other = (a, b) if a.body is native else (b, a)
         fresh = mine.shapes_collide(other)
-        if not fresh.points or min(p.distance for p in fresh.points) > 0.2:
+        if not fresh.points:
             return
         normal = fresh.normal
+        # Pymunk 6.11 shapes_collide can flip Segment/Poly normals without
+        # flipping distance. Derive signed separation from the fresh geometry.
+        if min((p.point_b - p.point_a).dot(normal) for p in fresh.points) > 0.2:
+            return
         # shapes_collide normal points from mine toward the other surface.
         support = (-float(normal.x), -float(normal.y))
         point = fresh.points[0].point_a
@@ -239,21 +270,28 @@ def _terrain(
     import pymunk
 
     rows = tilemap._cells if cells is None else cells
-    count = sum(key in tilemap._solid for row in rows for key in row)
+    collidable = tilemap.solid | tilemap.one_way
+    count = sum(key in collidable for row in rows for key in row)
     count += sum(
         len(t.native.shapes)
         for t in world._terrain
         if t.tilemap is not tilemap and t.native is not None
     )
     if count > 4096:
-        raise PhysicsError("A stage supports at most 4096 solid tile cells")
+        raise PhysicsError("A stage supports at most 4096 collidable tile cells")
     native = pymunk.Body(body_type=pymunk.Body.STATIC)
     native.position = (tilemap.x, tilemap.y) if position is None else position
     w, h = tilemap.tile_size
     shapes: list[pymunk.Shape] = []
     for row, line in enumerate(rows):
         for col, key in enumerate(line):
-            if key in tilemap._solid:
+            if key not in collidable:
+                continue
+            shape: pymunk.Shape
+            if key in tilemap.one_way:
+                shape = pymunk.Segment(native, (col * w, -row * h), ((col + 1) * w, -row * h), 0)
+                shape.collision_type = _ONE_WAY
+            else:
                 shape = pymunk.Poly(
                     native,
                     [
@@ -263,8 +301,8 @@ def _terrain(
                         (col * w, -(row + 1) * h),
                     ],
                 )
-                shape.friction = 0.7
-                shapes.append(shape)
+            shape.friction = 0.7
+            shapes.append(shape)
     _space(world).add(native, *shapes)
     _remove_terrain(world, tilemap)
     world._terrain.append(_TileBody(tilemap, native))

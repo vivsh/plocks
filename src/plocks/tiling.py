@@ -22,12 +22,15 @@ class TileMap:
 
     Cells select a shared costume palette. Tile dimensions and palette stay fixed;
     edit cells with set_tile. Solid cells participate in overlap queries and an enabled stage physics world.
-    Nonphysical movement is never resolved automatically. Empty cells return None.
+    one_way keys support landing from above, allowing jumps through from below.
+    Solid and one-way keys must be disjoint. Nonphysical movement is never resolved
+    automatically. Empty cells return None.
     """
 
     __slots__ = (
         "_cells",
         "_layer",
+        "_one_way",
         "_opacity",
         "_palette",
         "_parallax",
@@ -47,6 +50,7 @@ class TileMap:
         *,
         tile_size: tuple[int, int],
         solid: Iterable[str] = (),
+        one_way: Iterable[str] = (),
         empty: str = ".",
         x: float = 0,
         y: float = 0,
@@ -80,6 +84,11 @@ class TileMap:
         self._solid = frozenset(solid)
         if not self._solid <= self._palette.keys():
             raise KeyError("Every solid tile key must exist in the palette")
+        self._one_way = frozenset(one_way)
+        if not self._one_way <= self._palette.keys():
+            raise KeyError("Every one-way tile key must exist in the palette")
+        if self._solid & self._one_way:
+            raise ValueError("A tile key cannot be both solid and one-way")
         cells = (
             [[None if key == empty else key for key in row] for row in cast(Sequence[str], rows)]
             if character_rows
@@ -119,14 +128,16 @@ class TileMap:
 
     @property
     def parallax(self) -> Point:
-        """Nonnegative camera factors; solid maps require (1, 1)."""
+        """Nonnegative camera factors; solid maps and one-way maps require (1, 1)."""
         return self._parallax
 
     @parallax.setter
     def parallax(self, value: Point) -> None:
         x, y = _point(value, "parallax")
-        if x < 0 or y < 0 or (self.solid and (x, y) != (1, 1)):
-            raise ValueError("Parallax must be nonnegative; solid maps require (1, 1)")
+        if x < 0 or y < 0 or ((self.solid or self.one_way) and (x, y) != (1, 1)):
+            raise ValueError(
+                "Parallax must be nonnegative; solid maps and one-way maps require (1, 1)"
+            )
         self._parallax = (x, y)
 
     @property
@@ -160,8 +171,18 @@ class TileMap:
 
     @property
     def solid(self) -> frozenset[str]:
-        """Read-only keys whose occupied cells participate in solid overlap queries."""
+        """Read-only tile keys that block physical actors from every side."""
         return self._solid
+
+    @property
+    def one_way(self) -> frozenset[str]:
+        """Read-only keys for platforms that support falling actors from above only.
+
+        Physics requires Stage(physics=True). Geometric overlap queries include
+        these cells from either side; body contacts include accepted landings only.
+        Keys must exist in the palette and cannot also appear in solid.
+        """
+        return self._one_way
 
     @property
     def cells(self) -> tuple[tuple[str | None, ...], ...]:
@@ -268,7 +289,11 @@ class TileMap:
     def tiles_touching(
         self, bounds: Bounds, *, solid_only: bool = True
     ) -> tuple[tuple[int, int], ...]:
-        """Return occupied overlapping cells in row-major order, with positive overlap only."""
+        """Return overlapping cells; solid_only includes solid and one-way keys.
+
+        This is geometric overlap, not directional physical contact. Row-major
+        order is stable; edge-only contact is not an overlap.
+        """
         if not self.bounds.intersects(bounds):
             return ()
         width, height = self.tile_size
@@ -281,7 +306,7 @@ class TileMap:
             for row in range(top, bottom)
             for column in range(left, right)
             if (key := self._cells[row][column]) is not None
-            and (not solid_only or key in self.solid)
+            and (not solid_only or key in self.solid or key in self.one_way)
         )
 
 

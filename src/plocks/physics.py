@@ -73,6 +73,9 @@ class Physics:
         self._bodies: list[Body] = []
         self._terrain: list[_TileBody] = []
         self._space.gravity = (0, -900)
+        from ._physics import _ONE_WAY, _begin_one_way
+
+        self._space.add_collision_handler(_ONE_WAY, 0).begin = _begin_one_way
 
     @property
     def gravity(self) -> Point:
@@ -141,6 +144,10 @@ class Body:
         native = _native(self)
         if self.body_type is BodyType.STATIC or self.rotation_locked:
             raise PhysicsError("Angular velocity requires an unlocked moving body")
+        from ._physics import _one_way
+
+        if value and _one_way(self._actor):
+            raise PhysicsError("One-way platforms must stay horizontal")
         native.angular_velocity = -radians(value)
         native.activate()
 
@@ -203,7 +210,10 @@ class Body:
 
     @property
     def shape(self) -> Box | Circle:
-        """Unscaled collider definition; appearance changes do not resize it."""
+        """Unscaled collider definition; appearance changes do not resize it.
+
+        One-way platforms require Box and collide along its top edge only.
+        """
         _native(self)
         return self._shape
 

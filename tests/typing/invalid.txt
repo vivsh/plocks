@@ -1,5 +1,5 @@
 from PIL import Image
-from plocks import Actor, Action, Box, Canvas, Costume, Key, Event, Message, Script, KeyDown, MouseButton, Point, Puppet, Sprite, Stage
+from plocks import Actor, Action, Box, Canvas, Costume, Key, Event, Message, Script, KeyDown, MouseButton, Point, Puppet, Sprite, Stage, TileMap
 stage = Stage()
 hero = Sprite(Image.new("RGBA", (8, 8)))
 person = Puppet.stick_figure()
@@ -151,3 +151,8 @@ hero.costumes(art.frames, fps=10, durations=art.durations)  # error
 hero.sequence().costumes(art.frames)  # error
 hero.sequence().costumes(art.frames, fps=10, durations=art.durations)  # error
 hero.costumes(art.frames, durations=("slow",))  # error
+
+Sprite("platform.png", one_way="yes")  # error
+TileMap(["P"], {"P": "platform.png"}, tile_size=(32, 16), one_way=1)  # error
+hero.one_way = True  # error
+TileMap(["P"], {"P": "platform.png"}, tile_size=(32, 16)).one_way = frozenset({"P"})  # error

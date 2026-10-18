@@ -22,7 +22,8 @@ stage.add(ground)
 for x, y in ((-90, -90), (180, 30), (380, -40)):
     ledge = Sprite(assets / "platform.png", x=x, y=y, body_type=BodyType.STATIC)
     stage.add(ledge)
-lift = Sprite(assets / "platform.png", x=45, y=-110, body_type=BodyType.KINEMATIC)
+# Jump through the lift from below, then land on its top.
+lift = Sprite(assets / "platform.png", x=45, y=-110, body_type=BodyType.KINEMATIC, one_way=True)
 stage.add(lift)
 lift_trip = Script(Sprite).repeat()
 lift_trip.glide_to(y=65, seconds=2)

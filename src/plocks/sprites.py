@@ -44,11 +44,14 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
     Positions use logical pixels and the costume anchor. Commands schedule Actions;
     property assignments apply immediately. Direction 90 faces right.
+    one_way=True makes a horizontal static/kinematic platform with a top-only
+    physical edge; its default False keeps ordinary full-shape collision.
     """
 
     __slots__ = (
         "_bubble",
         "_layer",
+        "_one_way",
         "_rotation_style",
         "_scale",
         "_stage",
@@ -70,6 +73,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         visible: bool = True,
         layer: int = 0,
         body_type: BodyType = BodyType.DYNAMIC,
+        one_way: bool = False,
         state: None = None,
     ) -> None: ...
     @overload
@@ -84,6 +88,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         visible: bool = True,
         layer: int = 0,
         body_type: BodyType = BodyType.DYNAMIC,
+        one_way: bool = False,
         state: type[_State_co],
     ) -> None: ...
     def __init__(
@@ -97,12 +102,20 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         visible: bool = True,
         layer: int = 0,
         body_type: BodyType = BodyType.DYNAMIC,
+        one_way: bool = False,
         state: type[object] | None = None,
     ) -> None:
         self._state: _State_co = cast(_State_co, _new_state(state))
         self._transform: _Placement | Body = _Placement(
             (_number(x, "x"), _number(y, "y")), _number(direction, "direction") % 360, body_type
         )
+        if not isinstance(one_way, bool):
+            raise TypeError("one_way must be bool")
+        if one_way and body_type not in (BodyType.STATIC, BodyType.KINEMATIC):
+            raise ValueError("A one-way platform must be static or kinematic")
+        if one_way and self._transform.direction != 90:
+            raise ValueError("A one-way platform must be horizontal (direction=90)")
+        self._one_way = one_way
         self._scale = _positive(scale, "scale")
         self._visible = visible
         self._layer = _integer(layer, "layer")
@@ -132,6 +145,16 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         return self._transform
 
     @property
+    def one_way(self) -> bool:
+        """Whether this static/kinematic Box platform supports landing from above only.
+
+        Read-only construction setting. Jump through from below; side passage is
+        allowed. Physics requires Stage(physics=True); artwork remains unchanged.
+        One-way platforms stay horizontal and cannot use Circle collision shapes.
+        """
+        return self._one_way
+
+    @property
     def body_type(self) -> BodyType:
         """Configured role, always readable; change only while detached."""
         return self._transform.body_type
@@ -144,6 +167,8 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
             raise TypeError("Use a BodyType value")
         if self._stage is not None:
             raise PhysicsError("Change body_type only while detached")
+        if self.one_way and value not in (BodyType.STATIC, BodyType.KINEMATIC):
+            raise ValueError("A one-way platform must be static or kinematic")
         self._transform = _Placement(self.position, self.direction, value)
 
     @property

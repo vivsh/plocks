@@ -155,14 +155,29 @@ def _body_direction(body: Body) -> float:
 
 
 def _set_position(actor: Sprite | Puppet, position: Point) -> None:
-    from ._physics import _space
+    from ._physics import _ONE_WAY, _one_way, _space
     from .geometry import _Placement
     from .physics import Body, _native
 
     if isinstance(actor._transform, Body):
         native = _native(actor._transform)
+        space = _space(actor._transform._world)
+        vertical_teleport = abs(native.position.y - position[1]) > 1e-9
         native.position = position
-        _space(actor._transform._world).reindex_shapes_for_body(native)
+        space.reindex_shapes_for_body(native)
+        if vertical_teleport and (
+            _one_way(actor)
+            or any(
+                hit.shape is not None and hit.shape.collision_type == _ONE_WAY
+                for shape in native.shapes
+                for hit in space.shape_query(shape)
+            )
+        ):
+            # Respawning onto a platform must not inherit an earlier rejected pair.
+            # Reinsert these same native shapes; no contact history is retained here.
+            shapes = tuple(native.shapes)
+            space.remove(*shapes)
+            space.add(*shapes)
         native.activate()
     else:
         actor._transform = _Placement(position, actor.direction, actor.body_type)
@@ -170,6 +185,12 @@ def _set_position(actor: Sprite | Puppet, position: Point) -> None:
 
 def _set_direction(actor: Sprite | Puppet, direction: float) -> None:
     from math import radians
+
+    from ._physics import _one_way
+    from .errors import PhysicsError
+
+    if _one_way(actor) and direction % 360 != 90:
+        raise PhysicsError("One-way platforms must stay horizontal (direction=90)")
 
     from ._physics import _space
     from .geometry import _Placement

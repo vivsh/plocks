@@ -12,7 +12,7 @@ plocks run examples/platformer
 
 ## What you'll learn
 
-- **Physics:** Plocks handles falling and landing for you.
+- **Physics:** Plocks handles falling and landing for you. Jump through the lift from below!
 - **Scripts:** `lift_trip` repeats a list of moves and waits.
 - **Variables:** `spawn` remembers your checkpoint after a fall.
 
