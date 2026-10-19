@@ -323,3 +323,48 @@ def multiplayer_and_automated_players() -> None:
 
     assert_type(stage.gamepads[1].remote_connected, bool)
     stage.run(multiplayer=Multiplayer(slots=(1,)))
+
+
+def gameplay_foundations() -> None:
+    """Touch payloads retain state, paths compose, and mechanical/UI controls stay typed."""
+    from plocks import Button, Hinge, Label, Motor, Point, ProgressBar, Rope, Spring
+
+    stage = Stage(physics=True)
+    hero = Sprite("hero.png", state=PlayerState)
+    coin = Sprite("coin.png", state=PlayerState)
+    stage.add(hero)
+    stage.add(coin)
+
+    @hero.on_touch(coin)
+    def collect(event: Event[Sprite[PlayerState], Sprite[PlayerState]]) -> None:
+        assert_type(event.target.state.health, int)
+        assert_type(event.data.state.health, int)
+
+    hero.on_touch_end(coin, hero.sequence().wait(0.1))
+    world = TileMap(["...", ".#.", "..."], {"#": "tile.png"}, tile_size=(32, 32), solid={"#"})
+    assert_type(world.cell_center(row=0, column=0), Point)
+    route = world.find_path(start=hero.position, goal=(60, -60), actor=hero)
+    assert_type(route, tuple[Point, ...] | None)
+    if route is not None:
+        assert_type(hero.follow_path(route), Action)
+        assert_type(hero.sequence().follow_path(route), Script[Sprite])
+    stage.follow(hero, bounds=world.bounds, smoothing=0.1)
+    assert_type(stage.physics.rope((0, 100), hero), Rope)
+    hinge = stage.physics.hinge(hero, coin)
+    assert_type(hinge, Hinge)
+    assert_type(hinge.motor(speed=30, max_torque=1000), Motor)
+    assert_type(stage.physics.spring((0, 100), hero), Spring)
+    assert_type(hero.body.sensor, bool)
+    label = Label("Score: 0")
+    bar = ProgressBar(value=100)
+    button = Button("Continue")
+    for control in (label, bar, button):
+        stage.add(control)
+    assert_type(stage.focused_button, Button | None)
+
+    @button.on_click
+    def resume(event: Event[Button, None]) -> None:
+        assert_type(event.target, Button)
+        assert_type(event.data, None)
+        event.target.visible = False
+        stage.resume()

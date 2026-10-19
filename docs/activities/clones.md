@@ -59,6 +59,9 @@ if __name__ == "__main__":
     stage.run()
 ```
 
+`original.clone()` adds the copy to the stage for you. Change its position straight
+away—there is no extra `stage.add(copy)` step.
+
 ## 3. Make it yours
 
 - Change `(220, 0)` to `(100, 100)` to launch diagonally.

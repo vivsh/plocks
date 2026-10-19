@@ -117,6 +117,45 @@ def ticks(stage: Stage, count: int) -> None:
         advance(stage, (stage._last_wall or 0) + 1 / stage.tick_rate)
 
 
+@pytest.mark.parametrize("kind", ["sprite", "puppet"])
+@pytest.mark.parametrize("physical", [False, True])
+@pytest.mark.parametrize("running", [False, True])
+def test_adding_an_attached_clone_explains_automatic_membership_without_mutation(
+    kind: str, physical: bool, running: bool
+) -> None:
+    """Duplicate adds explain clone() and preserve membership, pending starts and bodies."""
+    stage = Stage(physics=physical)
+    source: Sprite | Puppet
+    if kind == "sprite":
+        source = Sprite(IMAGE)
+    else:
+        source = Puppet(Skeleton({"root": Joint(None)}), parts={"root": IMAGE})
+    try:
+        stage.add(source)
+        if running:
+            ticks(stage, 1)
+        clone = source.clone()
+        members = stage.objects
+        pending = tuple(stage._pending)
+        body = clone.body if physical else None
+        with pytest.raises(ValueError, match=r"clone\(\) adds its copy automatically"):
+            stage.add(clone)
+        assert stage.objects == members == (source, clone)
+        assert clone._stage is stage and tuple(stage._pending) == pending
+        assert len(pending) == 1
+        if physical:
+            assert clone.body is body and len(stage.physics._bodies) == 2
+        with pytest.raises(ValueError, match="^This object is already in the stage$"):
+            stage.add(source)
+        stage.remove(clone)
+        stage.add(clone)
+        assert stage.objects == (source, clone) and not stage._pending
+        if physical:
+            assert clone.body is not body and len(stage.physics._bodies) == 2
+    finally:
+        close(stage)
+
+
 def test_snapshot_assets_state_and_read_only_origin(world: Stage) -> None:
     """Cloning shares immutable pixels but preserves current fields in a distinct state root."""
     source = Sprite(IMAGE, state=EnemyState, x=12, y=-3, direction=270, scale=2, layer=8)

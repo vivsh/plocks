@@ -141,9 +141,13 @@ def _replace_shape(body: Body, definition: Box | Circle, scale: float) -> None:
         if body.rotation_locked or body.body_type is not BodyType.DYNAMIC
         else _moment(definition, scale, native.mass)
     )
-    friction, bounce = body.friction, body.bounce
+    from ._connections import _anchor_changes, _apply_anchors
+
+    changes = _anchor_changes(body, scale)
+    friction, bounce, sensor = body.friction, body.bounce, body.sensor
     replacement = _shape(native, definition, scale, one_way=_one_way(body._actor))
     replacement.friction, replacement.elasticity = friction, bounce
+    replacement.sensor = sensor
     space = _space(body._world)
     previous = tuple(native.shapes)
     previous = tuple(
@@ -151,13 +155,22 @@ def _replace_shape(body: Body, definition: Box | Circle, scale: float) -> None:
     )
     space.add(replacement)
     try:
+        _apply_anchors(changes)
         space.remove(*previous)
-    except BaseException:
-        space.remove(replacement)
-        replacement.body = None
-        for shape in previous:
-            if shape.space is None:
-                space.add(shape)
+    except BaseException as error:
+        try:
+            _apply_anchors(changes, restore=True)
+        except BaseException as cleanup:  # noqa: BLE001 -- restore geometry without masking failure
+            error.add_note(f"Anchor rollback also failed: {cleanup!r}")
+        try:
+            if replacement.space is space:
+                space.remove(replacement)
+            replacement.body = None
+            for shape in previous:
+                if shape.space is None:
+                    space.add(shape)
+        except BaseException as cleanup:  # noqa: BLE001 -- retain primary replacement failure
+            error.add_note(f"Shape rollback also failed: {cleanup!r}")
         raise
     for shape in previous:
         shape.body = None
@@ -173,6 +186,9 @@ def _retire(body: Body) -> None:
         return
     native = body._native
     actor = body._actor
+    from ._connections import _remove_actor
+
+    _remove_actor(body._world, actor)
     placement = _Placement(
         (float(native.position.x), float(native.position.y)),
         (90 - degrees(native.angle)) % 360,
@@ -192,6 +208,8 @@ def _retire(body: Body) -> None:
 def _close(world: Physics) -> None:
     if world._space is None:
         return
+    for link in tuple(world._connections):
+        link.disconnect()
     for body in tuple(world._bodies):
         _retire(body)
     for terrain in tuple(world._terrain):
@@ -206,6 +224,8 @@ def _contacts(body: Body) -> list[tuple[pymunk.Body, Point, Point]]:
     def collect(arbiter: pymunk.Arbiter) -> None:
         a, b = arbiter.shapes
         mine, other = (a, b) if a.body is native else (b, a)
+        if mine.sensor or other.sensor:
+            return
         fresh = mine.shapes_collide(other)
         if not fresh.points:
             return
@@ -350,12 +370,17 @@ def _travel_speed(body: Body, dt: float, requests: tuple[_Request | None, ...]) 
 def _substeps(world: Physics, dt: float, requests: tuple[_Request | None, ...]) -> int:
     """Keep relative travel below a quarter of the smallest moving collider dimension.
 
-    Derive the count locally only in worlds with one-way platforms. Retain the
+    Derive the count locally in worlds with one-way platforms or connections. Retain the
     usual four substeps for ordinary scenes; reject an unsafe count rather than
     capping it silently or allowing an unbounded native stepping loop.
     """
-    if not any(t.tilemap.one_way for t in world._terrain) and not any(
-        _one_way(body._actor) for body in world._bodies
+    from ._connections import _steps as connection_steps
+
+    base = connection_steps(world, dt)
+    if (
+        not world._connections
+        and not any(t.tilemap.one_way for t in world._terrain)
+        and not any(_one_way(body._actor) for body in world._bodies)
     ):
         return 4
     extent, speed = inf, 0.0
@@ -368,14 +393,14 @@ def _substeps(world: Physics, dt: float, requests: tuple[_Request | None, ...]) 
             size = min(shape.width, shape.height) if isinstance(shape, Box) else 2 * shape.radius
             extent = min(extent, size * body._actor.scale)
     if extent == inf:
-        return 4
+        return base
     required = dt * (2 * speed) / (extent / 4)
     if not isfinite(required) or required > 1024:
         raise PhysicsError(
-            "One-way platform motion requires more than 1024 physics substeps; "
+            "Physical motion requires more than 1024 physics substeps; "
             "reduce speed/force, enlarge the collider, or increase Stage(tick_rate=...)."
         )
-    return max(4, ceil(required))
+    return max(base, ceil(required))
 
 
 def _integrate(stage: Stage, dt: float) -> None:
@@ -436,3 +461,18 @@ def _integrate(stage: Stage, dt: float) -> None:
             else:
                 native.torque -= request.amount * weight
         _space(world).step(substep)
+        if world._connections:
+            for body in world._bodies:
+                native = _native(body)
+                if not all(
+                    isfinite(v)
+                    for v in (
+                        *native.position,
+                        *native.velocity,
+                        native.angle,
+                        native.angular_velocity,
+                    )
+                ):
+                    raise PhysicsError(
+                        "Physical connection motion became nonfinite; reduce the workload"
+                    )

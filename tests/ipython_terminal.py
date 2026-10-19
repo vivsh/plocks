@@ -155,6 +155,38 @@ def _simple_prompt(command: Callable[[str], None]) -> None:
     )
 
 
+def _foundation_tools(command: Callable[[str], None]) -> None:
+    """Edit new controls, pause/resume a focused menu and follow a route at the prompt."""
+    command(
+        "from plocks import Button, Label, ProgressBar; "
+        "caption=Label('Paused'); menu=Button('Continue'); meter=ProgressBar(value=20); "
+        "stage.add(caption); stage.add(menu); stage.add(meter); stage.focus(menu); stage.pause()"
+    )
+    command(
+        "@menu.on_click\n"
+        "def resume_menu(event: Event[Button,None]) -> None:\n"
+        "    caption.text='Playing'\n"
+        "    meter.value=75\n"
+        "    stage.focus(None)\n"
+        "    stage.resume()"
+    )
+    command(
+        "pygame.event.post(pygame.event.Event(pygame.KEYDOWN,key=pygame.K_SPACE)); "
+        "pygame.event.post(pygame.event.Event(pygame.KEYUP,key=pygame.K_SPACE))"
+    )
+    time.sleep(0.15)
+    command(
+        "assert not stage.paused and caption.text=='Playing' and meter.value==75; "
+        "stage.remove(caption); stage.remove(menu); stage.remove(meter); "
+        "stage.follow(hero); route_action=hero.follow_path(((4,0),(0,0)),speed=80)"
+    )
+    time.sleep(0.2)
+    command(
+        "assert route_action.done and hero.position==(0,0) and stage.camera==(0,0); "
+        "stage.stop_following()"
+    )
+
+
 def _live_game(command: Callable[[str], None], child: pexpect.spawn[str]) -> None:
     """Drive independent actors, key scripts, audio, live edits and normal/error shutdown."""
     command(
@@ -175,6 +207,7 @@ def _live_game(command: Callable[[str], None], child: pexpect.spawn[str]) -> Non
     command("stage.run(interactive=True); assert stage.running; driver=stage._task")
     time.sleep(0.2)
     command("assert starts==[1] and friend.x>-95 and stage.time>0")
+    _foundation_tools(command)
     command("hero.x=0; motion=hero.glide_by(x=60,seconds=.15); hero.say('Hello!',seconds=.1)")
     time.sleep(0.3)
     command("assert motion.done and hero.x==60 and hero._bubble is None")

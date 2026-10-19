@@ -14,7 +14,9 @@ from .geometry import Point, _number, _point, _positive
 if TYPE_CHECKING:
     import pymunk
 
+    from ._commands import Actor
     from ._physics import _TileBody
+    from .connections import Connection, Hinge, Rope, Spring
     from .puppets import Puppet
     from .sprites import Sprite
     from .stage import Stage
@@ -59,13 +61,13 @@ class Circle:
 class Physics:
     """The native world belonging to one enabled Stage. Access through stage.physics.
 
-    One-way worlds adapt native precision to motion and collider size, without
+    One-way/connected worlds adapt native precision to motion and collider size, without
     changing simulation time. PhysicsError stops execution if safe stepping would
     require more than 1024 native substeps per tick. Reduce speed/force, enlarge
     very small colliders, or increase the stage's tick_rate for that workload.
     """
 
-    __slots__ = ("_bodies", "_space", "_stage", "_terrain")
+    __slots__ = ("_bodies", "_connections", "_space", "_stage", "_terrain")
 
     def __init__(self, stage: Stage) -> None:
         try:
@@ -77,11 +79,88 @@ class Physics:
         self._stage = stage
         self._space: pymunk.Space | None = pymunk.Space(threaded=False)
         self._bodies: list[Body] = []
+        self._connections: list[Connection] = []
         self._terrain: list[_TileBody] = []
         self._space.gravity = (0, -900)
         from ._physics import _ONE_WAY, _begin_one_way
 
         self._space.add_collision_handler(_ONE_WAY, 0).begin = _begin_one_way
+
+    def rope(
+        self,
+        a: Actor | Point,
+        b: Actor | Point,
+        *,
+        length: float | None = None,
+        anchor_a: Point = (0, 0),
+        anchor_b: Point = (0, 0),
+        collide: bool = False,
+    ) -> Rope:
+        """Attach a maximum-distance rope; endpoints are actors or fixed world points.
+
+        Actor anchors are unscaled local pixels. Omitted length captures current
+        separation. At least one actor must be dynamic in this world. The returned
+        rope is already connected; disconnect() releases it. Do not stage.add it.
+        """
+        from ._connections import _rope
+
+        return _rope(
+            self, a, b, length=length, anchor_a=anchor_a, anchor_b=anchor_b, collide=collide
+        )
+
+    def hinge(
+        self,
+        a: Actor | Point,
+        b: Actor | Point,
+        *,
+        anchor_a: Point = (0, 0),
+        anchor_b: Point = (0, 0),
+        limits: tuple[float, float] | None = None,
+        collide: bool = False,
+    ) -> Hinge:
+        """Connect local pivots; optional clockwise degree limits are relative to now.
+
+        Limits include zero. Actor anchors are unscaled local pixels; Points are
+        fixed world anchors. Attach actors first, aligning pivots before stepping.
+        Removing an endpoint releases its connections. Call hinge.motor to drive.
+        """
+        from ._connections import _hinge
+
+        return _hinge(
+            self, a, b, anchor_a=anchor_a, anchor_b=anchor_b, limits=limits, collide=collide
+        )
+
+    def spring(
+        self,
+        a: Actor | Point,
+        b: Actor | Point,
+        *,
+        rest_length: float | None = None,
+        stiffness: float = 100,
+        damping: float = 10,
+        anchor_a: Point = (0, 0),
+        anchor_b: Point = (0, 0),
+        collide: bool = False,
+    ) -> Spring:
+        """Attach a damped spring; omitted rest_length captures current separation.
+
+        Length is world pixels, stiffness positive mass/second squared, damping
+        nonnegative mass/second. Large stiffness may exceed bounded stepping and
+        raise PhysicsError. Use disconnect() to release; do not stage.add it.
+        """
+        from ._connections import _spring
+
+        return _spring(
+            self,
+            a,
+            b,
+            rest_length=rest_length,
+            stiffness=stiffness,
+            damping=damping,
+            anchor_a=anchor_a,
+            anchor_b=anchor_b,
+            collide=collide,
+        )
 
     @property
     def gravity(self) -> Point:
@@ -174,6 +253,28 @@ class Body:
         native.activate()
 
     @property
+    def sensor(self) -> bool:
+        """Detect overlap without blocking. Gravity still applies; default False.
+
+        Sensors cannot support grounded actors. Configure a static/kinematic role
+        for stationary pickups. Removing/re-adding creates a default body.
+        """
+        return bool(next(iter(_native(self).shapes)).sensor)
+
+    @sensor.setter
+    def sensor(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError("sensor must be bool")
+        from ._physics import _one_way
+
+        native = _native(self)
+        if value and _one_way(self._actor):
+            raise PhysicsError("A one-way platform cannot be a sensor")
+        for shape in native.shapes:
+            shape.sensor = value
+        native.activate()
+
+    @property
     def friction(self) -> float:
         """Finite nonnegative contact friction; default 0.7."""
         return float(next(iter(_native(self).shapes)).friction)
@@ -207,8 +308,10 @@ class Body:
         if not isinstance(value, bool):
             raise TypeError("rotation_locked must be bool")
         native = _dynamic(self)
+        from ._connections import _check_rotation
         from ._physics import _moment
 
+        _check_rotation(self, value)
         native.moment = inf if value else _moment(self._shape, self._actor.scale, native.mass)
         if value:
             native.angular_velocity = 0

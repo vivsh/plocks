@@ -80,6 +80,7 @@ def _copy_physics(source: Actor, target: Actor) -> None:
     after.shape = before.shape
     after.friction = before.friction
     after.bounce = before.bounce
+    after.sensor = before.sensor
     if source.body_type is BodyType.DYNAMIC:
         after.mass = before.mass
         after.rotation_locked = before.rotation_locked
@@ -102,6 +103,9 @@ def _inherit(stage: Stage, source: Actor, target: Actor) -> None:
                 if binding.handler.actor is source
             )
 
+    from ._touches import _inherit as inherit_touches
+
+    inherit_touches(stage, source, target, inherited)
     inherit_inputs(stage._gamepad_handlers)
     clicks = stage._clicks.get(source, ())
     if clicks:

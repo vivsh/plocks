@@ -203,3 +203,29 @@ async def async_bot(event: Event[Stage, float]) -> GamepadInput:
 @stage.on_remote_change  # error
 def wrong_status(event: Event[Stage, RemoteChange]) -> Action:
     return hero.wait(1)
+
+# Gameplay foundations keep actor, payload, coordinate and UI contracts distinct.
+from plocks import Button, Hinge, Label, ProgressBar
+button = Button("Go")
+bar = ProgressBar()
+hero.follow_path(((0, "far"),))  # error
+hero.follow_path(((0, 0),), speed="fast")  # error
+hero.on_touch(person, person.sequence())  # error
+@hero.on_touch(person)  # error
+def wrong_touch_data(event: Event[Sprite, Sprite]) -> None:
+    pass
+@button.on_click  # error
+async def async_button(event: Event[Button, None]) -> None:
+    pass
+@button.on_click  # error
+def wrong_button_target(event: Event[Sprite, None]) -> None:
+    pass
+bar.value = "full"  # error
+stage.follow(button)  # error
+stage.focus(hero)  # error
+world = TileMap(["."], {}, tile_size=(32, 32))
+world.find_path(start=(0, 0), goal=(1, -1), actor=button)  # error
+hero.follow_path(world.find_path(start=(0, 0), goal=(1, -1)))  # error
+stage.physics.rope(Label("oops"), hero)  # error
+stage.physics.hinge(hero, person).motor(speed="fast", max_torque=100)  # error
+hero.body.sensor = "yes"  # error

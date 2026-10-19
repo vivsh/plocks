@@ -198,6 +198,10 @@ def dispatch(stage: Stage, *, simulation: bool = True) -> None:
                 _start_clone(stage, event)
             continue
         if isinstance(event, GamepadPress):
+            from ._ui import _key as ui_key
+
+            if ui_key(stage, event):
+                continue
             bindings = tuple(stage._gamepad_handlers.get((event.gamepad, event.button), ()))
             for binding in bindings:
                 if stage.running:
@@ -205,13 +209,19 @@ def dispatch(stage: Stage, *, simulation: bool = True) -> None:
                     _gamepads._arm(stage, binding, held)
                     _trigger(stage, binding.handler, event)
         if isinstance(event, tuple):
-            target = _clicked_actor(stage, event[0])
+            from ._ui import _click as ui_click
+            from ._ui import _hit as ui_hit
+
+            button = ui_hit(stage, event[0]) if event[1] is MouseButton.LEFT else None
+            target = _clicked_actor(stage, event[0]) if button is None else None
             observers = tuple(stage._clicks.get(None, ()))
             targeted = tuple(stage._clicks.get(target, ())) if target is not None else ()
             callbacks = (*observers, *targeted)
             for clicked in callbacks:
                 if stage.running:
                     _trigger(stage, clicked, event)
+            if button is not None and stage.running:
+                ui_click(stage, button)
 
 
 def _clicked_actor(stage: Stage, position: Point) -> Actor | None:
@@ -275,6 +285,12 @@ def advance(stage: Stage, now: float) -> None:
                 _integrate(stage, dt)
             stage._tick += 1
             _sample(stage)
+            from ._touches import _sample as sample_touches
+
+            sample_touches(stage)
+            from ._camera import _sample as sample_camera
+
+            sample_camera(stage, dt)
     if stage._accumulator >= dt:
         stage._accumulator %= dt
     stage._accumulator = max(0, stage._accumulator)
@@ -286,6 +302,9 @@ async def drive(stage: Stage) -> None:
         for handler in tuple(stage._starts):
             _trigger(stage, handler)
         _step(stage)
+        from ._camera import _sample as sample_camera
+
+        sample_camera(stage, 0, initial=True)
         while stage.running:
             started = time.perf_counter()
             poll(stage)
@@ -349,6 +368,9 @@ def close(stage: Stage) -> None:
     stage._gamepad_handlers.clear()
     stage._starts.clear()
     stage._clone_handlers.clear()
+    stage._touches.clear()
+    stage._camera_follow = None
+    stage._ui_focus = None
     stage._clicks.clear()
     stage._updates.clear()
     stage._draws.clear()

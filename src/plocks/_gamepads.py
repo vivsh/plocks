@@ -200,6 +200,12 @@ def _repeat(stage: Stage) -> None:
         for (slot, button), bindings in stage._gamepad_handlers.items()
     ]
     for payload, bindings, held in sources:
+        from ._ui import _menu_key
+
+        if _menu_key(stage, payload.button):
+            for binding in bindings:
+                binding.next_repeat = None
+            continue
         for binding in bindings:
             if not stage.running or stage.paused:
                 return

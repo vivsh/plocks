@@ -112,3 +112,48 @@ def test_two_processes_share_score_and_physics(tmp_path: Path) -> None:
         if host.poll() is None:
             host.kill()
             host.wait()
+
+
+def test_remote_player_resumes_focused_host_ui(tmp_path: Path) -> None:
+    """Shared-view logical controls activate a paused host menu and return updated UI."""
+    pytest.importorskip("websockets")
+    pytest.importorskip("msgspec")
+    probe = Path(__file__).with_name("native_ui_multiplayer.py")
+    with socket.socket() as reserve:
+        reserve.bind(("127.0.0.1", 0))
+        port = reserve.getsockname()[1]
+    command = [sys.executable, "-u", str(probe)]
+    env = {**os.environ, "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy"}
+    host = subprocess.Popen(
+        [*command, "--host", str(tmp_path), str(port)],
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    try:
+        deadline = time.monotonic() + 5
+        while not (tmp_path / "ready.json").exists() and host.poll() is None:
+            if time.monotonic() >= deadline:
+                pytest.fail("UI host did not become ready")
+            time.sleep(0.02)
+        if not (tmp_path / "ready.json").exists():
+            pytest.fail(host.communicate(timeout=1)[0])
+        client = subprocess.run(
+            [*command, "--join", str(tmp_path), str(port)],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        output = host.communicate(timeout=6)[0]
+        assert client.returncode == 0, client.stdout + client.stderr
+        assert host.returncode == 0, output
+        assert json.loads((tmp_path / "host-ui.json").read_text())["resumed"]
+        assert json.loads((tmp_path / "client-ui.json").read_text())["ui_seen"]
+        assert (tmp_path / "remote-ui.png").is_file()
+    finally:
+        if host.poll() is None:
+            host.kill()
+            host.wait()

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Generic, Literal, Self, TypeVar, cast, overloa
 
 import pygame
 
+from ._camera import _CameraFollow
 from ._cloning import _CloneStart
 from ._commands import Actor, _Command
 from ._operations import _Delivery
@@ -19,7 +20,7 @@ from .canvas import Canvas
 from .errors import StageError
 from .events import Click, Event, GamepadPress, RemoteChange
 from .gamepads import Gamepad, GamepadButton, GamepadInput, GamepadLayout, _new_gamepad
-from .geometry import Bounds, Color, Point, _integer, _point
+from .geometry import Bounds, Color, Point, _integer, _number, _point
 from .input import Key, Mouse, MouseButton
 from .messages import Message
 from .multiplayer import Multiplayer
@@ -29,6 +30,7 @@ from .scripts import Script, _message_arguments, _snapshot
 from .sprites import Sprite
 from .state import _new_state, _State_co
 from .tiling import TiledBackground, TileMap
+from .ui import Button, Label, ProgressBar
 
 type _Result = None | Action
 _D = TypeVar("_D")
@@ -36,9 +38,10 @@ _R = TypeVar("_R", bound=_Result)
 type _Draw = Callable[[Canvas], None]
 if TYPE_CHECKING:
     from ._network import _Client, _Host
+    from ._touches import _TouchWatch
 
 type _InputEvent = tuple[Point, MouseButton] | GamepadPress | _CloneStart | RemoteChange
-type _StageObject = Sprite | Puppet | TileMap | TiledBackground
+type _StageObject = Sprite | Puppet | TileMap | TiledBackground | Button | Label | ProgressBar
 
 
 class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports Python 3.12
@@ -55,6 +58,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         "_bots",
         "_bubble_text_size",
         "_camera",
+        "_camera_follow",
         "_clicks",
         "_clone_handlers",
         "_draws",
@@ -79,6 +83,8 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         "_task",
         "_tick",
         "_tick_rate",
+        "_touches",
+        "_ui_focus",
         "_updates",
         "_voices",
         "_volume",
@@ -134,6 +140,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         pygame.Color(background)
         self._background = background
         self._camera: Point = (0, 0)
+        self._camera_follow: _CameraFollow | None = None
         self._volume = 1.0
         self._members: list[_StageObject] = []
         self._updates: list[tuple[Actor | None, UpdateCallback | ActorUpdateCallback[Actor]]] = []
@@ -141,10 +148,12 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         self._actions: list[Action] = []
         self._starts: list[_Handler] = []
         self._clone_handlers: list[_Handler] = []
+        self._touches: list[_TouchWatch] = []
         self._clicks: dict[Actor | None, list[_Handler]] = {}
         self._messages: list[_Delivery] = []
         self._message_handlers: dict[Message[object], list[_Handler]] = {}
         self._draws: list[_Draw] = []
+        self._ui_focus: Button | None = None
         count = _integer(gamepad_count, "gamepad_count", minimum=1)
         if count > 16:
             raise ValueError("gamepad_count must be at most 16")
@@ -301,7 +310,39 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
 
     @camera.setter
     def camera(self, value: Point) -> None:
-        self._camera = _point(value, "camera")
+        point = _point(value, "camera")
+        self._camera_follow = None
+        self._camera = point
+
+    def follow(
+        self,
+        actor: Actor,
+        *,
+        offset: Point = (0, 0),
+        bounds: Bounds | None = None,
+        smoothing: float = 0.0,
+    ) -> None:
+        """Follow an attached actor; optional bounds keep the viewport inside a level.
+
+        Offset is world pixels. smoothing=0 tracks immediately; a positive number
+        is an exponential response time in simulated seconds. Manual camera
+        assignment, actor removal or stop_following() ends following.
+        """
+        _open(self)
+        _actor(self, actor)
+        if bounds is not None and not isinstance(bounds, Bounds):
+            raise TypeError("bounds must be Bounds or None")
+        from ._camera import _target
+
+        config = _CameraFollow(
+            actor, _point(offset, "offset"), bounds, _number(smoothing, "smoothing", minimum=0)
+        )
+        _target(self, config)
+        self._camera_follow = config
+
+    def stop_following(self) -> None:
+        """Freeze the current camera position and stop automatic following."""
+        self._camera_follow = None
 
     @property
     def background(self) -> Color:
@@ -331,12 +372,23 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         return tuple(self._members)
 
     def add(self, obj: _StageObject) -> None:
-        """Add an object once. Re-adding an existing member raises ValueError."""
+        """Add an object once; clone() already adds its copy automatically.
+
+        Re-adding an existing member raises ValueError. A removed object can be
+        added again; an actor still attached to another stage raises StageError.
+        """
         _open(self)
         if obj in self._members:
+            if isinstance(obj, (Sprite, Puppet)) and obj.is_clone:
+                raise ValueError(
+                    "This clone is already in the stage. clone() adds its copy automatically; "
+                    "use the returned actor without calling stage.add() again."
+                )
             raise ValueError("This object is already in the stage")
-        if not isinstance(obj, (Sprite, Puppet, TileMap, TiledBackground)):
-            raise TypeError("Stage objects are Sprite, Puppet, TileMap, or TiledBackground")
+        if not isinstance(
+            obj, (Sprite, Puppet, TileMap, TiledBackground, Button, Label, ProgressBar)
+        ):
+            raise TypeError("Stage objects are actors, tile worlds, backgrounds or UI controls")
         if isinstance(obj, (Sprite, Puppet, TileMap)):
             if obj._stage is not None:
                 raise StageError("An actor belongs to at most one stage")
@@ -352,6 +404,10 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
                 else:
                     _attach(self._physics, obj)
             obj._stage = self
+        if isinstance(obj, (Button, Label, ProgressBar)):
+            if obj._stage is not None:
+                raise StageError("A UI control belongs to at most one stage")
+            obj._stage = self
         self._members.append(obj)
 
     def remove(self, obj: _StageObject) -> None:
@@ -363,6 +419,10 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         if obj not in self._members:
             raise ValueError("This object is not in the stage")
         try:
+            if isinstance(obj, (Button, Label, ProgressBar)):
+                if self._ui_focus is obj:
+                    self._ui_focus = None
+                obj._stage = None
             if isinstance(obj, (Sprite, Puppet)):
                 from ._gamepads import _input_bindings
 
@@ -377,6 +437,12 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
                     _remove_terrain(self._physics, obj)
                 obj._stage = None
         finally:
+            from ._touches import _detach as detach_touches
+
+            if isinstance(obj, (Sprite, Puppet, TileMap)):
+                detach_touches(self, obj)
+                if self._camera_follow is not None and self._camera_follow.actor is obj:
+                    self._camera_follow = None
             if obj in self._members:
                 self._members.remove(obj)
             if isinstance(obj, (Sprite, Puppet)) and obj.is_clone:
@@ -389,6 +455,29 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         _actor(self, actor)
         self._clone_handlers.append(_work_handler(self, actor, work, WhenBusy.IGNORE))
         return None if isinstance(work, Script) else work
+
+    @property
+    def focused_button(self) -> Button | None:
+        """Current menu focus, or None when logical controls go to gameplay."""
+        return self._ui_focus
+
+    def focus(self, button: Button | None) -> None:
+        """Focus an attached visible/enabled button, or release focus with None.
+
+        Directional gamepad buttons cycle the menu; A activates. Mapped keyboard
+        and remote controls work identically. Menu edges suppress gameplay turbo.
+        """
+        _open(self)
+        if button is not None:
+            if not isinstance(button, Button):
+                raise TypeError("focus requires Button or None")
+            if button._stage is not self or not button.visible or not button.enabled:
+                raise StageError("Focus a visible, enabled button attached to this stage")
+        self._ui_focus = button
+        if button is not None:
+            from ._gamepads import _clear_repeats
+
+            _clear_repeats(self)
 
     def clear(self) -> None:
         """Detach all objects without changing their positions or visuals."""

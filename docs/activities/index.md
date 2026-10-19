@@ -9,6 +9,12 @@ For the code activities, use the [Dino Dash download](../dino-run/assets.md).
 | --- | --- |
 | Move, wait, then move again | [Make a movement script](movement.md) |
 | Make characters talk or think | [Say hello](dialogue.md) |
+| Collect coins without a timer | [React when characters touch](touch.md) |
+| Walk around maze walls | [Find a route](navigation.md) |
+| Keep a character in view | [Follow with the camera](camera.md) |
+| Add a score, health meter or menu | [Screen controls](ui.md) |
+| Swing a ball and cut its rope | [Ropes and springs](connections.md) |
+| Build arms, wheels and chains | [Moving machines](assemblies.md) |
 | Make copies of a character | [Launch some clones](clones.md) |
 | Jump and land on platforms | [Give your dinosaur a bigger jump](physics.md) |
 | Remember coins or health | [Give a character a memory](memory.md) |

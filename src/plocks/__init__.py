@@ -18,12 +18,18 @@ from .conditions import GamepadDown as GamepadDown
 from .conditions import Grounded as Grounded
 from .conditions import Not as Not
 from .conditions import Touching as Touching
+from .connections import Connection as Connection
+from .connections import Hinge as Hinge
+from .connections import Motor as Motor
+from .connections import Rope as Rope
+from .connections import Spring as Spring
 from .errors import (
     AssetError as AssetError,
 )
 from .errors import (
     AudioError as AudioError,
 )
+from .errors import NavigationError as NavigationError
 from .errors import NetworkError as NetworkError
 from .errors import PhysicsError as PhysicsError
 from .errors import (
@@ -71,3 +77,6 @@ from .stage import Stage as Stage
 from .tiled import TiledMap as TiledMap
 from .tiling import TiledBackground as TiledBackground
 from .tiling import TileMap as TileMap
+from .ui import Button as Button
+from .ui import Label as Label
+from .ui import ProgressBar as ProgressBar

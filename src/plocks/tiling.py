@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
+    from ._commands import Actor
     from .stage import Stage
 
 from collections.abc import Iterable, Mapping, Sequence
@@ -260,6 +261,26 @@ class TileMap:
         _integer(column, "column")
         if not 0 <= row < self.rows or not 0 <= column < self.columns:
             raise IndexError(f"Cell ({row}, {column}) is outside {self.rows}x{self.columns}")
+
+    def cell_center(self, *, row: int, column: int) -> Point:
+        """Return a cell's world center. Rows/columns are zero-based from top-left."""
+        self._check_cell(row, column)
+        w, h = self.tile_size
+        return _point((self.x + (column + 0.5) * w, self.y - (row + 0.5) * h))
+
+    def find_path(
+        self, *, start: Point, goal: Point, actor: Actor | None = None, max_nodes: int = 10_000
+    ) -> tuple[Point, ...] | None:
+        """Find a four-direction route around solid/one-way tiles in world coordinates.
+
+        Supply actor to check its current visual footprint; otherwise plan for a
+        point. Returns immutable waypoints or None when unreachable. Outside or
+        invalid endpoints raise ValueError; budget exhaustion raises NavigationError.
+        Map edits/moving actors do not update a returned route. No stage is needed.
+        """
+        from ._navigation import _find
+
+        return _find(self, start, goal, actor, max_nodes)
 
     def get_tile(self, *, row: int, column: int) -> str | None:
         """Read a palette key or None. Negative/outside indices raise IndexError."""

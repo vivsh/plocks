@@ -245,6 +245,32 @@ class _GlideTo(_Command[Actor]):
         await _glide(actor, self.x, self.y, self.seconds, self.easing, relative=False)
 
 
+@dataclass(frozen=True, slots=True, init=False)
+class _FollowPath(_Command[Actor]):
+    """Snapshot waypoints; existing glide requests own each segment's progress."""
+
+    points: tuple[Point, ...]
+    speed: float
+
+    def __init__(self, points: Iterable[Point], *, speed: float = 100) -> None:
+        values = tuple(_point(point, "waypoint") for point in points)
+        if not values:
+            raise ValueError("A path requires at least one waypoint")
+        object.__setattr__(self, "points", values)
+        object.__setattr__(self, "speed", _positive(speed, "speed"))
+
+    async def run(self, actor: Actor) -> None:
+        from math import hypot
+
+        from ._operations import _glide
+
+        await _context()
+        for x, y in self.points:
+            distance = _number(hypot(x - actor.x, y - actor.y), "segment distance")
+            if distance:
+                await _glide(actor, x, y, distance / self.speed, Ease.LINEAR, relative=False)
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class _GlideBy(_Command[Actor]):
     """Glide by world pixels in simulated seconds, capturing position when reached."""

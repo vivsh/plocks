@@ -29,3 +29,7 @@ class ActionCancelled(PlocksError):
 
 class PhysicsError(PlocksError):
     """Physics is unavailable or a body operation conflicts with its role or lifetime."""
+
+
+class NavigationError(PlocksError):
+    """A bounded path search could not finish within its expansion budget."""

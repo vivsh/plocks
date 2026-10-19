@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 
 
 _D = TypeVar("_D")
+_Other = TypeVar("_Other", bound="Sprite | Puppet | TileMap")
 _R = TypeVar("_R", bound="None | Action | Script[Puppet] | Script[Actor]")
 
 
@@ -128,6 +129,9 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
     def clone(self) -> Puppet[_State_co]:
         """Add an independent copy to the same stage and queue its clone-start event.
+
+        The returned actor is already added: do not call stage.add(copy).
+        Set copy.position or other properties directly after clone().
 
         Copy current transforms and appearance, shallow-copy dataclass state, and
         inherit actor-bound controls and handlers. Nested state values and immutable
@@ -327,6 +331,64 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
             return bool(other.tiles_touching(self.bounds, solid_only=True))
         return self.bounds.intersects(other.bounds)
 
+    @overload
+    def on_touch(
+        self, other: _Other, *, when_busy: WhenBusy = WhenBusy.IGNORE
+    ) -> Callable[[Callable[[Event[Self, _Other]], _R]], Callable[[Event[Self, _Other]], _R]]: ...
+    @overload
+    def on_touch(
+        self,
+        other: Sprite | Puppet | TileMap,
+        script: Script[Puppet] | Script[Actor],
+        *,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> None: ...
+    def on_touch(
+        self,
+        other: Sprite | Puppet | TileMap,
+        script: Script[Puppet] | Script[Actor] | None = None,
+        *,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> object:
+        """Bind a Script or callback(event) when AABB overlap begins.
+
+        event.data is the other object; event.target is this receiver. Samples
+        follow simulation steps, including hidden actors. Removal is not a leave
+        event. Pause freezes sampling; fast between-tick crossings may be missed.
+        """
+        from ._touches import _bind
+
+        return _bind(self, other, script, False, when_busy)
+
+    @overload
+    def on_touch_end(
+        self, other: _Other, *, when_busy: WhenBusy = WhenBusy.IGNORE
+    ) -> Callable[[Callable[[Event[Self, _Other]], _R]], Callable[[Event[Self, _Other]], _R]]: ...
+    @overload
+    def on_touch_end(
+        self,
+        other: Sprite | Puppet | TileMap,
+        script: Script[Puppet] | Script[Actor],
+        *,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> None: ...
+    def on_touch_end(
+        self,
+        other: Sprite | Puppet | TileMap,
+        script: Script[Puppet] | Script[Actor] | None = None,
+        *,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> object:
+        """Bind a Script or callback(event) when AABB overlap ends.
+
+        event.data is the other object; event.target is this receiver. Samples
+        follow simulation steps, including hidden actors. Removal is not a leave
+        event. Pause freezes sampling; fast between-tick crossings may be missed.
+        """
+        from ._touches import _bind
+
+        return _bind(self, other, script, True, when_busy)
+
     def on_update(
         self, callback: Callable[[Event[Self, float]], None]
     ) -> Callable[[Event[Self, float]], None]:
@@ -483,6 +545,19 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         from ._commands import _GlideTo, _schedule
 
         return _schedule(self, _GlideTo(x=x, y=y, seconds=seconds, easing=easing), after=after)
+
+    def follow_path(
+        self, points: Iterable[Point], *, speed: float = 100, after: Action | None = None
+    ) -> Action:
+        """Schedule world waypoints at speed pixels/second using existing glides.
+
+        Points snapshot now; movement begins when reached. Both axes are claimed.
+        Pause/cancellation follow normal movement rules. This does not replan or
+        detect newly edited walls; dynamic physical actors cannot use glides.
+        """
+        from ._commands import _FollowPath, _schedule
+
+        return _schedule(self, _FollowPath(points, speed=speed), after=after)
 
     def glide_by(
         self,

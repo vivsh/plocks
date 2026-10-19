@@ -47,3 +47,10 @@ The example finds `assets/` beside its own `main.py`.
 Change one thing, play again, then try a challenge in that game's README.
 These are original mini-games inspired by familiar styles. Snake Run and Temple
 Trail use 2D pictures to look 3D. Controls use a keyboard or mouse, not touch.
+
+
+## Try a new idea
+
+- [Maze Quest](maze_quest/README.md): click routes, collect coins and try a following camera.
+- [Swing Lab](swing_lab/README.md): release a swinging ball from its rope.
+- [Robot Workshop](robot_workshop/README.md): build arms, wheels, springs and chains.

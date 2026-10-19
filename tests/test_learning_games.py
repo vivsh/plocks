@@ -35,7 +35,7 @@ GAMES = (
     "temple_run",
     "scrolling_world",
 )
-TUTORIALS = (*GAMES, "asset_workshop", "dino_run")
+TUTORIALS = (*GAMES, "asset_workshop", "dino_run", "maze_quest", "swing_lab", "robot_workshop")
 ROOT = Path(__file__).parents[1]
 
 
@@ -449,7 +449,15 @@ def test_importing_example_prepares_game_without_starting(
     stage = cast(Stage, namespace["stage"])
     try:
         start.assert_not_called()
-        assert stage._state == "new" and stage._updates and stage._draws
+        assert stage._state == "new"
+        if name != "fruit_ninja":
+            assert stage.objects
+        if name not in ("maze_quest", "swing_lab"):
+            assert stage._updates and stage._draws
+        elif name == "maze_quest":
+            assert stage._touches and stage._starts
+        else:
+            assert stage._physics is not None and stage.physics._connections and stage._draws
         assert not pygame.display.get_init()
         for _, callback in stage._updates:
             assert callback.__closure__ is None

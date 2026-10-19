@@ -16,6 +16,7 @@ from .puppets import Puppet
 from .rigging import _pivots
 from .sprites import Sprite
 from .tiling import TiledBackground, TileMap
+from .ui import Button, Label, ProgressBar
 
 if TYPE_CHECKING:
     from .stage import Stage
@@ -70,11 +71,16 @@ def frame(stage: Stage) -> None:
                 _puppet(stage, target, obj)
             elif isinstance(obj, TileMap):
                 _tiles(stage, target, obj)
-            else:
+            elif isinstance(obj, TiledBackground):
                 _background(stage, target, obj)
     for obj in members:
         if isinstance(obj, (Sprite, Puppet)):
             _draw_bubble(stage, target, obj)
+    from ._ui import _draw as draw_ui
+
+    for obj in members:
+        if isinstance(obj, (Button, Label, ProgressBar)) and obj.visible:
+            draw_ui(stage, target, obj)
     for callback in tuple(stage._draws):
         canvas = Canvas(target, stage)
         try:

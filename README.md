@@ -19,8 +19,11 @@ hints. Start with a bundled game, change one thing, and see what happens!
 | Bring characters to life | Sprites, costumes, speech and thought bubbles, and jointed Puppets |
 | Give characters a plan | Movement scripts: glide, wait, repeat and react to events |
 | Make characters work together | Broadcasts, typed message data and clones with their own controls |
-| Build a world | Tile maps, scrolling cameras, parallax, and Tiled and Pixelorama artwork |
+| Build a world | Tile maps, automatic camera following, parallax, and Tiled and Pixelorama artwork |
 | Jump and land | Built-in physics, moving platforms, and platforms you can jump through from below |
+| Solve a maze | [Find a route around walls](docs/activities/navigation.md), then follow it at your chosen speed |
+| Collect coins and show progress | [Touch events](docs/activities/touch.md), [labels, health bars and buttons](docs/activities/ui.md) |
+| Make a machine | [Ropes, springs, hinges and motors](docs/activities/assemblies.md) joining ordinary characters |
 | Play together | Logical gamepads with mapped keys or controllers, plus optional [LAN shared-view play](docs/activities/multiplayer.md) |
 | Give the computer a turn | [Automated gamepads](docs/activities/computer-players.md) that use the human player's controls |
 
@@ -108,6 +111,9 @@ Python command occupies the same thread as the game. Ordinary game files still u
 
 | Game | Your mission | New ideas to try |
 | --- | --- | --- |
+| [Maze Quest](src/plocks/_games/maze_quest) | Click a route and collect four coins | Navigation, touch events, camera following and screen controls |
+| [Swing Lab](src/plocks/_games/swing_lab) | Cut a swinging ball's rope | Anchors, physics and buttons |
+| [Robot Workshop](src/plocks/_games/robot_workshop) | Turn an arm, drive a cart and drop a chain | Hinges, springs, motors and construction functions |
 | [Dino Dash](src/plocks/_games/dino_run) | Jump cacti, duck birds and collect coins | A complete beginner course, physics, scores, restart |
 | [Sky Steps](src/plocks/_games/platformer) — start here | Jump through a lift and reach the flag | Physics, one-way platforms, repeating moves, checkpoints |
 | [Beat Blocks](src/plocks/_games/geometry_dash) | Jump over spikes | Timing, gravity, crash checks |
@@ -176,6 +182,9 @@ changing `hero.x` or adding to a list does not need `global`.
 copy = hero.clone()
 copy.position = (100, 0)
 ```
+
+`clone()` adds the copy to the same stage automatically. Do not call
+`stage.add(copy)` afterwards; just change the returned copy's position or settings.
 
 Copies inherit the character's controls and get their own position. With physics
 enabled, each gets its own body too.

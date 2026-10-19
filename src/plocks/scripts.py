@@ -12,6 +12,7 @@ from ._commands import (
     _Command,
     _Costumes,
     _DuringPlan,
+    _FollowPath,
     _GlideBy,
     _GlideTo,
     _GoToRandom,
@@ -159,6 +160,11 @@ class Script(Generic[_T]):  # noqa: UP046 -- explicit invariance protects editab
     ) -> Self:
         """Glide to world coordinates over simulated seconds; omitted axes stay free. Records a command; schedules nothing."""
         self._commands.append(_GlideTo(x=x, y=y, seconds=seconds, easing=easing))
+        return self
+
+    def follow_path(self, points: Iterable[Point], *, speed: float = 100) -> Self:
+        """Record immutable world waypoints at pixels/second; no route is recomputed."""
+        self._commands.append(_FollowPath(points, speed=speed))
         return self
 
     def glide_by(

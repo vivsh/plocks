@@ -11,6 +11,7 @@ from .errors import AssetError, StageError
 from .geometry import Bounds, Color, Point, _integer, _positive
 
 if TYPE_CHECKING:
+    from .connections import Hinge, Rope, Spring
     from .stage import Stage
 
 
@@ -37,6 +38,26 @@ class Canvas:
             self._stage.to_screen(end, world=False),
             _integer(width, "width", minimum=1),
         )
+
+    def connection(
+        self, connection: Rope | Hinge | Spring, *, color: Color = "white", width: int = 2
+    ) -> None:
+        """Draw a live physical link through the world camera; disconnected links draw nothing.
+
+        Like other Canvas drawing, this is an overlay and retains no geometry.
+        The connection must belong to this stage. Width is a positive integer.
+        """
+        self._target()
+        _integer(width, "width", minimum=1)
+        if not connection.connected:
+            return
+        if connection._world._stage is not self._stage:
+            raise StageError("Draw a connection belonging to this stage")
+        from ._connections import _anchors
+
+        a, b = _anchors(connection)
+        x, y = self._stage.camera
+        self.line((a[0] - x, a[1] - y), (b[0] - x, b[1] - y), color=color, width=width)
 
     def circle(
         self, center: Point, radius: float, *, color: Color = "white", width: int = 0

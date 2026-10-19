@@ -23,6 +23,12 @@ Click the game window first. Check the keys listed in that game's README.
 A jump might need to land before it can jump again.
 Try the keyboard if a controller is not recognized.
 
+## My clone is already in the stage
+
+`copy = hero.clone()` creates **and adds** the copy. Remove the extra
+`stage.add(copy)` line, then set `copy.position` or other settings as usual.
+See [make copies](../activities/clones.md).
+
 ## Python shows a red error
 
 Read the last line first: it gives a clue. Check matching quotes and brackets.
