@@ -376,7 +376,7 @@ def test_puppet_capability_and_skeleton_admission(world: tuple[Stage, Sprite, Sp
     ticks(stage, 10)
     assert first.x == person.x == 20
     with pytest.raises(TypeError, match="incompatible"):
-        person.act(cast(Script[Puppet], Script(Sprite).set_costume(first.costume)))
+        person.act(cast(Script[Puppet], Script(Sprite).set_image(first.image)))
     with pytest.raises(ValueError, match="another skeleton"):
         person.act(Script(Puppet).poses((other.pose,), fps=2))
 

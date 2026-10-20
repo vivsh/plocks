@@ -8,10 +8,10 @@ from plocks import (
     Event,
     GamepadButton,
     GamepadPress,
+    ImageGrid,
     Key,
     MouseButton,
     Sprite,
-    SpriteSheet,
     Stage,
     TiledBackground,
     TileMap,
@@ -61,7 +61,7 @@ leaves = TileMap(
 )
 stage.add(leaves)
 # A spritesheet is several pictures in one file. Pick its first 32 × 40 frame.
-sheet = SpriteSheet(assets / "hero_sheet.png", frame_size=(32, 40))
+sheet = ImageGrid(assets / "hero_sheet.png", frame_size=(32, 40))
 hero = Sprite(sheet.frame(row=0, column=0), x=-260, y=-76, layer=5)
 stage.add(hero)
 selected = "G"

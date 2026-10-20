@@ -5,10 +5,10 @@ from random import choice, uniform
 
 from plocks import (
     Canvas,
-    Costume,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
     Key,
     MouseButton,
     Point,
@@ -46,13 +46,13 @@ stage = Stage(width=800, height=450, background="#192b40")
 stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
 names = ("apple", "orange", "melon", "bomb")
 # Dictionaries let us look up the whole fruit and its two cut pieces by name.
-costumes: dict[str, Costume] = {}
-halves: dict[str, tuple[Costume, Costume]] = {}
+images: dict[str, Image] = {}
+halves: dict[str, tuple[Image, Image]] = {}
 for name in names:
-    costumes[name] = Costume(assets / f"{name}.png")
+    images[name] = Image(assets / f"{name}.png")
     if name != "bomb":
-        left_half = Costume(assets / f"{name}_left.png")
-        right_half = Costume(assets / f"{name}_right.png")
+        left_half = Image(assets / f"{name}_left.png")
+        right_half = Image(assets / f"{name}_right.png")
         halves[name] = (left_half, right_half)
 pop = Sound(assets / "pop.ogg")
 # Each flying item stores (sprite, sideways speed, upward speed, spin, kind).
@@ -76,7 +76,7 @@ def throw() -> None:
         name = "bomb"
     else:
         name = choice(("apple", "orange", "melon"))
-    fruit = Sprite(costumes[name], x=uniform(-260, 260), y=-260, scale=1.4)
+    fruit = Sprite(images[name], x=uniform(-260, 260), y=-260, scale=1.4)
     stage.add(fruit)
     speed_x = -fruit.x * 0.25  # Aim gently toward the middle.
     speed_y = uniform(650, 750)
@@ -149,8 +149,8 @@ def update(event: Event[Stage, float]) -> None:
             score += 1
             sliced += 1
             # Pair each half with its direction: -1 flies left, +1 flies right.
-            for direction, costume in zip((-1, 1), halves[name]):
-                half = Sprite(costume, x=fruit.x, y=fruit.y, scale=1.4)
+            for direction, image in zip((-1, 1), halves[name]):
+                half = Sprite(image, x=fruit.x, y=fruit.y, scale=1.4)
                 stage.add(half)
                 flying.append(
                     (half, speed_x + direction * 120, speed_y + 80, direction * 230, "half")

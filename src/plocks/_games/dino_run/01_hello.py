@@ -2,15 +2,15 @@
 
 from pathlib import Path
 
-from plocks import BodyType, Costume, Sprite, Stage, TiledBackground
+from plocks import BodyType, Image, Sprite, Stage, TiledBackground
 
 # __file__ means this Python file. Find its pictures even from another folder.
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=800, height=450, background="#fff0cc")
-scenery = TiledBackground(Costume(assets / "desert.png").resized(width=800, height=450))
+scenery = TiledBackground(Image(assets / "desert.png").resized(width=800, height=450))
 stage.add(scenery)
 dino = Sprite(
-    Costume(assets / "dinosaur.png").resized(width=72, height=72),
+    Image(assets / "dinosaur.png").resized(width=72, height=72),
     x=-260,
     y=-90,
     body_type=BodyType.NONE,

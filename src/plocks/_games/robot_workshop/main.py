@@ -8,11 +8,11 @@ from plocks import (
     Button,
     Canvas,
     Circle,
-    Costume,
     Event,
     GamepadButton,
     GamepadPress,
     Hinge,
+    Image,
     Key,
     Label,
     Motor,
@@ -47,8 +47,8 @@ stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
 stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
 stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
 stage.gamepads[0].map_key(Key.X, GamepadButton.B)
-beam = Costume(assets / "beam.png")
-wheel_picture = Costume(assets / "wheel.png").resized(32, 32)
+beam = Image(assets / "beam.png")
+wheel_picture = Image(assets / "wheel.png").resized(32, 32)
 floor = Sprite(beam.resized(940, 20), y=-230, body_type=BodyType.STATIC)
 stage.add(floor)
 

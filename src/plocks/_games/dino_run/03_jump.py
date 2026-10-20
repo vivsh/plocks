@@ -4,10 +4,10 @@ from pathlib import Path
 
 from plocks import (
     Box,
-    Costume,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
     Key,
     Sprite,
     Stage,
@@ -20,7 +20,7 @@ stage = Stage(width=800, height=450, physics=True, background="#fff0cc")
 
 # Keys feed logical controls; gamepads and remote players work too.
 stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-desert = Costume(assets / "desert.png").resized(width=800, height=450)
+desert = Image(assets / "desert.png").resized(width=800, height=450)
 scenery = TiledBackground(desert, layer=-10)
 stage.add(scenery)
 # A row of solid tiles is our floor. y is the TOP edge of a tile map.
@@ -28,7 +28,7 @@ sand = desert.cropped(x=0, y=418, width=32, height=32)
 ground = TileMap(["G" * 27], {"G": sand}, tile_size=(32, 32), solid={"G"}, x=-432, y=-130)
 stage.add(ground)
 dino = Sprite(
-    Costume(assets / "dinosaur.png").resized(width=72, height=72).with_anchor(36, 72),
+    Image(assets / "dinosaur.png").resized(width=72, height=72).with_anchor(36, 72),
     x=-260,
     y=-130,
 )

@@ -1,17 +1,19 @@
 from math import sin
 
-from PIL import Image, ImageDraw
+from PIL import Image as PillowImage
+from PIL import ImageDraw
 
 from plocks import (
     Canvas,
     Click,
-    Costume,
     Ease,
     Event,
     GamepadButton,
     GamepadDown,
     GamepadPress,
     HumanJoint,
+    Image,
+    ImageGrid,
     Key,
     Message,
     MouseButton,
@@ -20,7 +22,6 @@ from plocks import (
     Script,
     Sound,
     Sprite,
-    SpriteSheet,
     Stage,
     TiledBackground,
     TileMap,
@@ -35,17 +36,17 @@ def main() -> None:
     stage.gamepads[0].map_key(Key.P, GamepadButton.START)
     stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-    sky = Image.new("RGBA", (96, 96), "#122338")
+    sky = PillowImage.new("RGBA", (96, 96), "#122338")
     sky_pen = ImageDraw.Draw(sky)
     for x, y in ((12, 24), (62, 70), (85, 14)):
         sky_pen.ellipse((x, y, x + 2, y + 2), fill="#587294")
     background = TiledBackground(sky)
     stage.add(background)
-    ground_image = Image.new("RGBA", (32, 32), "#304652")
+    ground_image = PillowImage.new("RGBA", (32, 32), "#304652")
     ground_pen = ImageDraw.Draw(ground_image)
     ground_pen.rectangle((0, 0, 31, 5), fill="#78cba4")
     ground_pen.line((0, 31, 31, 31), fill="#263d49")
-    ground = Costume(ground_image)
+    ground = Image(ground_image)
     world = TileMap(
         ["." * 40, "." * 40, "#" * 40, "#" * 40],
         {"#": ground},
@@ -56,11 +57,11 @@ def main() -> None:
         layer=-10,
     )
     stage.add(world)
-    sheet = SpriteSheet("assets/hero.png", frame_size=(32, 32))
+    sheet = ImageGrid("assets/hero.png", frame_size=(32, 32))
     idle = sheet.frame(row=0, column=0)
     hero = Sprite(idle, x=-130, y=-79, scale=1.3, layer=2)
     stage.add(hero)
-    badge_image = Image.new("RGBA", (30, 30))
+    badge_image = PillowImage.new("RGBA", (30, 30))
     ImageDraw.Draw(badge_image).regular_polygon((15, 15, 14), 5, fill="#ffd479")
     badge = Sprite(badge_image, x=90, y=70, layer=1)
     stage.add(badge)
@@ -97,10 +98,10 @@ def main() -> None:
             Not(GamepadDown(GamepadButton.RIGHT, gamepad=stage.gamepads[0])),
             then=Script(Sprite).when(
                 GamepadDown(GamepadButton.LEFT, gamepad=stage.gamepads[0]),
-                then=Script(Sprite).costumes(sheet.frames(), fps=8),
-                either=Script(Sprite).set_costume(idle),
+                then=Script(Sprite).images(sheet.frames(), fps=8),
+                either=Script(Sprite).set_image(idle),
             ),
-            either=Script(Sprite).costumes(sheet.frames(), fps=8),
+            either=Script(Sprite).images(sheet.frames(), fps=8),
         )
     )
     hero.act(walking)

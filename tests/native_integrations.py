@@ -25,7 +25,7 @@ def main() -> None:
     @stage.on_update
     def exercise(event: Event[Stage, float]) -> None:
         tick = round(stage.time * stage.tick_rate)
-        frames.add(game["art"].frames.index(hero.costume))
+        frames.add(game["art"].frames.index(hero.image))
         if tick == 3:
             pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE))
         if tick == 10:

@@ -17,7 +17,7 @@ plocks run platformer
 | [Beat Blocks](geometry_dash) | Time your jumps | Speed, gravity, crash checks |
 | [Scrolling World](scrolling_world) | Paint a big world | Tile grids, layers, camera and parallax |
 | [Coin Quest](mario) | Collect coins and reach the flag | Lists, tile collisions, scoring |
-| [Temple Trail](temple_run) | Jump, slide and turn | Sequences, costume changes, perspective |
+| [Temple Trail](temple_run) | Jump, slide and turn | Sequences, image changes, perspective |
 | [Snake Run](snake_run) | Eat apples and grow | Position history, loops, perspective |
 | [Fruit Slice](fruit_ninja) | Swipe fruit, avoid bombs | Random choices, mouse input, geometry |
 | [Jungle Run](jungle_run) | Run, jump and shoot | Health, bullets, several actions at once |

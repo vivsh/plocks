@@ -11,7 +11,7 @@ from types import MappingProxyType
 from ._asset_json import _array, _document, _float, _int, _object, _text
 from .errors import AssetError
 from .geometry import Point
-from .imaging import Costume
+from .imaging import Anchor, Image, _anchor
 from .scripts import Script
 from .sprites import Sprite
 
@@ -27,12 +27,16 @@ class PixeloramaSheet:
     be detected. Sources are snapshotted without creating a window.
     """
 
-    _frames: tuple[Costume, ...]
+    _frames: tuple[Image, ...]
     _durations: tuple[float, ...]
     _tags: Mapping[str, tuple[int, int]]
 
     def __init__(
-        self, image: str | Path, *, metadata: str | Path | None = None, anchor: Point | None = None
+        self,
+        image: str | Path,
+        *,
+        metadata: str | Path | None = None,
+        anchor: Anchor | Point | None = None,
     ) -> None:
         image_path = Path(image)
         metadata_path = image_path.with_suffix(".json") if metadata is None else Path(metadata)
@@ -42,21 +46,19 @@ class PixeloramaSheet:
             width = _int(data.get("size_x"), "frame width", 1)
             height = _int(data.get("size_y"), "frame height", 1)
             columns, rows, orientation = _grid(data, len(durations))
-            source = Costume(image_path)
+            source = Image(image_path)
             if image_path.suffix.lower() != ".png" or (source.width, source.height) != (
                 width * columns,
                 height * rows,
             ):
                 raise AssetError("PNG dimensions do not match the exported rows/columns")
-            frames: list[Costume] = []
+            frames: list[Image] = []
             for index in range(len(durations)):
                 column, row = (
                     divmod(index, rows) if orientation == 0 else (index % columns, index // columns)
                 )
                 frame = source.cropped(column * width, row * height, width, height)
-                frames.append(
-                    frame.with_anchor(*(anchor if anchor is not None else (width / 2, height / 2)))
-                )
+                frames.append(frame.with_anchor(_anchor(anchor, width, height)))
             object.__setattr__(self, "_frames", tuple(frames))
             object.__setattr__(self, "_durations", durations)
             object.__setattr__(self, "_tags", MappingProxyType(tags))
@@ -64,8 +66,8 @@ class PixeloramaSheet:
             raise AssetError(f"Cannot import Pixelorama export {metadata_path}: {error}") from error
 
     @property
-    def frames(self) -> tuple[Costume, ...]:
-        """Owned immutable costumes in original project order; zero-based indexing."""
+    def frames(self) -> tuple[Image, ...]:
+        """Owned immutable images in original project order; zero-based indexing."""
         return self._frames
 
     @property
@@ -85,9 +87,7 @@ class PixeloramaSheet:
         the returned Script. Shared scripts execute independently on each actor.
         """
         start, stop = (0, len(self.frames)) if name is None else self._tags[name]
-        return Script(Sprite).costumes(
-            self.frames[start:stop], durations=self.durations[start:stop]
-        )
+        return Script(Sprite).images(self.frames[start:stop], durations=self.durations[start:stop])
 
 
 def _profile_int(profile: dict[str, object], key: str) -> int:

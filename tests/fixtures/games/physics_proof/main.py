@@ -1,6 +1,6 @@
 """Space applies a physical impulse; the other actor keeps following a script."""
 
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import (
     Action,
@@ -21,14 +21,16 @@ def main() -> None:
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     floor = TileMap(
         ["##########"],
-        {"#": Image.new("RGBA", (32, 32), "forestgreen")},
+        {"#": PillowImage.new("RGBA", (32, 32), "forestgreen")},
         tile_size=(32, 32),
         solid={"#"},
         x=-160,
         y=-100,
     )
-    hero = Sprite(Image.new("RGBA", (20, 20), "orange"), y=20)
-    friend = Sprite(Image.new("RGBA", (20, 20), "skyblue"), x=-100, y=80, body_type=BodyType.NONE)
+    hero = Sprite(PillowImage.new("RGBA", (20, 20), "orange"), y=20)
+    friend = Sprite(
+        PillowImage.new("RGBA", (20, 20), "skyblue"), x=-100, y=80, body_type=BodyType.NONE
+    )
     stage.add(floor)
     stage.add(hero)
     stage.add(friend)

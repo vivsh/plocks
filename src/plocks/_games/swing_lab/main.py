@@ -7,10 +7,10 @@ from plocks import (
     Button,
     Canvas,
     Circle,
-    Costume,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
     Key,
     Label,
     Sprite,
@@ -21,8 +21,8 @@ assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=640, height=400, physics=True, background="#172536")
 stage.physics.gravity = (0, -500)
 stage.gamepads[0].map_key(Key.R, GamepadButton.B)
-ball = Sprite(Costume(assets / "ball.png").resized(32, 32), x=80, y=-20)
-floor = Sprite(Costume(assets / "beam.png").resized(620, 20), y=-170, body_type=BodyType.STATIC)
+ball = Sprite(Image(assets / "ball.png").resized(32, 32), x=80, y=-20)
+floor = Sprite(Image(assets / "beam.png").resized(620, 20), y=-170, body_type=BodyType.STATIC)
 stage.add(ball)
 stage.add(floor)
 ball.body.shape = Circle(16)

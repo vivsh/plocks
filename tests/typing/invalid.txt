@@ -1,18 +1,18 @@
-from PIL import Image
+from PIL import Image as PillowImage
 from plocks import GamepadButton, GamepadPress
-from plocks import Actor, Action, Box, Canvas, Costume, Key, Event, Message, Script, GamepadDown, MouseButton, Point, Puppet, Sprite, Stage, TileMap
+from plocks import Actor, Action, Box, Canvas, Image, Key, Event, Message, Script, GamepadDown, MouseButton, Point, Puppet, Sprite, Stage, TileMap
 stage = Stage()
 stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
 stage.gamepads[0].map_key(Key.C, GamepadButton.X)
 stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
 stage.gamepads[0].map_key(Key.Z, GamepadButton.R)
-hero = Sprite(Image.new("RGBA", (8, 8)))
+hero = Sprite(PillowImage.new("RGBA", (8, 8)))
 person = Puppet.stick_figure()
 stage.add(hero)
 stage.add(person)
 hero.act(Script(Puppet))  # error
 person.act(Script(Sprite))  # error
-Script(Puppet).set_costume(hero.costume)  # error
+Script(Puppet).set_image(hero.image)  # error
 Script(Sprite).poses((person.pose,), fps=2)  # error
 hero.glide_by(x="far", seconds=1)  # error
 hero.glide_by(x=10, seconds=1, after=1)  # error
@@ -36,26 +36,26 @@ async def async_draw(canvas: Canvas) -> None:
 @person.on_click  # error
 def bad_click(position: str, button: int) -> None:
     pass
-hero.costume = person.pose  # error
-person.pose = hero.costume  # error
+hero.image = person.pose  # error
+person.pose = hero.image  # error
 hero.body.velocity = "fast"  # error
-hero.body.shape = hero.costume  # error
+hero.body.shape = hero.image  # error
 Script().call(42)  # error
 hero.wait(1).done = True  # error
 hero.position = (1, "up")  # error
 stage.join()  # error
 stage.broadcast(message)  # error
-hero.costume.flipped(horizontal="yes")  # error
-hero.costume.cropped(x=0.5, y=0, width=8, height=8)  # error
-hero.costume.with_anchor(x="center", y=0)  # error
-hero.costume.rotated("left")  # error
-hero.costume.resized(width=2.5, height=8)  # error
+hero.image.flipped(horizontal="yes")  # error
+hero.image.cropped(x=0.5, y=0, width=8, height=8)  # error
+hero.image.with_anchor(x="center", y=0)  # error
+hero.image.rotated("left")  # error
+hero.image.resized(width=2.5, height=8)  # error
 
 common: Script[Actor] = Script()
 common.call(Script(Sprite))  # error
 Script().call(Script(Sprite))  # error
 Script().when(True, then=Script())  # error
-Script(Puppet).set_costume(hero.costume)  # error
+Script(Puppet).set_image(hero.image)  # error
 @hero.on_button_down(GamepadButton.R, gamepad=stage.gamepads[0])  # error
 async def async_key(event: Event[Sprite, GamepadPress]) -> None:
     pass
@@ -68,7 +68,7 @@ async def cannot_await() -> None:
 person.act(hero.sequence())  # error
 hero.act(person.repeat(2))  # error
 hero.sequence().set_pose(person.pose)  # error
-person.sequence().set_costume(hero.costume)  # error
+person.sequence().set_image(hero.image)  # error
 
 @hero.on_button_down(GamepadButton.Y, gamepad=stage.gamepads[0])  # error
 def wrong_receiver(event: Event[Puppet, GamepadPress]) -> None:
@@ -105,13 +105,13 @@ class PlayerState:
 class GameState:
     score: int = 0
 
-stateful = Sprite(Image.new("RGBA", (8, 8)), state=PlayerState)
+stateful = Sprite(PillowImage.new("RGBA", (8, 8)), state=PlayerState)
 stateful.state.health = "bad"  # error
 stateful.state.health = 1.5  # error
 stateful.state.misspelled = 1  # error
 stateful.state = PlayerState()  # error
 Stage(state=GameState())  # error
-Sprite(Image.new("RGBA", (8, 8)), state=PlayerState())  # error
+Sprite(PillowImage.new("RGBA", (8, 8)), state=PlayerState())  # error
 person.state.health = 1  # error
 @stateful.on_update  # error
 def wrong_state(event: Event[Sprite[GameState], float]) -> None:
@@ -151,11 +151,11 @@ def wrong_gamepad_receiver(event: Event[Sprite, GamepadPress]) -> None:
 person.on_button_down(GamepadButton.A, hero.sequence())  # error
 art = PixeloramaSheet("hero.png")
 person.act(art.animation())  # error
-hero.costumes(art.frames)  # error
-hero.costumes(art.frames, fps=10, durations=art.durations)  # error
-hero.sequence().costumes(art.frames)  # error
-hero.sequence().costumes(art.frames, fps=10, durations=art.durations)  # error
-hero.costumes(art.frames, durations=("slow",))  # error
+hero.images(art.frames)  # error
+hero.images(art.frames, fps=10, durations=art.durations)  # error
+hero.sequence().images(art.frames)  # error
+hero.sequence().images(art.frames, fps=10, durations=art.durations)  # error
+hero.images(art.frames, durations=("slow",))  # error
 
 # Interactive mode is explicit and keyword-only.
 stage.run(interactive="yes")  # error
@@ -229,3 +229,21 @@ hero.follow_path(world.find_path(start=(0, 0), goal=(1, -1)))  # error
 stage.physics.rope(Label("oops"), hero)  # error
 stage.physics.hinge(hero, person).motor(speed="fast", max_torque=100)  # error
 hero.body.sensor = "yes"  # error
+
+from collections.abc import Mapping
+from plocks import Anchor, ImageGrid, ImageMap
+Image("hero.png", anchor="bottom")  # error
+hero.image.with_anchor(Anchor.CENTER, 3)  # error
+hero.image.with_anchor((1, 2, 3))  # error
+ImageGrid("hero.png", frame_size=(16, 16)).frames(anchor="center")  # error
+
+def invalid_loader(atlas: Image) -> Mapping[str, tuple[int, int, int, int]]:
+    return {"hero": (0, 0, 1, 1)}
+
+async def async_loader(atlas: Image) -> Mapping[str, Image]:
+    return {"hero": atlas}
+
+ImageMap("hero.png", metadata=invalid_loader)  # error
+ImageMap("hero.png", metadata=async_loader)  # error
+ImageMap("hero.png")["hero"] = hero.image  # error
+hero.image = ImageMap("hero.png")  # error

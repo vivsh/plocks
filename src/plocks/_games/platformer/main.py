@@ -6,10 +6,10 @@ from plocks import (
     BodyType,
     Box,
     Canvas,
-    Costume,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
     Key,
     Script,
     Sprite,
@@ -57,9 +57,9 @@ stage.add(hero)
 hero.body.shape = Box(24, 40)
 hero.body.rotation_locked = True
 checkpoint = Sprite(
-    Costume(assets / "checkpoint.png", anchor=(4, 56)), x=180, y=37, body_type=BodyType.NONE
+    Image(assets / "checkpoint.png", anchor=(4, 56)), x=180, y=37, body_type=BodyType.NONE
 )
-goal = Sprite(Costume(assets / "flag.png", anchor=(4, 100)), x=650, y=-150, body_type=BodyType.NONE)
+goal = Sprite(Image(assets / "flag.png", anchor=(4, 100)), x=650, y=-150, body_type=BodyType.NONE)
 stage.add(checkpoint)
 stage.add(goal)
 # These variables remember our progress. spawn is where we return after a fall.

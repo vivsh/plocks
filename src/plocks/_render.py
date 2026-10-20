@@ -10,7 +10,7 @@ import pygame
 from ._bubbles import _draw_bubble
 from .canvas import Canvas
 from .geometry import Bounds, Point, _rotate
-from .imaging import Costume
+from .imaging import Image
 from .motion import _mirrored, _visual_direction
 from .puppets import Puppet
 from .rigging import _pivots
@@ -25,21 +25,21 @@ if TYPE_CHECKING:
 def _image(
     stage: Stage,
     target: pygame.Surface,
-    costume: Costume,
+    asset: Image,
     position: Point,
     direction: float,
     scale: float,
     mirrored: bool,
 ) -> None:
     """Place transformed pixel art by its source anchor; scratch surfaces stay local."""
-    source = pygame.transform.flip(costume._pixels, True, False) if mirrored else costume._pixels
+    source = pygame.transform.flip(asset._pixels, True, False) if mirrored else asset._pixels
     scaled = pygame.transform.scale(
-        source, (max(1, round(costume.width * scale)), max(1, round(costume.height * scale)))
+        source, (max(1, round(asset.width * scale)), max(1, round(asset.height * scale)))
     )
     image = pygame.transform.rotate(scaled, 90 - direction)
-    ax, ay = costume.anchor
-    local_x = costume.width / 2 - ax
-    dx, dy = _rotate((-local_x if mirrored else local_x, ay - costume.height / 2), direction, scale)
+    ax, ay = asset.anchor
+    local_x = asset.width / 2 - ax
+    dx, dy = _rotate((-local_x if mirrored else local_x, ay - asset.height / 2), direction, scale)
     center = stage.to_screen((position[0] + dx, position[1] + dy))
     target.blit(image, image.get_rect(center=(round(center[0]), round(center[1]))))
 
@@ -48,7 +48,7 @@ def _sprite(stage: Stage, target: pygame.Surface, sprite: Sprite) -> None:
     _image(
         stage,
         target,
-        sprite.costume,
+        sprite.image,
         sprite.position,
         _visual_direction(sprite.direction, sprite.rotation_style),
         sprite.scale,
@@ -105,13 +105,13 @@ def _puppet(stage: Stage, target: pygame.Surface, actor: Puppet) -> None:
     pivots = _pivots(actor.pose)
     direction = _visual_direction(actor.direction, actor.rotation_style)
     mirrored = _mirrored(actor.direction, actor.rotation_style)
-    for name, costume in actor._parts.items():
+    for name, image in actor._parts.items():
         (px, py), angle = pivots[name]
         dx, dy = _rotate((-px if mirrored else px, py), direction, actor.scale)
         _image(
             stage,
             target,
-            costume,
+            image,
             (actor.x + dx, actor.y + dy),
             direction - angle if mirrored else direction + angle,
             actor.scale,
@@ -164,15 +164,15 @@ def _background(stage: Stage, target: pygame.Surface, background: TiledBackgroun
     if clip.width == 0 or clip.height == 0:
         return
     target.set_clip(clip)
-    costume = background.costume
+    image = background.image
     dx, dy = background.offset
-    phase_x = (x % costume.width + dx % costume.width) % costume.width
-    phase_y = (y % costume.height - dy % costume.height) % costume.height
-    start_x = clip.left - (clip.left - round(phase_x)) % costume.width
-    start_y = clip.top - (clip.top - round(phase_y)) % costume.height
+    phase_x = (x % image.width + dx % image.width) % image.width
+    phase_y = (y % image.height - dy % image.height) % image.height
+    start_x = clip.left - (clip.left - round(phase_x)) % image.width
+    start_y = clip.top - (clip.top - round(phase_y)) % image.height
     try:
-        for top in range(start_y, clip.bottom, costume.height):
-            for left in range(start_x, clip.right, costume.width):
-                target.blit(costume._pixels, (left, top))
+        for top in range(start_y, clip.bottom, image.height):
+            for left in range(start_x, clip.right, image.width):
+                target.blit(image._pixels, (left, top))
     finally:
         target.set_clip(previous)

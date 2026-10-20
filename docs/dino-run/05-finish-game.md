@@ -20,8 +20,8 @@ Use the [complete project download](../downloads/dino-dash.zip), or
 
 ## Little finishing touches
 
-**Ducking:** `wants_duck` reads held input. We replace the costume and collision
-box together, keeping the feet anchor in place. Changing a costume alone does
+**Ducking:** `wants_duck` reads held input. We replace the image and collision
+box together, keeping the feet anchor in place. Changing an image alone does
 not resize its physical collider.
 
 **Coins:** the pickup list remembers coins still on screen. Touching one removes

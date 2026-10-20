@@ -5,10 +5,10 @@ from pathlib import Path
 from plocks import (
     Bounds,
     Canvas,
-    Costume,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
     Key,
     RotationStyle,
     Script,
@@ -46,10 +46,10 @@ world = TileMap(
 )
 stage.add(world)
 # The anchor is at the hero's feet, so hero.y is also the landing height.
-hero = Sprite(Costume(assets / "hero.png", anchor=(16, 40)), x=-300, y=-128)
+hero = Sprite(Image(assets / "hero.png", anchor=(16, 40)), x=-300, y=-128)
 hero.rotation_style = RotationStyle.LEFT_RIGHT
 stage.add(hero)
-flag = Sprite(Costume(assets / "flag.png", anchor=(4, 100)), x=1550, y=-128)
+flag = Sprite(Image(assets / "flag.png", anchor=(4, 100)), x=1550, y=-128)
 stage.add(flag)
 pop = Sound(assets / "pop.ogg")
 # Lists keep track of the coins and enemies still in the game.
@@ -97,7 +97,7 @@ def reset() -> None:
         coins.append(coin)
         stage.add(coin)
     for x in (170, 850, 1250):
-        enemy = Sprite(Costume(assets / "enemy.png", anchor=(16, 24)), x=x, y=-128)
+        enemy = Sprite(Image(assets / "enemy.png", anchor=(16, 24)), x=x, y=-128)
         enemies.append(enemy)
         stage.add(enemy)
         patrol = Script(Sprite).repeat()

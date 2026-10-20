@@ -42,6 +42,7 @@ python main.py
 
 | Activity | What you will make |
 | --- | --- |
+| [Choose pictures and anchors](images.md) | Named pictures, grids and where feet go |
 | [Make a character wiggle](pixelorama.md) | Drawings that take turns, like a flipbook |
 | [Build a tiny world](tiled.md) | A tile world with a starting spot for your hero |
 

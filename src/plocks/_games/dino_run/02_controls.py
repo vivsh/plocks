@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from plocks import Costume, Ease, Event, GamepadButton, Key, Sprite, Stage
+from plocks import Ease, Event, GamepadButton, Image, Key, Sprite, Stage
 
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=800, height=450, background="#fff0cc")
@@ -12,7 +12,7 @@ stage.gamepads[0].map_left_stick(left=Key.LEFT, right=Key.RIGHT, up=Key.UP, down
 stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
 stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
 stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-dino = Sprite(Costume(assets / "dinosaur.png").resized(width=72, height=72), y=-90)
+dino = Sprite(Image(assets / "dinosaur.png").resized(width=72, height=72), y=-90)
 stage.add(dino)
 hop = dino.sequence()
 hop.glide_by(y=90, seconds=0.3, easing=Ease.OUT)

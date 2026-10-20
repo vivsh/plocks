@@ -6,11 +6,11 @@ from plocks import (
     Action,
     Bounds,
     Canvas,
-    Costume,
     Ease,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
     Key,
     Script,
     Sprite,
@@ -29,31 +29,31 @@ stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
 stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
 # A dictionary lets us choose a picture by its name.
 roads = {
-    "straight": Costume(assets / "road_straight.png"),
-    "left": Costume(assets / "road_left.png"),
-    "right": Costume(assets / "road_right.png"),
+    "straight": Image(assets / "road_straight.png"),
+    "left": Image(assets / "road_left.png"),
+    "right": Image(assets / "road_right.png"),
 }
 road = Sprite(roads["straight"], layer=-1000)
 stage.add(road)
 # The anchor is at the feet, so changing pictures keeps the runner on the path.
 running = (
-    Costume(assets / "run1.png", anchor=(18, 48)),
-    Costume(assets / "run2.png", anchor=(18, 48)),
+    Image(assets / "run1.png", anchor=(18, 48)),
+    Image(assets / "run2.png", anchor=(18, 48)),
 )
-jumping = Costume(assets / "jump.png", anchor=(18, 48))
-sliding = Costume(assets / "slide.png", anchor=(30, 28))
+jumping = Image(assets / "jump.png", anchor=(18, 48))
+sliding = Image(assets / "slide.png", anchor=(30, 28))
 hero = Sprite(running[0], y=-110, scale=1.6, layer=10)
 stage.add(hero)
 # A sequence is a script: do these steps in order while the rest of the game runs.
 jump = Script(Sprite)
-jump.set_costume(jumping)
+jump.set_image(jumping)
 jump.glide_by(y=85, seconds=0.35, easing=Ease.OUT)
 jump.glide_by(y=-85, seconds=0.35, easing=Ease.IN)
-jump.set_costume(running[0])
+jump.set_image(running[0])
 slide = Script(Sprite)
-slide.set_costume(sliding)
+slide.set_image(sliding)
 slide.wait(0.8)
-slide.set_costume(running[0])
+slide.set_image(running[0])
 
 # Each row is (distance along the trail, lane, kind). Hurdles and arches span all lanes.
 course = (
@@ -73,12 +73,12 @@ course = (
     (1640, 0, "hurdle"),
     (1780, 0, "coin"),
 )
-costumes = {
-    "coin": Costume(assets / "coin.png", anchor=(10, 24)),
-    "hurdle": Costume(assets / "hurdle.png", anchor=(230, 40)),
-    "arch": Costume(assets / "arch.png", anchor=(240, 105)),
-    "left": Costume(assets / "left.png", anchor=(65, 96)),
-    "right": Costume(assets / "right.png", anchor=(65, 96)),
+images = {
+    "coin": Image(assets / "coin.png", anchor=(10, 24)),
+    "hurdle": Image(assets / "hurdle.png", anchor=(230, 40)),
+    "arch": Image(assets / "arch.png", anchor=(240, 105)),
+    "left": Image(assets / "left.png", anchor=(65, 96)),
+    "right": Image(assets / "right.png", anchor=(65, 96)),
 }
 # Each live item stores (sprite, distance along the trail, lane, kind).
 objects: list[tuple[Sprite, int, int, str]] = []
@@ -109,20 +109,20 @@ def reset() -> None:
     global distance, score, heading, outcome, maneuver
     hero.stop()
     hero.position = (0, -110)
-    hero.costume = running[0]
+    hero.image = running[0]
     maneuver = None
     distance = 0
     score = 0
     heading = 0
     outcome = "playing"
-    road.costume = roads["straight"]
+    road.image = roads["straight"]
     stage.background = "#234b43"
     for item in objects:
         actor = item[0]
         stage.remove(actor)
     objects.clear()
     for location, lane, kind in course:
-        actor = Sprite(costumes[kind], visible=False)
+        actor = Sprite(images[kind], visible=False)
         stage.add(actor)
         objects.append((actor, location, lane, kind))
 
@@ -189,14 +189,14 @@ def update(event: Event[Stage, float]) -> None:
     if maneuver is None or maneuver.done:
         # Alternate picture 0 and picture 1 eight times a second.
         frame_number = int(stage.time * 8) % 2
-        hero.costume = running[frame_number]
+        hero.image = running[frame_number]
     corner = next_corner()
-    road.costume = roads["straight"]
+    road.image = roads["straight"]
     if corner is not None:
         corner_distance = corner[1]
         corner_kind = corner[3]
         if corner_distance - distance < 300:
-            road.costume = roads[corner_kind]
+            road.image = roads[corner_kind]
     # A copy lets us safely remove an item from the original list.
     for item in objects.copy():
         actor, location, lane, kind = item
@@ -207,7 +207,7 @@ def update(event: Event[Stage, float]) -> None:
                 score += 1
             elif kind == "hurdle" and hero.y < -65:
                 finish("Jump over the stones! Space.")
-            elif kind == "arch" and hero.costume is not sliding:
+            elif kind == "arch" and hero.image is not sliding:
                 finish("Slide under the arch! Down arrow.")
             elif kind in ("left", "right"):
                 finish("Missed the corner! Turn when it says NOW.")

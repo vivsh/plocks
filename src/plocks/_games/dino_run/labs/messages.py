@@ -6,11 +6,11 @@ from pathlib import Path
 from plocks import (
     Canvas,
     Click,
-    Costume,
     Event,
     GamepadButton,
     GamepadLayout,
     GamepadPress,
+    Image,
     Message,
     Sprite,
     Stage,
@@ -24,7 +24,7 @@ class PlayerMemory:
 
 assets = Path(__file__).resolve().parents[1] / "assets"
 stage = Stage(width=640, height=360, background="#fff0cc")
-image = Costume(assets / "dinosaur.png").resized(width=72, height=72)
+image = Image(assets / "dinosaur.png").resized(width=72, height=72)
 one = Sprite(image, x=-130, state=PlayerMemory)
 two = Sprite(image.flipped(horizontal=True), x=130, state=PlayerMemory)
 stage.add(one)

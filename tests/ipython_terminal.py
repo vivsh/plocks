@@ -185,6 +185,17 @@ def _foundation_tools(command: Callable[[str], None]) -> None:
         "assert route_action.done and hero.position==(0,0) and stage.camera==(0,0); "
         "stage.stop_following()"
     )
+    command("from plocks import Anchor, Image, ImageGrid, ImageMap")
+    command(
+        "def load_images(atlas: Image) -> dict[str, Image]:\n"
+        "    return {'hero': atlas.with_anchor(Anchor.BOTTOM_CENTER)}"
+    )
+    command(
+        "pictures=ImageMap(hero.image,metadata=load_images); hero.image=pictures['hero']; "
+        "assert hero.image.anchor==(hero.image.width/2,hero.image.height); "
+        "grid=ImageGrid(hero.image,frame_size=(hero.image.width,hero.image.height)); "
+        "assert grid.frame(row=0,column=0,anchor=Anchor.TOP_LEFT).anchor==(0,0)"
+    )
 
 
 def _live_game(command: Callable[[str], None], child: pexpect.spawn[str]) -> None:

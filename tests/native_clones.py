@@ -12,10 +12,10 @@ from plocks import (
     BodyType,
     Box,
     Canvas,
-    Costume,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
     Key,
     Sprite,
     Stage,
@@ -36,7 +36,7 @@ def main() -> None:
     with as_file(files("plocks").joinpath("_games/platformer/assets/hero.png")) as image:
         source = Sprite(image, x=-230, y=50, state=Health)
     with as_file(files("plocks").joinpath("_games/platformer/assets/platform.png")) as image:
-        ground = Costume(image).resized(width=620, height=12)
+        ground = Image(image).resized(width=620, height=12)
     floor = Sprite(ground, y=-130, body_type=BodyType.STATIC)
     stage.add(source)
     stage.add(floor)

@@ -17,10 +17,10 @@ from plocks import (
     BodyType,
     Bounds,
     Canvas,
-    Costume,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
     Multiplayer,
     Sprite,
     Stage,
@@ -47,7 +47,7 @@ def host(folder: Path, port: int) -> None:
     stage.add(
         TileMap(
             rows=["########"],
-            palette={"#": Costume(assets / "grass.png")},
+            palette={"#": Image(assets / "grass.png")},
             tile_size=(32, 32),
             solid={"#"},
             x=-128,

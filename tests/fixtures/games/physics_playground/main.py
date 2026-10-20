@@ -1,6 +1,6 @@
 """Walk, jump onto solid platforms, ride a lift, and spin a crate with torque."""
 
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import (
     Action,
@@ -23,8 +23,8 @@ def main() -> None:
     stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     stage.gamepads[0].map_key(Key.T, GamepadButton.SELECT)
-    ground = Image.new("RGBA", (32, 32), "forestgreen")
-    stone = Image.new("RGBA", (32, 32), "slategray")
+    ground = PillowImage.new("RGBA", (32, 32), "forestgreen")
+    stone = PillowImage.new("RGBA", (32, 32), "slategray")
     world = TileMap(
         [
             "....................",
@@ -42,11 +42,11 @@ def main() -> None:
         y=50,
     )
     stage.add(world)
-    hero = Sprite(Image.new("RGBA", (24, 32), "orange"), x=-260, y=-100)
+    hero = Sprite(PillowImage.new("RGBA", (24, 32), "orange"), x=-260, y=-100)
     lift = Sprite(
-        Image.new("RGBA", (70, 12), "skyblue"), x=20, y=-100, body_type=BodyType.KINEMATIC
+        PillowImage.new("RGBA", (70, 12), "skyblue"), x=20, y=-100, body_type=BodyType.KINEMATIC
     )
-    crate = Sprite(Image.new("RGBA", (28, 28), "gold"), x=210, y=100)
+    crate = Sprite(PillowImage.new("RGBA", (28, 28), "gold"), x=210, y=100)
     stage.add(hero)
     stage.add(lift)
     stage.add(crate)

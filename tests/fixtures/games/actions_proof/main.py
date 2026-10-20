@@ -1,6 +1,6 @@
 """Press Space for chained actions; A demonstrates the same actions with reusable Scripts."""
 
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import Action, Event, GamepadButton, GamepadPress, Key, Script, Sprite, Stage
 
@@ -9,8 +9,8 @@ def main() -> None:
     stage = Stage(background="midnightblue")
     stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-    hero = Sprite(Image.new("RGBA", (32, 40), "orange"), y=-100)
-    friend = Sprite(Image.new("RGBA", (28, 28), "skyblue"), x=-150, y=60)
+    hero = Sprite(PillowImage.new("RGBA", (32, 40), "orange"), y=-100)
+    friend = Sprite(PillowImage.new("RGBA", (28, 28), "skyblue"), x=-150, y=60)
     stage.add(hero)
     stage.add(friend)
 

@@ -89,16 +89,16 @@ def _default_shape(actor: Actor) -> Box:
 
     points: list[Point] = []
     if isinstance(actor, Sprite):
-        costume = actor.costume
-        ax, ay = costume.anchor
-        points = [(x - ax, ay - y) for x in (0, costume.width) for y in (0, costume.height)]
+        image = actor.image
+        ax, ay = image.anchor
+        points = [(x - ax, ay - y) for x in (0, image.width) for y in (0, image.height)]
     else:
         pivots = _pivots(actor.pose)
-        for name, costume in actor.parts.items():
+        for name, image in actor.parts.items():
             (px, py), angle = pivots[name]
-            ax, ay = costume.anchor
-            for x in (0, costume.width):
-                for y in (0, costume.height):
+            ax, ay = image.anchor
+            for x in (0, image.width):
+                for y in (0, image.height):
                     rx, ry = _rotate((x - ax, ay - y), 90 + angle)
                     points.append((px + rx, py + ry))
     left, right = min(x for x, _ in points), max(x for x, _ in points)

@@ -1,14 +1,14 @@
 """Independent speakers."""
 
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import Script, Sprite, Stage
 
 
 def main() -> None:
     stage = Stage(background="midnightblue")
-    hero = Sprite(Image.new("RGBA", (32, 40), "orange"), x=-100, y=30)
-    friend = Sprite(Image.new("RGBA", (28, 28), "skyblue"), x=100, y=-70)
+    hero = Sprite(PillowImage.new("RGBA", (32, 40), "orange"), x=-100, y=30)
+    friend = Sprite(PillowImage.new("RGBA", (28, 28), "skyblue"), x=100, y=-70)
     stage.add(hero)
     stage.add(friend)
     hero.on_start(

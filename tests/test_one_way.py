@@ -11,8 +11,8 @@ from plocks import (
     Box,
     Canvas,
     Circle,
-    Costume,
     Event,
+    Image,
     PhysicsError,
     Puppet,
     Sprite,
@@ -30,9 +30,9 @@ def test_two_actors_jump_and_land_independently_through_the_shared_driver() -> N
     platform = Sprite(ASSETS / "platform.png", one_way=True, body_type=BodyType.STATIC)
     stage.add(platform)
     platform.body.shape = Box(160, 16)
-    costume = Costume(ASSETS / "hero.png").resized(12, 20)
-    rider = Sprite(costume, x=-30, y=18)
-    jumper = Sprite(costume, x=30, y=-40)
+    image = Image(ASSETS / "hero.png").resized(12, 20)
+    rider = Sprite(image, x=-30, y=18)
+    jumper = Sprite(image, x=30, y=-40)
     stage.add(rider)
     stage.add(jumper)
     rider.body.rotation_locked = jumper.body.rotation_locked = True
@@ -96,7 +96,7 @@ def platform(stage: Stage, *, moving: bool = False) -> Sprite:
 
 def rider(stage: Stage, *, x: float = 0, y: float = 60) -> Sprite:
     """Use a fixed 12-by-20 collider so expected feet heights are explicit."""
-    actor = Sprite(Costume(ASSETS / "hero.png").resized(12, 20), x=x, y=y)
+    actor = Sprite(Image(ASSETS / "hero.png").resized(12, 20), x=x, y=y)
     stage.add(actor)
     actor.body.rotation_locked = True
     return actor
@@ -247,7 +247,7 @@ def test_pause_freezes_platform_motion_and_resume_keeps_contacts(scene: Stage) -
 def test_offset_anchors_and_scaled_replacement_keep_the_top_edge_correct(scene: Stage) -> None:
     """The native edge derives from the Box top, independent of visual anchors or image changes."""
     surface = Sprite(
-        Costume(ASSETS / "platform.png", anchor=(0, 0)),
+        Image(ASSETS / "platform.png", anchor=(0, 0)),
         x=-100,
         y=100,
         scale=2,
@@ -260,7 +260,7 @@ def test_offset_anchors_and_scaled_replacement_keep_the_top_edge_correct(scene: 
     ticks(scene, 60)
     assert hero.y == pytest.approx(110, abs=0.3)
     surface.body.shape = Box(100, 20, center=(50, -15))
-    surface.costume = ASSETS / "hero.png"
+    surface.image = ASSETS / "hero.png"
     ticks(scene, 60)
     assert hero.y == pytest.approx(100, abs=0.3) and hero.body.grounded
     surface.scale = 1
@@ -344,7 +344,7 @@ def test_configuration_snapshots_and_nonphysical_overlap_queries() -> None:
     keys = {"P"}
     world = TileMap(["P"], {"P": ASSETS / "platform.png"}, tile_size=(32, 16), one_way=keys)
     keys.clear()
-    actor = Sprite(Costume(ASSETS / "hero.png").resized(12, 20), x=10, y=-10)
+    actor = Sprite(Image(ASSETS / "hero.png").resized(12, 20), x=10, y=-10)
     assert world.one_way == frozenset({"P"}) and actor.touching(world)
     assert world.tiles_touching(actor.bounds) == ((0, 0),)
     stage = Stage()
@@ -521,7 +521,7 @@ def test_fast_small_riders_land_instead_of_tunneling(
 ) -> None:
     """Native substeps account for collider size and travel, not only the public tick rate."""
     surface: Sprite | TileMap = platform(scene) if kind == "sprite" else tiles(scene)
-    hero = Sprite(Costume(ASSETS / "hero.png").resized(12, height), y=80)
+    hero = Sprite(Image(ASSETS / "hero.png").resized(12, height), y=80)
     scene.add(hero)
     hero.body.rotation_locked = True
     if circle:
@@ -540,7 +540,7 @@ def test_fast_riders_still_pass_through_from_below(kind: str, scene: Stage) -> N
         platform(scene)
     else:
         tiles(scene)
-    hero = Sprite(Costume(ASSETS / "hero.png").resized(12, 2), y=-80)
+    hero = Sprite(Image(ASSETS / "hero.png").resized(12, 2), y=-80)
     scene.add(hero)
     hero.body.rotation_locked = True
     hero.body.velocity = (0, 12000)
@@ -577,7 +577,7 @@ def test_precision_follows_configured_tick_rate(rate: int) -> None:
     scene._state, scene._last_wall = "running", 0
     try:
         platform(scene)
-        hero = Sprite(Costume(ASSETS / "hero.png").resized(12, 2), y=80)
+        hero = Sprite(Image(ASSETS / "hero.png").resized(12, 2), y=80)
         scene.add(hero)
         hero.body.rotation_locked = True
         hero.body.velocity = (0, -6000)
@@ -590,7 +590,7 @@ def test_precision_follows_configured_tick_rate(rate: int) -> None:
 def test_accelerating_small_rider_uses_force_aware_precision(scene: Stage) -> None:
     """A force starting from rest must not evade the size-aware travel calculation."""
     platform(scene)
-    hero = Sprite(Costume(ASSETS / "hero.png").resized(12, 2), y=80)
+    hero = Sprite(Image(ASSETS / "hero.png").resized(12, 2), y=80)
     scene.add(hero)
     hero.body.rotation_locked = True
     hero.body.force(y=-200000, seconds=0.025)
@@ -602,7 +602,7 @@ def test_extreme_motion_fails_with_cleanup_instead_of_unbounded_work() -> None:
     """The work budget raises a useful error and the shared driver still releases resources."""
     scene = Stage(physics=True)
     platform(scene)
-    hero = Sprite(Costume(ASSETS / "hero.png").resized(12, 2), y=80)
+    hero = Sprite(Image(ASSETS / "hero.png").resized(12, 2), y=80)
     scene.add(hero)
     hero.body.velocity = (0, -1e9)
     with pytest.raises(PhysicsError, match="1024 physics substeps.*reduce speed"):

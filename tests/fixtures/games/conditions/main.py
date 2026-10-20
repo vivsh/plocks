@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import GamepadButton, GamepadDown, Key, Script, Sprite, Stage
 
@@ -6,8 +6,8 @@ from plocks import GamepadButton, GamepadDown, Key, Script, Sprite, Stage
 def main() -> None:
     stage = Stage(background="midnightblue")
     stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
-    hero = Sprite(Image.new("RGBA", (24, 24), "orange"), x=-80)
-    friend = Sprite(Image.new("RGBA", (24, 24), "skyblue"), x=80)
+    hero = Sprite(PillowImage.new("RGBA", (24, 24), "orange"), x=-80)
+    friend = Sprite(PillowImage.new("RGBA", (24, 24), "skyblue"), x=80)
     stage.add(hero)
     stage.add(friend)
 

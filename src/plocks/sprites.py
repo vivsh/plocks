@@ -5,14 +5,16 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Generic, Self, TypeVar, cast, overload
 
-from ._operations import _CostumeRun, _sample_costume
+from typing_extensions import deprecated
+
+from ._operations import _ImageRun, _sample_image
 from ._scripts import WhenBusy, _conflicts
 from .actions import Action
 from .audio import Sound
 from .events import Click, Event, GamepadPress
 from .gamepads import Gamepad, GamepadButton
 from .geometry import Bounds, Point, _integer, _number, _Placement, _point, _positive, _rotate
-from .imaging import Costume, CostumeSource, _costume
+from .imaging import Image, ImageSource, _image
 from .messages import Message
 from .motion import (
     Ease,
@@ -42,7 +44,7 @@ _R = TypeVar("_R", bound="None | Action | Script[Sprite] | Script[Actor]")
 class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports Python 3.12
     """A movable image. Construct it, then add it with stage.add(sprite).
 
-    Positions use logical pixels and the costume anchor. Commands schedule Actions;
+    Positions use logical pixels and the image anchor. Commands schedule Actions;
     property assignments apply immediately. Direction 90 faces right.
     one_way=True makes a horizontal static/kinematic platform with a top-only
     physical edge; its default False keeps ordinary full-shape collision.
@@ -65,7 +67,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
     @overload
     def __init__(
         self: Sprite[None],
-        source: CostumeSource,
+        source: ImageSource,
         *,
         x: float = 0,
         y: float = 0,
@@ -80,7 +82,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
     @overload
     def __init__(
         self,
-        source: CostumeSource,
+        source: ImageSource,
         *,
         x: float = 0,
         y: float = 0,
@@ -94,7 +96,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
     ) -> None: ...
     def __init__(
         self,
-        source: CostumeSource,
+        source: ImageSource,
         *,
         x: float = 0,
         y: float = 0,
@@ -120,7 +122,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         self._scale = _positive(scale, "scale")
         self._visible = visible
         self._layer = _integer(layer, "layer")
-        self._visual: Costume | _CostumeRun = _costume(source)
+        self._visual: Image | _ImageRun = _image(source)
         if not isinstance(body_type, BodyType):
             raise TypeError("Use a BodyType value")
         self._stage: Stage | None = None
@@ -244,7 +246,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
     @property
     def position(self) -> Point:
-        """The same coordinates as (x, y), measured at the costume anchor."""
+        """The same coordinates as (x, y), measured at the image anchor."""
         return (
             self._transform.position
             if isinstance(self._transform, _Placement)
@@ -307,24 +309,35 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         self._layer = _integer(value, "layer")
 
     @property
-    def costume(self) -> Costume:
-        """The current immutable image; assigning it stops costume animation."""
-        if isinstance(self._visual, _CostumeRun):
+    def image(self) -> Image:
+        """The current immutable image; assigning it stops image animation."""
+        if isinstance(self._visual, _ImageRun):
             assert self._stage is not None
-            return _sample_costume(self._visual, self._stage.time)
+            return _sample_image(self._visual, self._stage.time)
         return self._visual
 
-    @costume.setter
-    def costume(self, value: CostumeSource) -> None:
-        costume = _costume(value)
+    @image.setter
+    def image(self, value: ImageSource) -> None:
+        image = _image(value)
         _conflicts(self, False, False, visual=True)
-        self._visual = costume
+        self._visual = image
+
+    @property
+    @deprecated("costume is deprecated; use image")
+    def costume(self) -> Image:
+        """Deprecated alias for image; reads the same current visual."""
+        return self.image
+
+    @costume.setter
+    @deprecated("costume is deprecated; use image")
+    def costume(self, value: ImageSource) -> None:
+        self.image = value
 
     @property
     def bounds(self) -> Bounds:
         """Derived world AABB, including transparent pixels and transformations."""
-        costume = self.costume
-        ax, ay = costume.anchor
+        image = self.image
+        ax, ay = image.anchor
         corners = [
             _rotate(
                 (
@@ -334,8 +347,8 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
                 _visual_direction(self.direction, self.rotation_style),
                 self.scale,
             )
-            for cx in (0, costume.width)
-            for cy in (0, costume.height)
+            for cx in (0, image.width)
+            for cy in (0, image.height)
         ]
         return Bounds(
             self.x + min(p[0] for p in corners),
@@ -695,30 +708,30 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
         return _schedule(self, _PlaySound(sound, volume=volume, wait=wait), after=after)
 
-    def set_costume(self, costume: CostumeSource, *, after: Action | None = None) -> Action:
+    def set_image(self, image: ImageSource, *, after: Action | None = None) -> Action:
         """Snapshot an image now and display it when reached.
 
         Returns immediately. Use after to sequence; inspect the returned Action for completion.
         """
-        from ._commands import _schedule, _SetCostume
+        from ._commands import _schedule, _SetImage
 
-        return _schedule(self, _SetCostume(costume), after=after)
+        return _schedule(self, _SetImage(image), after=after)
 
     @overload
-    def costumes(
-        self, frames: Iterable[CostumeSource], *, fps: float, after: Action | None = None
+    def images(
+        self, frames: Iterable[ImageSource], *, fps: float, after: Action | None = None
     ) -> Action: ...
     @overload
-    def costumes(
+    def images(
         self,
-        frames: Iterable[CostumeSource],
+        frames: Iterable[ImageSource],
         *,
         durations: Iterable[float],
         after: Action | None = None,
     ) -> Action: ...
-    def costumes(
+    def images(
         self,
-        frames: Iterable[CostumeSource],
+        frames: Iterable[ImageSource],
         *,
         fps: float | None = None,
         durations: Iterable[float] | None = None,
@@ -729,9 +742,44 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         Supply exactly one timing form. Every frame, including the final one,
         holds for its full positive duration. Sources/timings are snapshotted now.
         """
-        from ._commands import _Costumes, _schedule
+        from ._commands import _Images, _schedule
 
-        return _schedule(self, _Costumes(frames, fps=fps, durations=durations), after=after)
+        return _schedule(self, _Images(frames, fps=fps, durations=durations), after=after)
+
+    @deprecated("set_costume is deprecated; use set_image")
+    def set_costume(self, costume: ImageSource, *, after: Action | None = None) -> Action:
+        """Deprecated alias for set_image; preserves Action/after sequencing."""
+        return self.set_image(costume, after=after)
+
+    @overload
+    @deprecated("costumes is deprecated; use images")
+    def costumes(
+        self, frames: Iterable[ImageSource], *, fps: float, after: Action | None = None
+    ) -> Action: ...
+    @overload
+    @deprecated("costumes is deprecated; use images")
+    def costumes(
+        self,
+        frames: Iterable[ImageSource],
+        *,
+        durations: Iterable[float],
+        after: Action | None = None,
+    ) -> Action: ...
+    @deprecated("costumes is deprecated; use images")
+    def costumes(
+        self,
+        frames: Iterable[ImageSource],
+        *,
+        fps: float | None = None,
+        durations: Iterable[float] | None = None,
+        after: Action | None = None,
+    ) -> Action:
+        """Deprecated alias for images; uses the same image writer and timing."""
+        if fps is not None and durations is None:
+            return self.images(frames, fps=fps, after=after)
+        if durations is not None and fps is None:
+            return self.images(frames, durations=durations, after=after)
+        raise ValueError("Supply exactly one of fps or durations")
 
     def sequence(self) -> Script[Sprite]:
         """Create an empty reusable Script with this actor's capabilities.

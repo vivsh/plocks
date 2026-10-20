@@ -7,12 +7,12 @@ import time
 from pathlib import Path
 
 import pygame
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import (
-    Costume,
     Event,
     HumanJoint,
+    Image,
     Message,
     Puppet,
     Script,
@@ -31,12 +31,12 @@ def main() -> None:
     stage = Stage(640, 400)
     stage._target = pygame.display.set_mode((640, 400))
     stage._state = "running"
-    costume = Costume(Image.new("RGBA", (32, 32), "orange"))
-    stage.add(TileMap(["#" * 100] * 100, {"#": costume}, tile_size=(32, 32), x=-320, y=200))
+    image = Image(PillowImage.new("RGBA", (32, 32), "orange"))
+    stage.add(TileMap(["#" * 100] * 100, {"#": image}, tile_size=(32, 32), x=-320, y=200))
     for index in range(100):
         stage.add(
             Sprite(
-                costume, x=(index % 20) * 30 - 300, y=(index // 20) * 50 - 100, direction=index * 7
+                image, x=(index % 20) * 30 - 300, y=(index // 20) * 50 - 100, direction=index * 7
             )
         )
     for index in range(20):

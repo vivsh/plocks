@@ -10,10 +10,10 @@ from plocks import (
     Action,
     Bounds,
     Canvas,
-    Costume,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
     Key,
     Message,
     RotationStyle,
@@ -53,25 +53,25 @@ stage.add(ground)
 
 platforms: list[Sprite] = []
 for x, y, width in ((100, -86, 160), (390, -22, 160), (910, -86, 170), (1450, -86, 150)):
-    platform = Sprite(Costume(assets / f"ledge{width}.png", anchor=(0, 0)), x=x, y=y, layer=-2)
+    platform = Sprite(Image(assets / f"ledge{width}.png", anchor=(0, 0)), x=x, y=y, layer=-2)
     platforms.append(platform)
     stage.add(platform)
 
-stage.add(Sprite(Costume(assets / "flag.png", anchor=(4, 100)), x=1720, y=-150, layer=-1))
+stage.add(Sprite(Image(assets / "flag.png", anchor=(4, 100)), x=1720, y=-150, layer=-1))
 
-idle = Costume(assets / "hero.png", anchor=(14, 40))
-# Anchors put each costume's feet at the same point when we swap pictures.
+idle = Image(assets / "hero.png", anchor=(14, 40))
+# Anchors put each image's feet at the same point when we swap pictures.
 walking_frames = (
-    Costume(assets / "walk1.png", anchor=(14, 40)),
-    Costume(assets / "walk2.png", anchor=(14, 40)),
+    Image(assets / "walk1.png", anchor=(14, 40)),
+    Image(assets / "walk2.png", anchor=(14, 40)),
 )
 walking: Action | None = None
 hero = Sprite(idle, x=-300, y=-150, scale=1.5, layer=2)
 hero.rotation_style = RotationStyle.LEFT_RIGHT
 stage.add(hero)
-sentry = Costume(assets / "robot.png", anchor=(16, 40))
-friendly_shot = Costume(assets / "friendly_shot.png")
-hostile_shot = Costume(assets / "hostile_shot.png")
+sentry = Image(assets / "robot.png", anchor=(16, 40))
+friendly_shot = Image(assets / "friendly_shot.png")
+hostile_shot = Image(assets / "hostile_shot.png")
 enemies: list[Sprite] = []
 # A shot stores (sprite, sideways speed, friendly). True means the hero fired it.
 shots: list[tuple[Sprite, float, bool]] = []
@@ -105,17 +105,17 @@ def fire(actor: Sprite, friendly: bool) -> None:
     """Make a bullet. The hero aims forward; robots aim toward the hero."""
     direction = 1
     if friendly:
-        costume = friendly_shot
+        image = friendly_shot
         speed = 560
         if actor.direction != 90:
             direction = -1
     else:
-        costume = hostile_shot
+        image = hostile_shot
         speed = 230
         if hero.x <= actor.x:
             direction = -1
     shot = Sprite(
-        costume,
+        image,
         x=actor.x + direction * 30,
         y=actor.y + 32,
         layer=3,
@@ -189,7 +189,7 @@ def restart(event: Event[Stage, GamepadPress]) -> None:
         remove_shot(shot)
     hero.position = (-300, -150)
     hero.direction = 90
-    hero.costume = idle
+    hero.image = idle
     hero.visible = True
     vertical_speed = 0
     health = 3
@@ -216,7 +216,7 @@ def update(event: Event[Stage, float]) -> None:
     if finished():
         if walking is not None:
             walking.cancel()
-        hero.costume = idle
+        hero.image = idle
         hero.visible = True
         return
     direction = 0
@@ -231,11 +231,11 @@ def update(event: Event[Stage, float]) -> None:
         hero.direction = 270
     if direction and grounded():
         if walking is None or walking.done:
-            walking = hero.act(Script(Sprite).repeat().costumes(walking_frames, fps=9))
+            walking = hero.act(Script(Sprite).repeat().images(walking_frames, fps=9))
     else:
         if walking is not None:
             walking.cancel()
-        hero.costume = idle
+        hero.image = idle
 
     previous_feet = hero.y
     vertical_speed -= 1500 * dt

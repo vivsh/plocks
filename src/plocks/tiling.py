@@ -12,8 +12,10 @@ from collections.abc import Iterable, Mapping, Sequence
 from math import ceil, floor
 from types import MappingProxyType
 
+from typing_extensions import deprecated
+
 from .geometry import Bounds, Point, _integer, _number, _point
-from .imaging import Costume, CostumeSource, _costume
+from .imaging import Image, ImageSource, _image
 
 type TileRows = Sequence[str] | Sequence[Sequence[str | None]]
 
@@ -21,7 +23,7 @@ type TileRows = Sequence[str] | Sequence[Sequence[str | None]]
 class TileMap:
     """A rectangular character grid or explicit key matrix, placed by world top-left x/y.
 
-    Cells select a shared costume palette. Tile dimensions and palette stay fixed;
+    Cells select a shared image palette. Tile dimensions and palette stay fixed;
     edit cells with set_tile. Solid cells participate in overlap queries and an enabled stage physics world.
     one_way keys support landing from above, allowing jumps through from below.
     Solid and one-way keys must be disjoint. Nonphysical movement is never resolved
@@ -47,7 +49,7 @@ class TileMap:
     def __init__(
         self,
         rows: TileRows,
-        palette: Mapping[str, CostumeSource],
+        palette: Mapping[str, ImageSource],
         *,
         tile_size: tuple[int, int],
         solid: Iterable[str] = (),
@@ -79,8 +81,8 @@ class TileMap:
             raise ValueError(
                 "Palette keys must be nonempty strings; character grids require single characters"
             )
-        self._palette: Mapping[str, Costume] = MappingProxyType(
-            {key: _costume(value) for key, value in palette.items()}
+        self._palette: Mapping[str, Image] = MappingProxyType(
+            {key: _image(value) for key, value in palette.items()}
         )
         self._solid = frozenset(solid)
         if not self._solid <= self._palette.keys():
@@ -162,12 +164,12 @@ class TileMap:
 
     @property
     def tile_size(self) -> tuple[int, int]:
-        """Fixed logical cell width and height; costumes are fitted to these dimensions."""
+        """Fixed logical cell width and height; images are fitted to these dimensions."""
         return self._tile_size
 
     @property
-    def palette(self) -> Mapping[str, Costume]:
-        """Read-only shared costumes addressed by nonempty string keys."""
+    def palette(self) -> Mapping[str, Image]:
+        """Read-only shared images addressed by nonempty string keys."""
         return self._palette
 
     @property
@@ -332,37 +334,48 @@ class TileMap:
 
 
 class TiledBackground:
-    """Repeat a costume in stage coordinates, independent of the world camera.
+    """Repeat an image in stage coordinates, independent of the world camera.
 
     area=None fills the viewport. Offset shifts the pattern in logical pixels,
     with positive y upward. Derive offset from camera yourself for parallax.
     """
 
-    __slots__ = ("_area", "_costume", "_layer", "_offset", "_visible")
+    __slots__ = ("_area", "_image", "_layer", "_offset", "_visible")
 
     def __init__(
         self,
-        source: CostumeSource,
+        source: ImageSource,
         *,
         area: Bounds | None = None,
         offset: Point = (0, 0),
         visible: bool = True,
         layer: int = -100,
     ) -> None:
-        self._costume = _costume(source)
+        self._image = _image(source)
         self._area = area
         self._offset = _point(offset, "offset")
         self._visible = visible
         self._layer = _integer(layer, "layer")
 
     @property
-    def costume(self) -> Costume:
+    def image(self) -> Image:
         """The immutable repeated image."""
-        return self._costume
+        return self._image
+
+    @image.setter
+    def image(self, value: ImageSource) -> None:
+        self._image = _image(value)
+
+    @property
+    @deprecated("costume is deprecated; use image")
+    def costume(self) -> Image:
+        """Deprecated alias for image; reads the same current visual."""
+        return self.image
 
     @costume.setter
-    def costume(self, value: CostumeSource) -> None:
-        self._costume = _costume(value)
+    @deprecated("costume is deprecated; use image")
+    def costume(self, value: ImageSource) -> None:
+        self.image = value
 
     @property
     def area(self) -> Bounds | None:

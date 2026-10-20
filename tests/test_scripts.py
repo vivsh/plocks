@@ -4,12 +4,12 @@ from collections.abc import Iterator
 from dataclasses import fields
 
 import pytest
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import (
     Action,
-    CostumeSource,
     Event,
+    ImageSource,
     Message,
     Puppet,
     Script,
@@ -25,7 +25,7 @@ from plocks._scripts import _deliver, _sample, _step
 @pytest.fixture
 def game() -> Iterator[tuple[Stage, Sprite]]:
     stage = Stage()
-    actor = Sprite(Image.new("RGBA", (8, 8), "red"))
+    actor = Sprite(PillowImage.new("RGBA", (8, 8), "red"))
     stage.add(actor)
     stage._state = "running"
     yield stage, actor
@@ -59,7 +59,7 @@ def test_script_snapshot_repetition_and_fractional_time(game: tuple[Stage, Sprit
 
 def test_script_reuse_and_empty_loop_rejected(game: tuple[Stage, Sprite]) -> None:
     stage, hero = game
-    friend = Sprite(hero.costume)
+    friend = Sprite(hero.image)
     stage.add(friend)
     shared = Script().wait(1)
     first = friend.act(shared)
@@ -79,11 +79,11 @@ def test_script_reuse_and_empty_loop_rejected(game: tuple[Stage, Sprite]) -> Non
 
 def test_during_cancels_visual_background_and_sibling_conflicts(game: tuple[Stage, Sprite]) -> None:
     stage, hero = game
-    frames: list[CostumeSource] = [hero.costume, Image.new("RGBA", (8, 8), "blue")]
+    frames: list[ImageSource] = [hero.image, PillowImage.new("RGBA", (8, 8), "blue")]
     action = hero.act(
         Script(Sprite).during(
             Script(Sprite).glide_by(x=60, seconds=1),
-            meanwhile=Script(Sprite).repeat().costumes(frames, fps=7),
+            meanwhile=Script(Sprite).repeat().images(frames, fps=7),
         )
     )
     ticks(stage, 61)
@@ -207,15 +207,15 @@ def test_puppet_pose_and_part_commands(game: tuple[Stage, Sprite]) -> None:
     ticks(stage, 15)
     assert person.pose.angles["right_elbow"] == pytest.approx(30)
     part = next(iter(person.parts))
-    person.set_part_costume(part, Image.new("RGBA", (5, 5)))
+    person.set_part_image(part, PillowImage.new("RGBA", (5, 5)))
     ticks(stage, 20)
     assert action.done and person.parts[part].width == 5
 
 
 def test_sprite_helpers_create_unbound_independent_recipes(game: tuple[Stage, Sprite]) -> None:
     stage, hero = game
-    author = Sprite(hero.costume)
-    friend = Sprite(hero.costume, x=100)
+    author = Sprite(hero.image)
+    friend = Sprite(hero.image, x=100)
     stage.add(friend)
     recipe = author.repeat(2).glide_by(x=12, seconds=0.1)
     assert author._stage is None and not stage._actions
@@ -227,7 +227,7 @@ def test_sprite_helpers_create_unbound_independent_recipes(game: tuple[Stage, Sp
     ticks(stage, 20)
     assert second.done and friend.x == 124
     assert hero.x == frozen and author.x == 0
-    appearance = author.sequence().set_costume(friend.costume)
+    appearance = author.sequence().set_image(friend.image)
     assert hero.act(appearance) is not first
 
 

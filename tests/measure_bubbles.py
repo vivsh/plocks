@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 import pygame
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import Actor, Puppet, Sprite, Stage
 from plocks._bubbles import _draw_bubble
@@ -28,7 +28,7 @@ def main() -> None:
             actor: Actor = (
                 Puppet.stick_figure()
                 if index % 5 == 4
-                else Sprite(Image.new("RGBA", (20, 20), "orange"))
+                else Sprite(PillowImage.new("RGBA", (20, 20), "orange"))
             )
             actor.position = ((index % 10) * 55 - 260, (index // 10) * 30 - 150)
             stage.add(actor)

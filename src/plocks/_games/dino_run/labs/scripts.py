@@ -3,12 +3,12 @@
 from pathlib import Path
 
 from plocks import (
-    Costume,
     Ease,
     Event,
     GamepadButton,
     GamepadDown,
     GamepadPress,
+    Image,
     Key,
     Sprite,
     Stage,
@@ -22,7 +22,7 @@ stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
 stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
 stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
 stage.gamepads[0].map_key(Key.UP, GamepadButton.UP)
-hero = Sprite(Costume(assets / "dinosaur.png").resized(width=72, height=72), x=-120)
+hero = Sprite(Image(assets / "dinosaur.png").resized(width=72, height=72), x=-120)
 stage.add(hero)
 trip = hero.sequence().glide_to(x=120, seconds=1, easing=Ease.IN_OUT)
 chat = hero.repeat().say("Coming through!", seconds=0.4).think("Whee!", seconds=0.4)

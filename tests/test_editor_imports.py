@@ -11,9 +11,9 @@ from typing import cast
 
 import pygame
 import pytest
-from PIL import Image
+from PIL import Image as PillowImage
 
-from plocks import AssetError, Bounds, Costume, PixeloramaSheet, Sprite, Stage, TiledMap, TileMap
+from plocks import AssetError, Bounds, Image, PixeloramaSheet, Sprite, Stage, TiledMap, TileMap
 from plocks._asset_json import _document
 from plocks._render import _tiles
 from plocks._runtime import advance, close
@@ -49,7 +49,7 @@ def test_real_pixelorama_tag_timing_and_immutable_pixels(tmp_path: Path) -> None
         (0, 0, 255),
     ]
     original = sheet.frames[0].to_pillow().tobytes()
-    Image.new("RGBA", (96, 40), "black").save(assets / "hero.png")
+    PillowImage.new("RGBA", (96, 40), "black").save(assets / "hero.png")
     assert sheet.frames[0].to_pillow().tobytes() == original
     returned = sheet.frames[0].to_pillow()
     returned.putpixel((0, 0), (1, 2, 3, 4))
@@ -60,7 +60,7 @@ def test_real_pixelorama_tag_timing_and_immutable_pixels(tmp_path: Path) -> None
         sheet._durations = (1,)  # type: ignore[misc]
 
 
-def test_variable_costume_frames_final_hold_and_conflict() -> None:
+def test_variable_image_frames_final_hold_and_conflict() -> None:
     sheet = PixeloramaSheet(ART / "hero.png")
     stage = Stage()
     one, two = Sprite(sheet.frames[0]), Sprite(sheet.frames[0])
@@ -71,13 +71,13 @@ def test_variable_costume_frames_final_hold_and_conflict() -> None:
     first, second = one.act(recipe), two.act(recipe)
     recipe.move(900)
     ticks(stage, 6)
-    assert one.costume is sheet.frames[1] and two.costume is sheet.frames[1]
-    one.costume = sheet.frames[0]
+    assert one.image is sheet.frames[1] and two.image is sheet.frames[1]
+    one.image = sheet.frames[0]
     assert first.cancelled
     ticks(stage, 12)
-    assert two.costume is sheet.frames[2] and not second.done
+    assert two.image is sheet.frames[2] and not second.done
     ticks(stage, 7)
-    assert second.done and two.costume is sheet.frames[2] and two.x == 0
+    assert second.done and two.image is sheet.frames[2] and two.x == 0
     close(stage)
 
 
@@ -87,22 +87,22 @@ def test_fractional_duration_repeats_and_freeze() -> None:
     actor = Sprite(sheet.frames[0])
     stage.add(actor)
     stage._state, stage._last_wall = "running", 0.0
-    recipe = actor.repeat(10).costumes(sheet.frames[:2], durations=(0.0125, 0.0375)).move(7)
+    recipe = actor.repeat(10).images(sheet.frames[:2], durations=(0.0125, 0.0375)).move(7)
     action = actor.act(recipe)
     ticks(stage, 31)
     assert action.done and actor.x == 70
     loop = actor.act(sheet.animation().repeat())
     ticks(stage, 8)
-    before = actor.costume
+    before = actor.image
     stage.pause()
     ticks(stage, 10)
-    assert actor.costume is before
+    assert actor.image is before
     stage.resume()
     ticks(stage, 1)
     loop.cancel()
-    frozen = actor.costume
+    frozen = actor.image
     ticks(stage, 10)
-    assert actor.costume is frozen
+    assert actor.image is frozen
     close(stage)
 
 
@@ -111,7 +111,7 @@ def test_invalid_variable_timing_is_rejected(durations: tuple[float, ...]) -> No
     sheet = PixeloramaSheet(ART / "hero.png")
     actor = Sprite(sheet.frames[0])
     with pytest.raises(ValueError):
-        actor.costumes(sheet.frames[:2], durations=durations)
+        actor.images(sheet.frames[:2], durations=durations)
 
 
 @pytest.mark.parametrize(
@@ -176,7 +176,7 @@ def test_all_eight_transforms_match_real_tiled_reference() -> None:
     stage.camera = (64, -8)
     target = pygame.Surface((128, 16), pygame.SRCALPHA)
     _tiles(stage, target, level.layers["Tiles"])
-    reference = Image.open(FIXTURES / "editors/flips-reference.png").convert("RGBA")
+    reference = PillowImage.open(FIXTURES / "editors/flips-reference.png").convert("RGBA")
     for column in range(8):
         for x, y in [(2, 2), (13, 2), (2, 13), (13, 13)]:
             assert tuple(target.get_at((column * 16 + x, y))) == reference.getpixel(
@@ -217,8 +217,8 @@ def test_nested_layers_markers_opacity_parallax_and_solids(tmp_path: Path) -> No
 
 
 def test_opacity_parallax_culling_and_original_pixels() -> None:
-    costume = Costume(FIXTURES / "editors/corners.png")
-    grid = TileMap(["x"], {"x": costume}, tile_size=(16, 16), parallax=(0, 0), opacity=0.5)
+    image = Image(FIXTURES / "editors/corners.png")
+    grid = TileMap(["x"], {"x": image}, tile_size=(16, 16), parallax=(0, 0), opacity=0.5)
     stage = Stage(64, 32)
     stage.camera = (100, 100)
     target = pygame.Surface((64, 32))
@@ -226,7 +226,7 @@ def test_opacity_parallax_culling_and_original_pixels() -> None:
     _tiles(stage, target, grid)
     pixel = target.get_at((34, 18))
     assert abs(pixel.r - 128) <= 1 and pixel.g == 0 and pixel.b == 0
-    assert costume.to_pillow().getpixel((2, 2)) == (255, 0, 0, 255)
+    assert image.to_pillow().getpixel((2, 2)) == (255, 0, 0, 255)
     assert grid.bounds == Bounds(0, -16, 16, 0)
 
 

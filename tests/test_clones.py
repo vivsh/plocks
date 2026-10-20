@@ -11,10 +11,10 @@ import pytest
 from plocks import (
     BodyType,
     Click,
-    Costume,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
     Joint,
     Key,
     Message,
@@ -167,7 +167,7 @@ def test_snapshot_assets_state_and_read_only_origin(world: Stage) -> None:
     clone = source.clone()
     assert not source.is_clone and clone.is_clone
     assert clone in world.objects and clone._stage is world
-    assert clone.costume is source.costume
+    assert clone.image is source.image
     assert clone.position == (12, -3) and clone.direction == 270 and clone.scale == 2
     assert clone.layer == 8 and not clone.visible
     assert clone.rotation_style is RotationStyle.LEFT_RIGHT
@@ -419,18 +419,18 @@ def test_no_actions_or_bubbles_are_copied(world: Stage) -> None:
     """Only the sampled visual transfers; source animation and dialogue keep their own progress."""
     source = Sprite(IMAGE)
     world.add(source)
-    first = source.costume
+    first = source.image
     second = first.flipped(horizontal=True)
-    source.costumes((first, second), fps=4)
+    source.images((first, second), fps=4)
     source.say("Original", seconds=1)
     ticks(world, 17)
-    assert source.costume is second and source._bubble is not None
+    assert source.image is second and source._bubble is not None
     count = len(world._actions)
     clone = source.clone()
-    assert clone.costume is second and clone._bubble is None
+    assert clone.image is second and clone._bubble is None
     assert len(world._actions) == count
-    source.costume = first
-    assert clone.costume is second
+    source.image = first
+    assert clone.image is second
 
 
 def test_puppet_parts_pose_and_state_have_the_declared_ownership(world: Stage) -> None:
@@ -453,8 +453,8 @@ def test_puppet_parts_pose_and_state_have_the_declared_ownership(world: Stage) -
     assert clone.scale == 0.5 and clone.layer == 9 and not clone.visible
     assert clone.rotation_style is RotationStyle.NONE
     assert clone.state is not source.state
-    replacement = Costume(IMAGE).flipped(vertical=True)
-    clone.set_part_costume("arm", replacement)
+    replacement = Image(IMAGE).flipped(vertical=True)
+    clone.set_part_image("arm", replacement)
     ticks(world, 2)
     assert clone.parts["arm"] is replacement and source.parts["arm"] is not replacement
     frozen = dict(clone.pose.angles)
@@ -722,12 +722,12 @@ def test_rendered_clone_matches_transformed_source(world: Stage, kind: str) -> N
     from plocks import Actor
     from plocks._render import frame
 
-    costume = Costume(IMAGE, anchor=(0, 0))
+    image = Image(IMAGE, anchor=(0, 0))
     source: Actor
     if kind == "sprite":
-        source = Sprite(costume)
+        source = Sprite(image)
     else:
-        source = Puppet(Skeleton({"root": Joint(None)}), parts={"root": costume})
+        source = Puppet(Skeleton({"root": Joint(None)}), parts={"root": image})
     source.position, source.direction, source.scale = (-70, 30), 37, 1.5
     source.rotation_style = RotationStyle.LEFT_RIGHT
     world.camera = (17, -12)

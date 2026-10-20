@@ -1,13 +1,13 @@
 """Dialogue."""
 
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import Script, Sprite, Stage
 
 
 def main() -> None:
     stage = Stage(background="midnightblue")
-    hero = Sprite(Image.new("RGBA", (32, 40), "orange"), x=-80, y=-40)
+    hero = Sprite(PillowImage.new("RGBA", (32, 40), "orange"), x=-80, y=-40)
     stage.add(hero)
     hero.on_start(
         Script(Sprite)

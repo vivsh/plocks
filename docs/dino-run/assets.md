@@ -7,7 +7,7 @@
 
 Unzip the project and keep `main.py` beside its `assets` folder.
 For one picture, open its link below and save the image with the shown filename.
-The original PNGs are large; the lessons resize them through `Costume`.
+The original PNGs are large; the lessons resize them through `Image`.
 
 | Picture | Download | Job |
 | --- | --- | --- |

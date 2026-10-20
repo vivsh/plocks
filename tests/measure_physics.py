@@ -6,7 +6,7 @@ import statistics
 import time
 
 import pygame
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import BodyType, Script, Sprite, Stage, TileMap
 from plocks._physics import _integrate
@@ -19,11 +19,13 @@ def main() -> None:
     stage = Stage(640, 400, physics=True)
     stage._target = pygame.display.set_mode((640, 400))
     stage._state = "running"
-    tile = Image.new("RGBA", (32, 32), "forestgreen")
+    tile = PillowImage.new("RGBA", (32, 32), "forestgreen")
     stage.add(TileMap(["#" * 20], {"#": tile}, tile_size=(32, 32), solid={"#"}, x=-320, y=-160))
     for index in range(100):
         actor = Sprite(
-            Image.new("RGBA", (12, 12), "orange"), x=(index % 20) * 25 - 250, y=(index // 20) * 20
+            PillowImage.new("RGBA", (12, 12), "orange"),
+            x=(index % 20) * 25 - 250,
+            y=(index // 20) * 20,
         )
         stage.add(actor)
         if index < 20:

@@ -6,7 +6,7 @@ from dataclasses import fields
 from typing import cast
 
 import pytest
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import (
     Action,
@@ -34,7 +34,7 @@ from tests.test_scripts import ticks
 def game() -> Iterator[tuple[Stage, Sprite]]:
     stage = Stage()
     stage.gamepads[0].map_key(Key.A, GamepadButton.LEFT)
-    hero = Sprite(Image.new("RGBA", (8, 8)))
+    hero = Sprite(PillowImage.new("RGBA", (8, 8)))
     stage.add(hero)
     stage._state = "running"
     yield stage, hero

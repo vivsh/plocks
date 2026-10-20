@@ -19,7 +19,7 @@ Open that new folder and run `python main.py` there. Keep the `assets` folder.
 ## What you'll learn
 
 - **Sequences:** `jump` and `slide` are scripts made of small steps.
-- **Dictionaries:** Choose a costume by name, such as `"coin"`.
+- **Dictionaries:** Choose an image by name, such as `"coin"`.
 - **Perspective:** Shrink faraway objects; reveal the next path after a turn.
 
 Release a key before pressing it again. Finish one jump or slide before the next.

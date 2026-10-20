@@ -3,18 +3,18 @@
 import math
 
 import pytest
-from PIL import Image
+from PIL import Image as PillowImage
 
-from plocks import Costume, Joint, Puppet, Skeleton, Sprite
+from plocks import Image, Joint, Puppet, Skeleton, Sprite
 
 
-def sample() -> Costume:
+def sample() -> Image:
     """An asymmetric image makes both axis flips and rotation observable."""
-    image = Image.new("RGBA", (3, 2))
+    image = PillowImage.new("RGBA", (3, 2))
     for y in range(2):
         for x in range(3):
             image.putpixel((x, y), (10 + x + 3 * y, 0, 0, 255))
-    return Costume(image, anchor=(0.5, 1.5))
+    return Image(image, anchor=(0.5, 1.5))
 
 
 @pytest.mark.parametrize("horizontal,vertical", [(True, False), (False, True), (True, True)])
@@ -81,7 +81,7 @@ def test_clockwise_rotation_expands_and_transforms_anchor(degrees: float) -> Non
 
 
 def test_oblique_rotation_keeps_center_and_transparent_padding() -> None:
-    source = Costume(Image.new("RGBA", (12, 8), "red"))
+    source = Image(PillowImage.new("RGBA", (12, 8), "red"))
     result = source.rotated(30)
     assert result.width >= math.ceil(12 * math.cos(math.pi / 6) + 8 * 0.5)
     assert result.height >= math.ceil(12 * 0.5 + 8 * math.cos(math.pi / 6))
@@ -96,13 +96,13 @@ def test_oblique_rotation_keeps_center_and_transparent_padding() -> None:
     )
 
 
-def test_transformed_costume_places_sprites_and_puppet_parts() -> None:
-    costume = sample().flipped(horizontal=True).resized(width=6, height=4)
-    sprite = Sprite(costume)
-    puppet = Puppet(Skeleton({"root": Joint(None)}), parts={"root": costume})
+def test_transformed_image_places_sprites_and_puppet_parts() -> None:
+    image = sample().flipped(horizontal=True).resized(width=6, height=4)
+    sprite = Sprite(image)
+    puppet = Puppet(Skeleton({"root": Joint(None)}), parts={"root": image})
     assert sprite.bounds == puppet.bounds
     assert (sprite.bounds.left, sprite.bounds.top) == (-5, 3)
-    puppet = Puppet(puppet.skeleton, parts={"root": costume.with_anchor(x=0, y=0)})
+    puppet = Puppet(puppet.skeleton, parts={"root": image.with_anchor(x=0, y=0)})
     assert (puppet.bounds.left, puppet.bounds.top) == (0, 0)
 
 

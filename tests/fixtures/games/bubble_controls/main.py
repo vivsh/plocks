@@ -1,6 +1,6 @@
 """Bubble controls."""
 
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import Event, GamepadButton, GamepadPress, Key, Script, Sprite, Stage
 
@@ -10,7 +10,7 @@ def main() -> None:
     stage.gamepads[0].map_key(Key.C, GamepadButton.X)
     stage.gamepads[0].map_key(Key.ESCAPE, GamepadButton.START)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-    hero = Sprite(Image.new("RGBA", (32, 40), "orange"))
+    hero = Sprite(PillowImage.new("RGBA", (32, 40), "orange"))
     stage.add(hero)
     hero.say("Press Space to think; C to clear.")
 

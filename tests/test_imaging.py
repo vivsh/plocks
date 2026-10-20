@@ -1,24 +1,27 @@
 """Independent playback, exact frame transitions, and spritesheet input contracts."""
 
 import pytest
-from PIL import Image, ImageDraw
+from PIL import Image as PillowImage
+from PIL import ImageDraw
 
-from plocks import Costume, SpriteSheet
+from plocks import Image, ImageGrid
 
 
-def costumes() -> tuple[Costume, ...]:
+def images() -> tuple[Image, ...]:
     """Create three distinguishable immutable teaching frames."""
-    return tuple(Costume(Image.new("RGBA", (2, 2), color)) for color in ("red", "green", "blue"))
+    return tuple(
+        Image(PillowImage.new("RGBA", (2, 2), color)) for color in ("red", "green", "blue")
+    )
 
 
 def test_grid_margins_spacing_and_order() -> None:
     """Grid extraction addresses rows/columns, honors spacing, and owns copied pixels."""
-    image = Image.new("RGBA", (7, 7))
+    image = PillowImage.new("RGBA", (7, 7))
     draw = ImageDraw.Draw(image)
     colors = ("red", "blue", "green", "white")
     for (x, y), color in zip(((1, 1), (4, 1), (1, 4), (4, 4)), colors):
         draw.rectangle((x, y, x + 1, y + 1), fill=color)
-    sheet = SpriteSheet(image, frame_size=(2, 2), margin=(1, 1), spacing=(1, 1))
+    sheet = ImageGrid(image, frame_size=(2, 2), margin=(1, 1), spacing=(1, 1))
     assert (sheet.rows, sheet.columns) == (2, 2)
     assert [frame.to_pillow().getpixel((0, 0)) for frame in sheet.frames()] == [
         (255, 0, 0, 255),
@@ -34,4 +37,4 @@ def test_grid_margins_spacing_and_order() -> None:
     with pytest.raises(IndexError):
         sheet.frames(row=2)
     with pytest.raises(ValueError):
-        SpriteSheet(image, frame_size=(3, 3))
+        ImageGrid(image, frame_size=(3, 3))

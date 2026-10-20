@@ -10,7 +10,7 @@ from ._asset_json import _array, _bool, _document, _float, _int
 from ._tiled import _color, _flatten, _markers, _tile_layer, _tilesets
 from .errors import AssetError
 from .geometry import Bounds, Color, Point, _integer, _number
-from .imaging import Costume
+from .imaging import Image
 from .tiling import TileMap
 
 
@@ -47,7 +47,7 @@ class TiledMap:
             layers: dict[str, TileMap] = {}
             points: dict[str, Point] = {}
             regions: dict[str, Bounds] = {}
-            variants: dict[str, Costume] = {}
+            variants: dict[str, Image] = {}
             origin = (
                 x + _float(data.get("parallaxoriginx", 0), "parallax origin x"),
                 y - _float(data.get("parallaxoriginy", 0), "parallax origin y"),

@@ -7,5 +7,5 @@ The six isolated characters/objects have transparent backgrounds; desert is opaq
 Original generation prompts are in [prompts.json](prompts.json).
 
 Use the PNGs to follow the lessons and remix the example. Resize them with Plocks'
-`Costume.resized(...)`; the downloaded originals stay unchanged.
+`Image.resized(...)`; the downloaded originals stay unchanged.
 `pop.ogg` is the original short Plocks example tone, reused from Coin Quest.

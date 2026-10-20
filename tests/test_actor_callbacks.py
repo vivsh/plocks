@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterator
 from typing import cast
 
 import pytest
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import (
     Action,
@@ -30,7 +30,7 @@ from plocks._runtime import advance, close, dispatch, drive
 @pytest.fixture(params=["sprite", "puppet"])
 def actor(request: pytest.FixtureRequest) -> Actor:
     """Use equal image bounds on both actor kinds, including transparent pixels."""
-    image = Image.new("RGBA", (20, 20))
+    image = PillowImage.new("RGBA", (20, 20))
     if request.param == "sprite":
         return Sprite(image)
     return Puppet(Skeleton({"root": Joint(parent=None)}), parts={"root": image})
@@ -202,7 +202,7 @@ def test_topmost_visible_actor_occludes_even_without_handlers[A: (Sprite, Puppet
         _position, _button = event.data
         received.append("actor")
 
-    cover = Sprite(Image.new("RGBA", (20, 20)))
+    cover = Sprite(PillowImage.new("RGBA", (20, 20)))
     stage.add(cover)
     click(stage)
     assert received == []
@@ -219,7 +219,7 @@ def test_click_target_snapshot_and_global_observers[A: (Sprite, Puppet)](
     actor: A, stage: Stage
 ) -> None:
     """A global observer removing the target does not retarget the same click below it."""
-    lower = Sprite(Image.new("RGBA", (20, 20)))
+    lower = Sprite(PillowImage.new("RGBA", (20, 20)))
     stage.add(lower)
     stage.add(actor)
     events: list[str] = []

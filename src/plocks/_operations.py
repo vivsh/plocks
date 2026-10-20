@@ -10,11 +10,11 @@ from .geometry import Point, _number
 from .motion import Ease, _ease
 
 if TYPE_CHECKING:
-    from ._commands import _Costumes, _Poses, _Say, _Think
+    from ._commands import _Images, _Poses, _Say, _Think
     from ._scripts import _Fiber
     from .actions import Action
     from .audio import Voice
-    from .imaging import Costume
+    from .imaging import Image
     from .messages import Message
     from .physics import Body
     from .puppets import Puppet
@@ -61,7 +61,7 @@ type _Request = (
     | _Context
     | _Delay
     | _Glide
-    | _CostumeRun
+    | _ImageRun
     | _PoseRun
     | _During
     | _JoinDelivery
@@ -215,9 +215,9 @@ async def _speak(actor: Sprite | Puppet, definition: _Say | _Think) -> None:
 
 
 @dataclass(frozen=True, slots=True)
-class _CostumeRun:
+class _ImageRun:
     actor: Sprite
-    definition: _Costumes
+    definition: _Images
     started: float
 
 
@@ -254,7 +254,7 @@ class _SoundWait:
     voice: Voice
 
 
-def _sample_costume(operation: _CostumeRun, now: float) -> Costume:
+def _sample_image(operation: _ImageRun, now: float) -> Image:
     elapsed = max(0.0, now - operation.started)
     end = 0.0
     for frame, duration in zip(operation.definition.frames, operation.definition.durations):
@@ -288,7 +288,7 @@ def _deadline(request: _Request) -> float | None:
         return request.deadline
     if isinstance(request, (_Glide, _ForceRun, _TorqueRun)):
         return request.started + request.seconds
-    if isinstance(request, _CostumeRun):
+    if isinstance(request, _ImageRun):
         return request.started + sum(request.definition.durations)
     if isinstance(request, _PoseRun):
         return request.started + (len(request.definition.poses) - 1) / request.definition.fps
@@ -308,8 +308,8 @@ def _freeze(request: _Request | None, now: float, *, cancel: bool) -> None:
             )
     if isinstance(request, _BubbleRun) and request.actor._bubble is request:
         request.actor._bubble = None
-    elif isinstance(request, _CostumeRun) and request.actor._visual is request:
-        request.actor._visual = _sample_costume(request, now)
+    elif isinstance(request, _ImageRun) and request.actor._visual is request:
+        request.actor._visual = _sample_image(request, now)
     elif isinstance(request, _PoseRun) and request.actor._pose is request:
         request.actor._pose = _sample_pose(request, now)
     elif isinstance(request, _SoundWait) and cancel:

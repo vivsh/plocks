@@ -6,9 +6,9 @@ from typing import cast
 
 import pygame
 import pytest
-from PIL import Image
+from PIL import Image as PillowImage
 
-from plocks import Canvas, Costume, Puppet, RotationStyle, Script, Sprite, Stage
+from plocks import Canvas, Image, Puppet, RotationStyle, Script, Sprite, Stage
 from plocks._bubbles import _draw_bubble, _layout, _wrap_text
 from plocks._commands import _ClearBubble, _Say, _Think
 from plocks._operations import _BubbleRun, _freeze
@@ -20,7 +20,7 @@ from plocks._scripts import _sample, _step
 def test_invalid_speech_keeps_running_writer() -> None:
     """Validation never interrupts an existing behavior."""
     stage = Stage()
-    hero = Sprite(Image.new("RGBA", (4, 4), "red"))
+    hero = Sprite(PillowImage.new("RGBA", (4, 4), "red"))
     stage.add(hero)
     stage._state = "running"
     try:
@@ -38,7 +38,7 @@ def test_invalid_speech_keeps_running_writer() -> None:
 def game() -> Iterator[tuple[Stage, Sprite, Puppet]]:
     """Provide both actor targets with a deterministic simulation and render target."""
     stage = Stage(background="navy")
-    hero = Sprite(Image.new("RGBA", (20, 20), "orange"))
+    hero = Sprite(PillowImage.new("RGBA", (20, 20), "orange"))
     puppet = Puppet.stick_figure()
     puppet.x = 100
     stage.add(hero)
@@ -148,7 +148,7 @@ def test_render_camera_visibility_and_overlays(game: tuple[Stage, Sprite, Puppet
     hero.scale = 2
     hero.direction = 0
     hero.rotation_style = RotationStyle.LEFT_RIGHT
-    hero.costume = Costume(Image.new("RGBA", (40, 10), "orange"), anchor=(2, 3))
+    hero.image = Image(PillowImage.new("RGBA", (40, 10), "orange"), anchor=(2, 3))
     _step(stage)
     frame(stage)
     clip = pygame.Rect(10, 10, 200, 200)
@@ -194,7 +194,7 @@ def test_layer_order_and_oversized_actor(game: tuple[Stage, Sprite, Puppet]) -> 
     """Bubble order uses layers then insertion; huge actors fall back to viewport placement."""
     stage, hero, puppet = game
     puppet.visible = False
-    second = Sprite(hero.costume)
+    second = Sprite(hero.image)
     stage.add(second)
     hero.say("AAAAAAAA")
     second.say("BBBBBBBB")

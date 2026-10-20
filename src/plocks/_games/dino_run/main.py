@@ -9,10 +9,10 @@ from plocks import (
     Box,
     Canvas,
     Click,
-    Costume,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
     Key,
     Message,
     MouseButton,
@@ -35,7 +35,7 @@ player = stage.gamepads[0]
 player.map_key(Key.UP, GamepadButton.A)
 GROUND = -130
 
-desert = Costume(assets / "desert.png").resized(width=800, height=450)
+desert = Image(assets / "desert.png").resized(width=800, height=450)
 scenery = TiledBackground(desert, layer=-20)
 stage.add(scenery)
 sand = desert.cropped(x=0, y=418, width=32, height=32)
@@ -45,7 +45,7 @@ ground = TileMap(
 stage.add(ground)
 
 # Our pictures share a feet anchor, so ducking keeps the feet in one place.
-standing = Costume(assets / "dinosaur.png").resized(width=72, height=72).with_anchor(36, 72)
+standing = Image(assets / "dinosaur.png").resized(width=72, height=72).with_anchor(36, 72)
 ducking = standing.resized(width=82, height=38).with_anchor(41, 38)
 dino = Sprite(standing, x=-260, y=GROUND, layer=5)
 stage.add(dino)
@@ -54,12 +54,12 @@ dino.body.rotation_locked = True
 dino.body.friction = 0
 
 pictures = {
-    "cactus": Costume(assets / "cactus.png").resized(width=44, height=66).with_anchor(22, 66),
-    "rock": Costume(assets / "rock.png").resized(width=48, height=36).with_anchor(24, 36),
-    "bird": Costume(assets / "bird.png").resized(width=64, height=40).with_anchor(32, 40),
+    "cactus": Image(assets / "cactus.png").resized(width=44, height=66).with_anchor(22, 66),
+    "rock": Image(assets / "rock.png").resized(width=48, height=36).with_anchor(24, 36),
+    "bird": Image(assets / "bird.png").resized(width=64, height=40).with_anchor(32, 40),
 }
-coin_picture = Costume(assets / "coin.png").resized(width=28, height=28)
-cloud_picture = Costume(assets / "cloud.png").resized(width=132, height=66)
+coin_picture = Image(assets / "coin.png").resized(width=28, height=28)
+cloud_picture = Image(assets / "cloud.png").resized(width=132, height=66)
 pop = Sound(assets / "pop.ogg")
 clouds: list[Sprite] = []
 for x, y in ((-270, 110), (20, 150), (310, 95)):
@@ -95,7 +95,7 @@ def reset() -> None:
     pickups.clear()
     playing, crouching = True, False
     distance, coins = 0.0, 0
-    dino.costume = standing
+    dino.image = standing
     dino.position = (-260, GROUND)
     dino.body.shape = Box(38, 58, center=(6, 34))
     dino.body.velocity = (0, 0)
@@ -193,7 +193,7 @@ def update(event: Event[Stage, float]) -> None:
     )
     if wants_duck != crouching and (crouching or dino.body.grounded):
         crouching = wants_duck
-        dino.costume = ducking if crouching else standing
+        dino.image = ducking if crouching else standing
         dino.body.shape = Box(52, 28, center=(6, 18)) if crouching else Box(38, 58, center=(6, 34))
     for obstacle in obstacles.copy():
         obstacle.body.velocity = (-speed, 0)

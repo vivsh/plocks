@@ -39,6 +39,6 @@ You can also put `follow_path` inside `hero.sequence()` or `hero.repeat()`.
 Individual actions still support `after=previous_action`.
 Ask for a new route when the destination changes, rather than in every update.
 
-**Stuck?** A large character may not fit a narrow passage. Try a smaller costume.
+**Stuck?** A large character may not fit a narrow passage. Try a smaller image.
 
 [Next: collect a coin](touch.md)

@@ -21,10 +21,10 @@ For the code activities, use the [Dino Dash download](../dino-run/assets.md).
 | Play with a friend | [Two players, keys or controllers](controls.md) |
 | Play from another computer | [LAN multiplayer](multiplayer.md) |
 | Let the computer be a player | [Computer players and ordinary enemies](computer-players.md) |
-| Change costumes or make a Puppet wave | [Try the art lab](../dino-run/06-more-plocks.md#make-a-puppet-wave) |
+| Change images or make a Puppet wave | [Try the art lab](../dino-run/06-more-plocks.md#make-a-puppet-wave) |
 | Send a message to another character | [Try the messages lab](../dino-run/06-more-plocks.md#give-coins-to-two-players) |
 | Make a choice in a script | [Try the scripts lab](../dino-run/06-more-plocks.md#make-your-character-choose) |
-| Draw a costume or animate frames | [Pixelorama activity](../art/pixelorama.md) |
+| Draw an image or animate frames | [Pixelorama activity](../art/pixelorama.md) |
 | Paint a level from tiles | [Tiled activity](../art/tiled.md) |
 | Scroll a big world with layers | [Scrolling World](../../src/plocks/_games/scrolling_world/README.md) |
 | Add a sound or a score | [Finish Dino Dash](../dino-run/05-finish-game.md) |

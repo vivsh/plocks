@@ -65,11 +65,11 @@ def _actor_bounds(actor: Sprite | Puppet, direction: float) -> Bounds:
 
     if isinstance(actor, Puppet):
         return _bounds(actor, direction)
-    costume = actor.costume
-    ax, ay = costume.anchor
+    image = actor.image
+    ax, ay = image.anchor
     points: list[Point] = []
-    for x in (0, costume.width):
-        for y in (0, costume.height):
+    for x in (0, image.width):
+        for y in (0, image.height):
             local = (x - ax, ay - y)
             if _mirrored(direction, actor.rotation_style):
                 local = (-local[0], local[1])

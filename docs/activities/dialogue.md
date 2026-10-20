@@ -11,11 +11,11 @@
 ```python
 from pathlib import Path
 
-from plocks import Costume, Sprite, Stage
+from plocks import Image, Sprite, Stage
 
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(background="midnightblue")
-hero = Sprite(Costume(assets / "dinosaur.png").resized(width=72, height=72))
+hero = Sprite(Image(assets / "dinosaur.png").resized(width=72, height=72))
 stage.add(hero)
 
 chat = hero.sequence()

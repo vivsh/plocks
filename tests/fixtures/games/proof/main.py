@@ -1,4 +1,5 @@
-from PIL import Image, ImageDraw
+from PIL import Image as PillowImage
+from PIL import ImageDraw
 
 from plocks import Canvas, Click, Event, GamepadButton, GamepadPress, Key, Sound, Sprite, Stage
 
@@ -9,7 +10,7 @@ def main() -> None:
     stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
     stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-    picture = Image.new("RGBA", (40, 40))
+    picture = PillowImage.new("RGBA", (40, 40))
     ImageDraw.Draw(picture).rounded_rectangle((0, 0, 39, 39), radius=8, fill="#ffb454")
     hero = Sprite(picture)
     stage.add(hero)

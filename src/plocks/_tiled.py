@@ -11,12 +11,12 @@ from pathlib import Path, PureWindowsPath
 from typing import cast
 from urllib.parse import urlsplit
 
-from PIL import Image
+from PIL import Image as PillowImage
 
 from ._asset_json import _array, _bool, _document, _float, _int, _object, _text
 from .errors import AssetError
 from .geometry import Bounds, Color, Point
-from .imaging import Costume, SpriteSheet
+from .imaging import Image, ImageGrid
 from .tiling import TileMap
 
 
@@ -52,8 +52,8 @@ def _solid(properties: object) -> bool | None:
 
 def _tilesets(
     path: Path, definitions: list[object], size: tuple[int, int]
-) -> tuple[dict[str, Costume], dict[int, bool]]:
-    palette: dict[str, Costume] = {}
+) -> tuple[dict[str, Image], dict[int, bool]]:
+    palette: dict[str, Image] = {}
     overrides: dict[int, bool] = {}
     for raw in definitions:
         item = _object(raw, "tileset")
@@ -84,7 +84,7 @@ def _tilesets(
                 _int(data.get("margin", 0), "margin"),
                 _int(data.get("spacing", 0), "spacing"),
             )
-            sheet = SpriteSheet(image, frame_size=size, margin=(margin, margin), spacing=(gap, gap))
+            sheet = ImageGrid(image, frame_size=size, margin=(margin, margin), spacing=(gap, gap))
             count = _int(data.get("tilecount"), "tilecount", 1)
             if (
                 _int(data.get("columns"), "columns", 1) != sheet.columns
@@ -213,8 +213,8 @@ def _gids(item: dict[str, object], count: int) -> tuple[int, ...]:
 
 
 def _variant(
-    gid: int, base: Mapping[str, Costume], variants: dict[str, Costume], size: tuple[int, int]
-) -> Costume:
+    gid: int, base: Mapping[str, Image], variants: dict[str, Image], size: tuple[int, int]
+) -> Image:
     key = str(gid)
     if key in base:
         return base[key]
@@ -227,21 +227,21 @@ def _variant(
     if gid & 0x20000000:
         if size[0] != size[1]:
             raise AssetError("Diagonal GID transforms currently require square tiles")
-        image = image.transpose(Image.Transpose.TRANSPOSE)
+        image = image.transpose(PillowImage.Transpose.TRANSPOSE)
     if gid & 0x80000000:
-        image = image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+        image = image.transpose(PillowImage.Transpose.FLIP_LEFT_RIGHT)
     if gid & 0x40000000:
-        image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
-    result = Costume(image)
+        image = image.transpose(PillowImage.Transpose.FLIP_TOP_BOTTOM)
+    result = Image(image)
     variants[key] = result
     return result
 
 
 def _tile_layer(
     item: dict[str, object],
-    base: dict[str, Costume],
+    base: dict[str, Image],
     overrides: dict[int, bool],
-    variants: dict[str, Costume],
+    variants: dict[str, Image],
     dimensions: tuple[int, int],
     size: tuple[int, int],
     position: Point,

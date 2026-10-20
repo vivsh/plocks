@@ -48,7 +48,7 @@ class Box:
 
 @dataclass(frozen=True, slots=True)
 class Circle:
-    """Fixed actor-local collision circle; costume transparency is irrelevant."""
+    """Fixed actor-local collision circle; image transparency is irrelevant."""
 
     radius: float
     center: Point = (0, 0)

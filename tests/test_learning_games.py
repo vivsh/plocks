@@ -12,8 +12,8 @@ import pytest
 
 from plocks import (
     BodyType,
-    Costume,
     GamepadPress,
+    Image,
     Key,
     MouseButton,
     Sprite,
@@ -210,8 +210,8 @@ def test_fruit_swipe_halves_bomb_and_restart(load_game: Callable[[str], Stage]) 
     """A fast swipe cuts once, creates halves, and a bomb remains fatal in that frame."""
     stage = load_game("fruit_ninja")
     flying = cast(list[tuple[Sprite, float, float, float, str]], state(stage)["flying"])
-    costumes = cast(dict[str, Costume], state(stage)["costumes"])
-    apple = Sprite(costumes["apple"])
+    images = cast(dict[str, Image], state(stage)["images"])
+    apple = Sprite(images["apple"])
     stage.add(apple)
     flying.append((apple, 0, 0, 0, "apple"))
     stage.mouse._down.add(MouseButton.LEFT)
@@ -222,7 +222,7 @@ def test_fruit_swipe_halves_bomb_and_restart(load_game: Callable[[str], Stage]) 
     ticks(stage, 1)
     assert apple not in stage.objects and state(stage)["score"] == 1
     assert sum(item[4] == "half" for item in flying) == 2
-    bomb = Sprite(costumes["bomb"])
+    bomb = Sprite(images["bomb"])
     stage.add(bomb)
     flying.append((bomb, 0, 0, 0, "bomb"))
     stage.mouse._position = (-100, 0)
@@ -429,12 +429,12 @@ def test_temple_actions_pause_and_busy_input(load_game: Callable[[str], Stage]) 
     assert hero.y == -110
     press(stage, Key.DOWN)
     ticks(stage, 2)
-    assert hero.costume.height == 28
+    assert hero.image.height == 28
     press(stage, Key.SPACE)
     ticks(stage, 10)
-    assert hero.y == -110 and hero.costume.height == 28
+    assert hero.y == -110 and hero.image.height == 28
     press(stage, Key.R)
-    assert hero.costume.height == 48 and not stage._actions
+    assert hero.image.height == 48 and not stage._actions
 
 
 @pytest.mark.parametrize("name", TUTORIALS)

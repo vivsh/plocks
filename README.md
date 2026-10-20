@@ -6,7 +6,7 @@
 <p align="center"><strong>Small games. Real Python. Your rules.</strong></p>
 
 **Plocks is a Python game development library for Scratch developers ready for
-their next step.** Keep familiar ideas—sprites, costumes, scripts and broadcasts—
+their next step.** Keep familiar ideas—sprites, images, scripts and broadcasts—
 while learning to write Python.
 
 Build desktop games with ready-made pictures, simple controls and helpful editor
@@ -16,7 +16,7 @@ hints. Start with a bundled game, change one thing, and see what happens!
 
 | What you want to do | What Plocks gives you |
 | --- | --- |
-| Bring characters to life | Sprites, costumes, speech and thought bubbles, and jointed Puppets |
+| Bring characters to life | Sprites, [images, grids, named pictures and anchors](docs/art/images.md), speech and thought bubbles, and jointed Puppets |
 | Give characters a plan | Movement scripts: glide, wait, repeat and react to events |
 | Make characters work together | Broadcasts, typed message data and clones with their own controls |
 | Build a world | Tile maps, automatic camera following, parallax, and Tiled and Pixelorama artwork |
@@ -120,7 +120,7 @@ Python command occupies the same thread as the game. Ordinary game files still u
 | [Asset Workshop](src/plocks/_games/asset_workshop) | Use Tiled and Pixelorama artwork | Exported levels, animation, two-player controls |
 | [Scrolling World](src/plocks/_games/scrolling_world) | Explore and paint a world | Tile grids, layers, a following camera |
 | [Coin Quest](src/plocks/_games/mario) | Grab coins and stomp enemies | Lists, solid tiles, scoring |
-| [Temple Trail](src/plocks/_games/temple_run) | Jump, slide and turn corners | Movement scripts, costumes, perspective |
+| [Temple Trail](src/plocks/_games/temple_run) | Jump, slide and turn corners | Movement scripts, images, perspective |
 | [Snake Run](src/plocks/_games/snake_run) | Eat apples and grow a tail | Remembering positions, size and distance |
 | [Fruit Slice](src/plocks/_games/fruit_ninja) | Swipe fruit, dodge bombs | Mouse input, randomness, swipe maths |
 | [Jungle Run](src/plocks/_games/jungle_run) | Run, jump and shoot robots | Bullets, health, several things moving together |

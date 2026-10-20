@@ -1,13 +1,13 @@
-from PIL import Image
+from PIL import Image as PillowImage
 
-from plocks import Costume, Script, Sprite, Stage
+from plocks import Image, Script, Sprite, Stage
 
 
 def main() -> None:
-    """One behavior owns both walking and its changing costumes."""
+    """One behavior owns both walking and its changing images."""
     stage = Stage()
     frames = tuple(
-        Costume(Image.new("RGBA", (24, 32), color)) for color in ("orange", "gold", "tomato")
+        Image(PillowImage.new("RGBA", (24, 32), color)) for color in ("orange", "gold", "tomato")
     )
     hero = Sprite(frames[0], x=-150)
     stage.add(hero)
@@ -19,13 +19,13 @@ def main() -> None:
             .call(
                 Script(Sprite).during(
                     Script(Sprite).glide_to(x=150, seconds=2),
-                    meanwhile=Script(Sprite).repeat().call(Script(Sprite).costumes(frames, fps=8)),
+                    meanwhile=Script(Sprite).repeat().call(Script(Sprite).images(frames, fps=8)),
                 )
             )
             .call(
                 Script(Sprite).during(
                     Script(Sprite).glide_to(x=-150, seconds=2),
-                    meanwhile=Script(Sprite).repeat().call(Script(Sprite).costumes(frames, fps=8)),
+                    meanwhile=Script(Sprite).repeat().call(Script(Sprite).images(frames, fps=8)),
                 )
             )
         )

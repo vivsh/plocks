@@ -24,14 +24,14 @@ def jump(event: Event[Sprite, GamepadPress]) -> None:
 in midair. An impulse is a quick push. **Do not add a glide to this physical
 jumper:** glides author a path; impulses let physics decide the path.
 
-Our costume anchor is at its feet. `Box(38, 58, center=(6, 34))` is the invisible
+Our image anchor is at its feet. `Box(38, 58, center=(6, 34))` is the invisible
 collision shape above those feet. `rotation_locked = True` keeps the dinosaur
 upright. Transparent picture padding does not need to become a big hit box.
 
 ## Make the ground
 
 The checkpoint uses `TileMap(["G" * 27], {"G": sand}, ...)`.
-`"G" * 27` repeats a letter 27 times. The dictionary maps G to a sand costume.
+`"G" * 27` repeats a letter 27 times. The dictionary maps G to a sand image.
 `solid={"G"}` makes those cells physical ground.
 A TileMap's `x, y` mark its **top-left corner**; y decreases down the rows.
 

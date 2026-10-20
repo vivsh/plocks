@@ -52,7 +52,7 @@ def _copy_actor(source: Actor) -> Actor:
     if isinstance(source, Sprite):
         target = cast(
             Sprite[object],
-            Sprite(source.costume, body_type=source.body_type, one_way=source.one_way),
+            Sprite(source.image, body_type=source.body_type, one_way=source.one_way),
         )
     else:
         target = cast(

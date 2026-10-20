@@ -36,17 +36,17 @@ def main() -> None:
     person = Puppet.stick_figure()
     stage.add(hero)
     stage.add(person)
-    patrol = Script(Sprite).repeat(10).glide_by(x=10, seconds=0.2).costumes((hero.costume,), fps=5)
+    patrol = Script(Sprite).repeat(10).glide_by(x=10, seconds=0.2).images((hero.image,), fps=5)
     hero.on_start(patrol)
-    hero.sequence().set_costume(hero.costume)
+    hero.sequence().set_image(hero.image)
     person.repeat(2).poses((person.pose,), fps=2)
     common = Script().when(
         Not(GamepadDown(GamepadButton.LEFT, gamepad=stage.gamepads[0])), then=Script().wait(0.1)
     )
     hero.act(common)
     person.act(common)
-    hero.costume = (
-        hero.costume.flipped(horizontal=True)
+    hero.image = (
+        hero.image.flipped(horizontal=True)
         .cropped(x=0, y=0, width=8, height=8)
         .with_anchor(x=4, y=8)
         .rotated(90)
@@ -226,8 +226,8 @@ def imported_controls() -> None:
     player = stage.gamepads[0]
     player.map_key(Key.SPACE, GamepadButton.A)
     player.map_right_stick(left=Key.A, right=Key.D)
-    hero.costumes(art.frames, durations=art.durations)
-    hero.sequence().costumes(art.frames, fps=10)
+    hero.images(art.frames, durations=art.durations)
+    hero.sequence().images(art.frames, fps=10)
     hero.on_button_down(
         GamepadButton.B, hero.sequence().move(1), repeat=0.1, gamepad=stage.gamepads[0]
     )
@@ -368,3 +368,31 @@ def gameplay_foundations() -> None:
         assert_type(event.data, None)
         event.target.visible = False
         stage.resume()
+
+
+def image_assets() -> None:
+    """Images, anchors, typed custom loaders and deprecated aliases retain precise types."""
+    from collections.abc import Mapping
+
+    from plocks import Anchor, Costume, Image, ImageGrid, ImageMap, ImageSource, SpriteSheet
+
+    image = Image("atlas.png", anchor=Anchor.BOTTOM_CENTER)
+    assert_type(image.with_anchor(Anchor.TOP_CENTER), Image)
+    assert_type(image.with_anchor((1, 2)), Image)
+    assert_type(image.with_anchor(x=1, y=2), Image)
+    assert_type(Costume("hero.png"), Image)
+    assert_type(SpriteSheet(image, frame_size=(16, 24)), ImageGrid)
+
+    def custom(atlas: Image) -> Mapping[str, Image]:
+        return {"hero": atlas.cropped(0, 0, 16, 24).with_anchor(Anchor.BOTTOM_CENTER)}
+
+    pictures = ImageMap(image, metadata=custom)
+    assert_type(pictures["hero"], Image)
+    assert_type(pictures.get("missing"), Image | None)
+    grid = ImageGrid(image, frame_size=(16, 24))
+    assert_type(grid.frames(anchor=Anchor.BOTTOM_CENTER), tuple[Image, ...])
+    hero = Sprite(pictures["hero"])
+    source: ImageSource = image
+    hero.image = source
+    assert_type(hero.images(grid.frames(), fps=10), Action)
+    assert_type(hero.sequence().set_image(image).images(grid.frames(), fps=10), Script[Sprite])

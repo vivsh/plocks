@@ -1,11 +1,11 @@
 """Puppet pivot geometry, immutable complete poses, and shared block sampling."""
 
 import pytest
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import (
-    Costume,
     HumanJoint,
+    Image,
     Joint,
     Pose,
     Puppet,
@@ -26,7 +26,7 @@ def rig() -> Skeleton:
 def puppet(skeleton: Skeleton) -> Puppet:
     """Attach an asymmetric image to the hand pivot."""
     return Puppet(
-        skeleton, parts={"hand": Costume(Image.new("RGBA", (4, 8), "red"), anchor=(2, 0))}
+        skeleton, parts={"hand": Image(PillowImage.new("RGBA", (4, 8), "red"), anchor=(2, 0))}
     )
 
 
@@ -94,17 +94,17 @@ def test_validation_snapshot_and_part_replacement() -> None:
     with pytest.raises(ValueError):
         puppet(skeleton).poses((pose, rig().rest_pose()), fps=1)
     with pytest.raises(ValueError):
-        Puppet(rig(), parts={"hand": Image.new("RGBA", (2, 2))}, pose=pose)
+        Puppet(rig(), parts={"hand": PillowImage.new("RGBA", (2, 2))}, pose=pose)
     actor = puppet(skeleton)
     actor.pose = pose
     stage = Stage()
     stage.add(actor)
     stage._state = "running"
-    actor.set_part_costume("hand", Image.new("RGBA", (3, 3), "blue"))
+    actor.set_part_image("hand", PillowImage.new("RGBA", (3, 3), "blue"))
     _step(stage)
     assert actor.pose is pose and actor.parts["hand"].width == 3
     with pytest.raises(KeyError):
-        actor.set_part_costume("root", actor.parts["hand"])
+        actor.set_part_image("root", actor.parts["hand"])
         _step(stage)
     close(stage)
 
@@ -126,7 +126,7 @@ def test_invalid_topologies(joints: dict[str, Joint]) -> None:
 
 
 def test_stick_preset_uses_image_parts() -> None:
-    """The preset is an ordinary Puppet with generated immutable costumes."""
+    """The preset is an ordinary Puppet with generated immutable images."""
     actor = Puppet.stick_figure()
     assert isinstance(actor, Puppet) and actor.parts
     assert actor.skeleton.joints[HumanJoint.RIGHT_ELBOW].offset == (0, -25)

@@ -2,7 +2,7 @@
 
 from math import sin
 
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import (
     Canvas,
@@ -24,8 +24,8 @@ def main() -> None:
     stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
     stage.gamepads[0].map_key(Key.P, GamepadButton.START)
     stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
-    hero = Sprite(Image.new("RGBA", (40, 48), "orange"), x=-100)
-    friend = Sprite(Image.new("RGBA", (40, 40), "skyblue"), x=100)
+    hero = Sprite(PillowImage.new("RGBA", (40, 48), "orange"), x=-100)
+    friend = Sprite(PillowImage.new("RGBA", (40, 40), "skyblue"), x=100)
     stage.add(hero)
     stage.add(friend)
     person = Puppet.stick_figure(color="lightgreen")

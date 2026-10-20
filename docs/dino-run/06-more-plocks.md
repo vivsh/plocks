@@ -26,7 +26,7 @@ held when it reaches the choice. Try another button in
 python labs/art.py
 ```
 
-Watch a dinosaur change costumes, a stick person wave, and a little rig bend.
+Watch a dinosaur change images, a stick person wave, and a little rig bend.
 A **Puppet** has parts joined at pivots, like a paper puppet with fasteners.
 Its **pose** says which way the joints turn.
 

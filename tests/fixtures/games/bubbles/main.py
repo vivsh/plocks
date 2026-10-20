@@ -1,6 +1,6 @@
 """Space: speak while walking. T: Puppet thought. P: pause/resume. C: stop the walk and speech."""
 
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import Event, GamepadButton, GamepadPress, Key, Puppet, Script, Sprite, Stage
 
@@ -12,8 +12,8 @@ def main() -> None:
     stage.gamepads[0].map_key(Key.P, GamepadButton.START)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     stage.gamepads[0].map_key(Key.T, GamepadButton.SELECT)
-    hero = Sprite(Image.new("RGBA", (32, 40), "orange"), x=-100, y=-20)
-    friend = Sprite(Image.new("RGBA", (28, 28), "skyblue"), x=-160, y=-100)
+    hero = Sprite(PillowImage.new("RGBA", (32, 40), "orange"), x=-100, y=-20)
+    friend = Sprite(PillowImage.new("RGBA", (28, 28), "skyblue"), x=-160, y=-100)
     stage.add(hero)
     stage.add(friend)
     person = Puppet.stick_figure(color="lightgreen")

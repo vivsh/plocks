@@ -5,18 +5,18 @@ from shutil import copyfile
 
 import pygame
 import pytest
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import (
     Canvas,
-    Costume,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
+    ImageGrid,
     Key,
     Sound,
     Sprite,
-    SpriteSheet,
     Stage,
     StageError,
     Voice,
@@ -24,15 +24,15 @@ from plocks import (
 
 
 def test_pillow_snapshot_and_bounds() -> None:
-    """Caller edits and exported-image edits cannot mutate a costume."""
-    source = Image.new("RGBA", (10, 20), "red")
-    costume = Costume(source, anchor=(0, 0))
+    """Caller edits and exported-image edits cannot mutate an image."""
+    source = PillowImage.new("RGBA", (10, 20), "red")
+    image = Image(source, anchor=(0, 0))
     source.putpixel((0, 0), (0, 0, 0, 0))
-    exported = costume.to_pillow()
+    exported = image.to_pillow()
     assert exported.getpixel((0, 0)) == (255, 0, 0, 255)
     exported.putpixel((0, 0), (0, 0, 0, 0))
-    assert costume.to_pillow().getpixel((0, 0)) == (255, 0, 0, 255)
-    sprite = Sprite(costume, x=5, y=6)
+    assert image.to_pillow().getpixel((0, 0)) == (255, 0, 0, 255)
+    sprite = Sprite(image, x=5, y=6)
     assert sprite.bounds.left == 5
     assert sprite.bounds.top == 6
     sprite.direction += 90
@@ -44,7 +44,7 @@ def test_desktop_input_sound_render_cleanup() -> None:
     """A native event starts OGG playback and updates/draws before complete cleanup."""
     stage = Stage(background="navy")
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-    sprite = Sprite(Image.new("RGBA", (12, 12), "orange"))
+    sprite = Sprite(PillowImage.new("RGBA", (12, 12), "orange"))
     stage.add(sprite)
     sound = Sound(Path(__file__).parents[1] / "tests/fixtures/games/proof/assets/tone.ogg")
     voices: list[Voice] = []
@@ -109,12 +109,12 @@ def test_image_and_sound_paths_resolve_from_working_directory(
     picture = Path(__file__).parents[1] / "src/plocks/_games/platformer/assets/hero.png"
     copyfile(picture, assets / "hero.png")
     monkeypatch.chdir(tmp_path)
-    costume = Costume("assets/hero.png")
+    image = Image("assets/hero.png")
     sprite = Sprite("assets/hero.png")
-    sheet = SpriteSheet("assets/hero.png", frame_size=(costume.width, costume.height))
+    sheet = ImageGrid("assets/hero.png", frame_size=(image.width, image.height))
     sound = Sound("assets/tone.ogg")
-    assert sprite.costume.width == costume.width
-    assert sheet.frame(row=0, column=0).height == costume.height
+    assert sprite.image.width == image.width
+    assert sheet.frame(row=0, column=0).height == image.height
     assert sound._encoded == (assets / "tone.ogg").read_bytes()
     assert Path.cwd() == tmp_path
     assert not pygame.display.get_init() and not pygame.mixer.get_init()

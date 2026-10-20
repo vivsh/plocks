@@ -9,7 +9,7 @@ from typing import cast
 
 import pygame
 import pytest
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import Box, GamepadButton, GamepadPress, Key, Sprite, Stage
 from plocks._render import frame
@@ -65,11 +65,11 @@ def test_jump_land_duck_and_pause(game: dict[str, object]) -> None:
     assert dino.body.grounded
     stage._held_keys.add(Key.S)
     ticks(stage, 1)
-    assert game["crouching"] and dino.costume.height == 38
+    assert game["crouching"] and dino.image.height == 38
     assert dino.body.shape == Box(52, 28, center=(6, 18))
     stage._held_keys.clear()
     ticks(stage, 1)
-    assert not game["crouching"] and dino.costume.height == 72
+    assert not game["crouching"] and dino.image.height == 72
     key(stage, Key.P)
     before = (stage.time, dino.position, game["distance"])
     ticks(stage, 60)
@@ -169,7 +169,7 @@ def test_downloads_match_the_actual_project_and_all_art() -> None:
     with zipfile.ZipFile(downloads / "dino-sprites.zip") as archive:
         assert sum(name.endswith(".png") for name in archive.namelist()) == 7
     for path in (GAME / "assets").glob("*.png"):
-        with Image.open(path) as image:
+        with PillowImage.open(path) as image:
             assert min(image.size) >= 512
             if path.stem != "desert":
                 assert (

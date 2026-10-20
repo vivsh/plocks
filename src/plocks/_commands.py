@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING, Generic, TypeVar, cast
 from ._bubbles import _validate_text
 from ._operations import (
     _context,
-    _CostumeRun,
     _During,
+    _ImageRun,
     _PoseRun,
     _SoundWait,
     _speak,
@@ -23,7 +23,7 @@ from .audio import Sound, _volume
 from .conditions import Condition, _test
 from .errors import StageError
 from .geometry import Bounds, Point, _number, _point, _positive
-from .imaging import Costume, CostumeSource, _costume
+from .imaging import Image, ImageSource, _image
 from .messages import Message
 from .motion import Ease
 from .physics import Body
@@ -372,39 +372,39 @@ class _BounceOnEdge(_Command[Actor]):
 
 
 @dataclass(frozen=True, slots=True, init=False)
-class _SetCostume(_Command[Sprite]):
-    """Set a sprite image, canceling any current timed costume writer."""
+class _SetImage(_Command[Sprite]):
+    """Set a sprite image, canceling any current timed image writer."""
 
-    costume: Costume
+    image: Image
 
-    def __init__(self, costume: CostumeSource) -> None:
-        object.__setattr__(self, "costume", _costume(costume))
+    def __init__(self, image: ImageSource) -> None:
+        object.__setattr__(self, "image", _image(image))
 
     async def run(self, actor: Sprite) -> None:
-        """Assign the immutable costume when reached."""
+        """Assign the immutable image when reached."""
         await _context()
-        actor.costume = self.costume
+        actor.image = self.image
 
 
 @dataclass(frozen=True, slots=True, init=False)
-class _Costumes(_Command[Sprite]):
+class _Images(_Command[Sprite]):
     """One timed frame pass, including the final frame interval; use Script.repeat to repeat."""
 
-    frames: tuple[Costume, ...]
+    frames: tuple[Image, ...]
     durations: tuple[float, ...]
 
     def __init__(
         self,
-        frames: Iterable[CostumeSource],
+        frames: Iterable[ImageSource],
         *,
         fps: float | None = None,
         durations: Iterable[float] | None = None,
     ) -> None:
         if (fps is None) == (durations is None):
             raise ValueError("Supply exactly one of fps or durations")
-        copied = tuple(_costume(frame) for frame in frames)
+        copied = tuple(_image(frame) for frame in frames)
         if not copied:
-            raise ValueError("Costumes needs at least one frame")
+            raise ValueError("Images needs at least one frame")
         holds = (
             tuple(_positive(value, "frame duration") for value in durations)
             if durations is not None
@@ -412,7 +412,7 @@ class _Costumes(_Command[Sprite]):
         )
         if len(holds) != len(copied):
             raise ValueError("durations must have one positive duration per frame")
-        _number(sum(holds), "costume duration")
+        _number(sum(holds), "image duration")
         object.__setattr__(self, "frames", copied)
         object.__setattr__(self, "durations", holds)
 
@@ -420,10 +420,10 @@ class _Costumes(_Command[Sprite]):
         """Display first frame immediately, then sample using simulation time."""
         stage, root, _, at = await _context()
         if actor._stage is not stage:
-            raise StageError("_Costumes requires membership in the executing stage")
-        _number(at + sum(self.durations), "costume deadline")
+            raise StageError("_Images requires membership in the executing stage")
+        _number(at + sum(self.durations), "image deadline")
         _conflicts(actor, False, False, root, visual=True)
-        operation = _CostumeRun(actor, self, at)
+        operation = _ImageRun(actor, self, at)
         actor._visual = operation
         await _suspend(operation)
 
@@ -473,22 +473,22 @@ class _Poses(_Command[Puppet]):
 
 
 @dataclass(frozen=True, slots=True, init=False)
-class _SetPartCostume(_Command[Puppet]):
+class _SetPartImage(_Command[Puppet]):
     """Replace an existing Puppet attachment; its pose motion continues."""
 
     joint: str
-    costume: Costume
+    image: Image
 
-    def __init__(self, joint: str, costume: CostumeSource) -> None:
+    def __init__(self, joint: str, image: ImageSource) -> None:
         object.__setattr__(self, "joint", joint)
-        object.__setattr__(self, "costume", _costume(costume))
+        object.__setattr__(self, "image", _image(image))
 
     async def run(self, actor: Puppet) -> None:
         """Replace an attachment; unknown attachment keys raise KeyError."""
         await _context()
         if self.joint not in actor._parts:
             raise KeyError(self.joint)
-        actor._parts[self.joint] = self.costume
+        actor._parts[self.joint] = self.image
 
 
 @dataclass(frozen=True, slots=True)

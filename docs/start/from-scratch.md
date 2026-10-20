@@ -3,7 +3,8 @@
 [Home](../index.md) · [Start here](index.md)
 
 You already know how to make characters do things. Now tell them using Python!
-Plocks keeps familiar ideas: sprites, costumes, the stage, and broadcasts.
+Plocks keeps familiar ideas: sprites, the stage and broadcasts. Scratch calls a
+sprite's pictures **costumes**; Plocks calls them **images**.
 
 | In Scratch | In Plocks |
 | --- | --- |
@@ -30,11 +31,11 @@ Plocks keeps familiar ideas: sprites, costumes, the stage, and broadcasts.
 ```python
 from pathlib import Path
 
-from plocks import Costume, Ease, GamepadButton, Sprite, Stage
+from plocks import Image, Ease, GamepadButton, Sprite, Stage
 
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(background="#fff0cc")
-hero = Sprite(Costume(assets / "dinosaur.png").resized(width=72, height=72))
+hero = Sprite(Image(assets / "dinosaur.png").resized(width=72, height=72))
 stage.add(hero)
 
 # This records a script. It does not start the hop yet.
@@ -68,4 +69,4 @@ x goes right and y goes up. **Directions differ:** Plocks uses 0 up, 90 right,
 180 down, 270 left. Scratch uses 0 up and -90 left.
 
 **Your next adventure:** [learn Python while building Dino Dash](../dino-run/index.md).
-Draw costumes with [Pixelorama](../art/pixelorama.md), or paint levels with [Tiled](../art/tiled.md).
+Draw images with [Pixelorama](../art/pixelorama.md), or paint levels with [Tiled](../art/tiled.md).

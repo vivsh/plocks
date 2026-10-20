@@ -1,7 +1,7 @@
 """The first integrated Body path has one native transform and deterministic retirement."""
 
 import pytest
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import (
     BodyType,
@@ -30,10 +30,10 @@ def ticks(stage: Stage, count: int) -> None:
 def test_fall_impulse_and_independent_recipe() -> None:
     stage = Stage(physics=True)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-    hero = Sprite(Image.new("RGBA", (20, 20)), y=20)
-    friend = Sprite(hero.costume, x=-100, y=80, body_type=BodyType.NONE)
+    hero = Sprite(PillowImage.new("RGBA", (20, 20)), y=20)
+    friend = Sprite(hero.image, x=-100, y=80, body_type=BodyType.NONE)
     floor = TileMap(
-        ["##########"], {"#": hero.costume}, tile_size=(32, 32), solid={"#"}, x=-160, y=-100
+        ["##########"], {"#": hero.image}, tile_size=(32, 32), solid={"#"}, x=-160, y=-100
     )
     stage.add(floor)
     stage.add(hero)
@@ -66,7 +66,7 @@ def test_fall_impulse_and_independent_recipe() -> None:
 def test_forces_add_and_fractional_duration_integrates_once() -> None:
     stage = Stage(physics=True)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-    actor = Sprite(Image.new("RGBA", (10, 10)))
+    actor = Sprite(PillowImage.new("RGBA", (10, 10)))
     stage.add(actor)
     stage._state = "running"
     stage.physics.gravity = (0, 0)
@@ -94,7 +94,7 @@ def test_kinematic_glide_and_cancel_velocity() -> None:
 
     stage = Stage(physics=True)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-    platform = Sprite(Image.new("RGBA", (20, 10)), body_type=BodyType.KINEMATIC)
+    platform = Sprite(PillowImage.new("RGBA", (20, 10)), body_type=BodyType.KINEMATIC)
     stage.add(platform)
     stage._state = "running"
     try:
@@ -107,7 +107,7 @@ def test_kinematic_glide_and_cancel_velocity() -> None:
         assert platform.body.velocity == (0, 0)
         ticks(stage, 10)
         assert platform.x == pytest.approx(30)
-        other = Sprite(platform.costume)
+        other = Sprite(platform.image)
         stage.add(other)
         other.glide_by(x=10, seconds=1)
         with pytest.raises(PhysicsError, match="kinematic"):
@@ -121,8 +121,8 @@ def test_shape_snapshot_scale_material_and_teleport_contacts() -> None:
 
     stage = Stage(physics=True)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-    hero = Sprite(Image.new("RGBA", (20, 20)), y=50)
-    floor = Sprite(Image.new("RGBA", (100, 20)), body_type=BodyType.STATIC)
+    hero = Sprite(PillowImage.new("RGBA", (20, 20)), y=50)
+    floor = Sprite(PillowImage.new("RGBA", (100, 20)), body_type=BodyType.STATIC)
     stage.add(hero)
     stage.add(floor)
     stage._state = "running"
@@ -130,7 +130,7 @@ def test_shape_snapshot_scale_material_and_teleport_contacts() -> None:
         hero.body.friction = 0.4
         hero.body.bounce = 0.2
         shape = hero.body.shape
-        hero.costume = Image.new("RGBA", (60, 60))
+        hero.image = PillowImage.new("RGBA", (60, 60))
         assert hero.body.shape is shape
         hero.scale = 2
         assert hero.body.shape is shape and hero.body.friction == 0.4
@@ -155,7 +155,7 @@ def test_shape_snapshot_scale_material_and_teleport_contacts() -> None:
 def test_terrain_edit_move_and_failed_edit_preserves_cells() -> None:
     stage = Stage(physics=True)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-    tile = Image.new("RGBA", (8, 8))
+    tile = PillowImage.new("RGBA", (8, 8))
     world = TileMap(["#" * 4096 + "."], {"#": tile}, tile_size=(8, 8), solid={"#"})
     stage.add(world)
     try:
@@ -201,7 +201,7 @@ def test_unbound_coroutine_force_detach_and_body_reset() -> None:
 def test_optional_world_role_and_zero_duration() -> None:
     stage = Stage()
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-    actor = Sprite(Image.new("RGBA", (4, 4)))
+    actor = Sprite(PillowImage.new("RGBA", (4, 4)))
     stage.add(actor)
     with pytest.raises(PhysicsError):
         _ = actor.body
@@ -234,12 +234,12 @@ def test_shape_definitions_snapshot_points_and_body_requires_membership() -> Non
 
 
 def test_offset_shape_keeps_anchor_and_center_impulse_has_no_torque() -> None:
-    from plocks import Box, Costume
+    from plocks import Box, Image
 
     stage = Stage(physics=True)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     stage.physics.gravity = (0, 0)
-    actor = Sprite(Costume(Image.new("RGBA", (20, 10)), anchor=(0, 0)), x=30, y=40)
+    actor = Sprite(Image(PillowImage.new("RGBA", (20, 10)), anchor=(0, 0)), x=30, y=40)
     stage.add(actor)
     stage._state = "running"
     try:
@@ -261,8 +261,8 @@ def test_offset_shape_keeps_anchor_and_center_impulse_has_no_torque() -> None:
 def test_kinematic_lift_supports_dynamic_body_and_stale_commands_cancel() -> None:
     stage = Stage(physics=True)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-    lift = Sprite(Image.new("RGBA", (100, 10)), body_type=BodyType.KINEMATIC)
-    rider = Sprite(Image.new("RGBA", (10, 10)), y=30)
+    lift = Sprite(PillowImage.new("RGBA", (100, 10)), body_type=BodyType.KINEMATIC)
+    rider = Sprite(PillowImage.new("RGBA", (10, 10)), y=30)
     stage.add(lift)
     stage.add(rider)
     stage._state = "running"
@@ -297,7 +297,7 @@ def test_force_cancel_pause_and_failed_add_are_atomic() -> None:
     stage = Stage(physics=True)
     stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
     stage.physics.gravity = (0, 0)
-    actor = Sprite(Image.new("RGBA", (8, 8)))
+    actor = Sprite(PillowImage.new("RGBA", (8, 8)))
     stage.add(actor)
     stage._state = "running"
     try:
@@ -313,7 +313,7 @@ def test_force_cancel_pause_and_failed_add_are_atomic() -> None:
         force.cancel()
         ticks(stage, 10)
         assert actor.body.velocity == velocity
-        oversized = Sprite(actor.costume, scale=1e200)
+        oversized = Sprite(actor.image, scale=1e200)
         with pytest.raises(ValueError):
             stage.add(oversized)
         assert oversized._stage is None and oversized not in stage.objects

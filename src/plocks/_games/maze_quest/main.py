@@ -6,10 +6,10 @@ from pathlib import Path
 from plocks import (
     Button,
     Click,
-    Costume,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
     Key,
     Label,
     MouseButton,
@@ -50,7 +50,7 @@ world = TileMap(
     y=288,
 )
 stage.add(world)
-hero = Sprite(Costume(assets / "hero.png").resized(24, 28))
+hero = Sprite(Image(assets / "hero.png").resized(24, 28))
 spawn = world.cell_center(row=1, column=1)
 hero.position = spawn
 stage.add(hero)
@@ -76,15 +76,15 @@ def collect(event: Event[Sprite, Sprite]) -> None:
 
 
 for row, column in ((1, 5), (1, 15), (5, 9), (7, 13)):
-    coin = Sprite(Costume(assets / "coin.png").resized(24, 24))
+    coin = Sprite(Image(assets / "coin.png").resized(24, 24))
     coin.position = world.cell_center(row=row, column=column)
     stage.add(coin)
     hero.on_touch(coin)(collect)
 
-spikes = Sprite(Costume(assets / "spike.png").resized(28, 24))
+spikes = Sprite(Image(assets / "spike.png").resized(28, 24))
 spikes.position = world.cell_center(row=3, column=3)
 stage.add(spikes)
-enemy = Sprite(Costume(assets / "enemy.png").resized(26, 26))
+enemy = Sprite(Image(assets / "enemy.png").resized(26, 26))
 enemy.position = world.cell_center(row=7, column=3)
 stage.add(enemy)
 patrol = enemy.repeat()

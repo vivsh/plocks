@@ -13,7 +13,6 @@ from ._operations import (
     _AwaitAll,
     _BubbleRun,
     _Context,
-    _CostumeRun,
     _deadline,
     _Delay,
     _Delivery,
@@ -21,6 +20,7 @@ from ._operations import (
     _ForceRun,
     _freeze,
     _Glide,
+    _ImageRun,
     _JoinDelivery,
     _PoseRun,
     _Request,
@@ -268,7 +268,7 @@ def _conflicts(
         for fiber in tuple(_fibers(root)):
             request = fiber.waiting
             if (
-                not isinstance(request, (_Glide, _CostumeRun, _PoseRun, _BubbleRun))
+                not isinstance(request, (_Glide, _ImageRun, _PoseRun, _BubbleRun))
                 or request.actor is not actor
             ):
                 continue
@@ -277,7 +277,7 @@ def _conflicts(
                 continue
             overlap = (
                 (bubble and isinstance(request, _BubbleRun))
-                or (visual and isinstance(request, (_CostumeRun, _PoseRun)))
+                or (visual and isinstance(request, (_ImageRun, _PoseRun)))
                 or (
                     isinstance(request, _Glide)
                     and ((x and request.x is not None) or (y and request.y is not None))
@@ -296,7 +296,7 @@ def _detach(stage: Stage, actor: Sprite | Puppet) -> None:
         for root in stage._actions
         if any(action._actor is actor for action in _walk(root))
         or any(
-            isinstance(f.waiting, (_Glide, _CostumeRun, _PoseRun, _BubbleRun))
+            isinstance(f.waiting, (_Glide, _ImageRun, _PoseRun, _BubbleRun))
             and f.waiting.actor is actor
             for f in _fibers(root)
         )
@@ -474,7 +474,7 @@ def _advance(stage: Stage, root: Action, fiber: _Fiber, at: float) -> float | No
         if root.done:
             _freeze(
                 yielded
-                if isinstance(yielded, (_Glide, _CostumeRun, _PoseRun, _BubbleRun, _SoundWait))
+                if isinstance(yielded, (_Glide, _ImageRun, _PoseRun, _BubbleRun, _SoundWait))
                 else None,
                 stage.time,
                 cancel=True,
@@ -490,7 +490,7 @@ def _advance(stage: Stage, root: Action, fiber: _Fiber, at: float) -> float | No
                 _Glide,
                 _ForceRun,
                 _TorqueRun,
-                _CostumeRun,
+                _ImageRun,
                 _PoseRun,
                 _During,
                 _JoinDelivery,
@@ -515,7 +515,7 @@ def _stop_actor(actor: Sprite | Puppet, action: Action | None) -> None:
     for root in tuple(stage._actions):
         owned = any(a._actor is actor and (action is None or a is action) for a in _walk(root))
         operating = action is None and any(
-            isinstance(f.waiting, (_Glide, _CostumeRun, _PoseRun, _BubbleRun))
+            isinstance(f.waiting, (_Glide, _ImageRun, _PoseRun, _BubbleRun))
             and f.waiting.actor is actor
             for f in _fibers(root)
         )

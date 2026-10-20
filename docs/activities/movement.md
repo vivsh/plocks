@@ -11,11 +11,11 @@
 ```python
 from pathlib import Path
 
-from plocks import Costume, Ease, GamepadButton, Sprite, Stage
+from plocks import Image, Ease, GamepadButton, Sprite, Stage
 
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(background="skyblue")
-hero = Sprite(Costume(assets / "dinosaur.png").resized(width=72, height=72), x=-100)
+hero = Sprite(Image(assets / "dinosaur.png").resized(width=72, height=72), x=-100)
 stage.add(hero)
 
 # Repeat the whole trip three times.

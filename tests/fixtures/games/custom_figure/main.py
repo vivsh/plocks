@@ -1,19 +1,20 @@
-from PIL import Image, ImageDraw
+from PIL import Image as PillowImage
+from PIL import ImageDraw
 
-from plocks import Costume, Joint, Puppet, Script, Skeleton, Stage
+from plocks import Image, Joint, Puppet, Script, Skeleton, Stage
 
 
 def main() -> None:
     """A rigged arm: each image rotates around its attachment pivot."""
     stage = Stage(background="#122338")
     skeleton = Skeleton({"shoulder": Joint(None), "elbow": Joint("shoulder", (0, -65))})
-    upper = Image.new("RGBA", (16, 73))
+    upper = PillowImage.new("RGBA", (16, 73))
     ImageDraw.Draw(upper).rounded_rectangle((1, 1, 14, 71), radius=6, fill="orange")
-    forearm = Image.new("RGBA", (14, 63))
+    forearm = PillowImage.new("RGBA", (14, 63))
     ImageDraw.Draw(forearm).rounded_rectangle((1, 1, 12, 61), radius=5, fill="gold")
     arm = Puppet(
         skeleton,
-        parts={"shoulder": Costume(upper, anchor=(8, 4)), "elbow": Costume(forearm, anchor=(7, 4))},
+        parts={"shoulder": Image(upper, anchor=(8, 4)), "elbow": Image(forearm, anchor=(7, 4))},
     )
     arm.y = 60
     stage.add(arm)

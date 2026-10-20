@@ -39,7 +39,7 @@ def main() -> None:
             pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_s))
         if tick == 110:
             assert game["crouching"]
-            points["duck"] = dino.costume.height
+            points["duck"] = dino.image.height
             pygame.event.post(pygame.event.Event(pygame.KEYUP, key=pygame.K_s))
         if tick == 120:
             assert not game["crouching"] and game["obstacles"] and game["distance"] > 400

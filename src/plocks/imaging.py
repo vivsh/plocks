@@ -1,48 +1,85 @@
-"""Immutable image costumes and explicit Pillow snapshot conversion."""
+"""Immutable images and explicit Pillow snapshot conversion."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
+from typing import TYPE_CHECKING, overload
+from warnings import warn
 
 import pygame
-from PIL import Image
+from PIL import Image as PillowImage
 
 from .errors import AssetError
 from .geometry import Point, _integer, _number, _point, _rotate
 
-type ImageSource = str | Path | Image.Image
-"""An image filename or an already-created Pillow image."""
+
+class Anchor(Enum):
+    """Nine image pivots, resolved once to pixels: x right, y down.
+
+    CENTER is the default. BOTTOM_CENTER makes an actor's position its feet.
+    Edges use the full width/height; precise pixel Points are also supported.
+    """
+
+    TOP_LEFT = (0.0, 0.0)
+    TOP_CENTER = (0.5, 0.0)
+    TOP_RIGHT = (1.0, 0.0)
+    CENTER_LEFT = (0.0, 0.5)
+    CENTER = (0.5, 0.5)
+    CENTER_RIGHT = (1.0, 0.5)
+    BOTTOM_LEFT = (0.0, 1.0)
+    BOTTOM_CENTER = (0.5, 1.0)
+    BOTTOM_RIGHT = (1.0, 1.0)
+
+
+def _anchor(value: Anchor | Point | None, width: int, height: int) -> Point:
+    if value is None:
+        value = Anchor.CENTER
+    if isinstance(value, Anchor):
+        x, y = value.value
+        return (width * x, height * y)
+    if not isinstance(value, tuple) or len(value) != 2:
+        raise TypeError("An anchor must be an Anchor or an (x, y) Point")
+    return _point(value, "anchor")
 
 
 @dataclass(frozen=True, init=False, eq=False)
-class Costume:
+class Image:
     """Owned RGBA pixels and an image-coordinate rotation/placement anchor.
 
-    Pillow inputs are copied. Editing them later cannot change this costume.
+    Pillow inputs are copied. Editing them later cannot change this image.
     Files support PNG, JPEG, and WebP. Missing or invalid images raise AssetError.
+    Named anchors resolve to pixels once. Image inputs share immutable pixels and
+    keep their anchor unless an explicit replacement is supplied.
     """
 
     _pixels: pygame.Surface
     _anchor: Point
 
-    def __init__(self, source: ImageSource, *, anchor: Point | None = None) -> None:
+    def __init__(self, source: ImageSource, *, anchor: Anchor | Point | None = None) -> None:
+        if isinstance(source, Image):
+            object.__setattr__(self, "_pixels", source._pixels)
+            point = (
+                source.anchor if anchor is None else _anchor(anchor, source.width, source.height)
+            )
+            object.__setattr__(self, "_anchor", point)
+            return
         try:
-            if isinstance(source, Image.Image):
+            if isinstance(source, PillowImage.Image):
                 rgba = source.convert("RGBA")
             else:
-                with Image.open(source) as image:
+                with PillowImage.open(source) as image:
                     if image.format not in {"PNG", "JPEG", "WEBP"}:
                         raise AssetError(f"Use PNG, JPEG, or WebP for {source}")
                     rgba = image.convert("RGBA")
             if rgba.width == 0 or rgba.height == 0:
-                raise AssetError("A costume must contain at least one pixel")
+                raise AssetError("An image must contain at least one pixel")
             pixels = pygame.image.frombytes(rgba.tobytes(), rgba.size, "RGBA")
         except (OSError, ValueError) as error:
             raise AssetError(f"Cannot read image {source!s}: {error}") from error
         object.__setattr__(self, "_pixels", pixels)
-        default = (rgba.width / 2, rgba.height / 2)
-        object.__setattr__(self, "_anchor", _point(default if anchor is None else anchor, "anchor"))
+        object.__setattr__(self, "_anchor", _anchor(anchor, rgba.width, rgba.height))
 
     @property
     def width(self) -> int:
@@ -59,10 +96,10 @@ class Costume:
         """Placement anchor from the image's top-left, with image y downward."""
         return self._anchor
 
-    def flipped(self, *, horizontal: bool = False, vertical: bool = False) -> Costume:
-        """Return a mirrored costume, moving its anchor with the pixels.
+    def flipped(self, *, horizontal: bool = False, vertical: bool = False) -> Image:
+        """Return a mirrored image, moving its anchor with the pixels.
 
-        Both flags may be combined. Neither flag returns this immutable costume.
+        Both flags may be combined. Neither flag returns this immutable image.
         The original is unchanged. Example: left = right.flipped(horizontal=True).
         Non-boolean flags raise TypeError.
         """
@@ -73,18 +110,18 @@ class Costume:
         image = self.to_pillow()
         x, y = self.anchor
         if horizontal:
-            image = image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+            image = image.transpose(PillowImage.Transpose.FLIP_LEFT_RIGHT)
             x = self.width - x
         if vertical:
-            image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+            image = image.transpose(PillowImage.Transpose.FLIP_TOP_BOTTOM)
             y = self.height - y
-        return Costume(image, anchor=(x, y))
+        return Image(image, anchor=(x, y))
 
-    def cropped(self, x: int, y: int, width: int, height: int) -> Costume:
+    def cropped(self, x: int, y: int, width: int, height: int) -> Image:
         """Copy a rectangle in image pixels, measured right/down from top-left.
 
         The anchor moves by (-x, -y) and may lie outside the resulting image.
-        Width/height must be positive and the crop must fit inside this costume;
+        Width/height must be positive and the crop must fit inside this image;
         invalid ranges raise ValueError, non-integer values raise TypeError.
         Example: portrait = sheet.cropped(x=0, y=0, width=32, height=32).
         """
@@ -93,21 +130,32 @@ class Costume:
         width = _integer(width, "width", minimum=1)
         height = _integer(height, "height", minimum=1)
         if x + width > self.width or y + height > self.height:
-            raise ValueError("The crop must fit inside the costume")
+            raise ValueError("The crop must fit inside the image")
         image = self.to_pillow().crop((x, y, x + width, y + height))
-        return Costume(image, anchor=(self.anchor[0] - x, self.anchor[1] - y))
+        return Image(image, anchor=(self.anchor[0] - x, self.anchor[1] - y))
 
-    def with_anchor(self, x: float, y: float) -> Costume:
-        """Return a costume with a new pivot, sharing the immutable pixels.
+    @overload
+    def with_anchor(self, anchor: Anchor | Point, /) -> Image: ...
+    @overload
+    def with_anchor(self, x: float, y: float) -> Image: ...
+    def with_anchor(self, x: float | Anchor | Point, y: float | None = None) -> Image:
+        """Return a new pivot sharing immutable pixels; the original is unchanged.
 
-        Image coordinates start at top-left, with y downward. Anchors may lie
-        outside the image. Non-finite coordinates raise ValueError; non-numeric
-        coordinates raise TypeError. Example: hand.with_anchor(x=8, y=4).
+        Use image.with_anchor(Anchor.BOTTOM_CENTER), with_anchor((8, 4)), or
+        with_anchor(x=8, y=4). Image coordinates start top-left, y downward.
+        Precise anchors may lie outside the image; coordinates must be finite.
         """
-        anchor = _point((x, y), "anchor")
-        return _from_pixels(self._pixels, anchor)
+        if y is None:
+            if not isinstance(x, (Anchor, tuple)):
+                raise TypeError("Supply an Anchor, a Point, or both x and y")
+            point = _anchor(x, self.width, self.height)
+        else:
+            if isinstance(x, (Anchor, tuple)):
+                raise TypeError("A named/tuple anchor cannot also supply y")
+            point = _point((x, y), "anchor")
+        return _from_pixels(self._pixels, point)
 
-    def rotated(self, degrees: float) -> Costume:
+    def rotated(self, degrees: float) -> Image:
         """Return a clockwise rotation in degrees, moving the anchor with it.
 
         Rotate around the image center and expand with transparent padding to
@@ -116,13 +164,15 @@ class Costume:
         non-numeric angles raise TypeError. Example: tile.rotated(90).
         """
         degrees = _number(degrees, "degrees") % 360
-        image = self.to_pillow().rotate(-degrees, resample=Image.Resampling.NEAREST, expand=True)
+        image = self.to_pillow().rotate(
+            -degrees, resample=PillowImage.Resampling.NEAREST, expand=True
+        )
         x, y = self.anchor
         # Convert the image's downward y axis to world coordinates for rotation.
         dx, dy = _rotate((x - self.width / 2, self.height / 2 - y), 90 + degrees)
-        return Costume(image, anchor=(image.width / 2 + dx, image.height / 2 - dy))
+        return Image(image, anchor=(image.width / 2 + dx, image.height / 2 - dy))
 
-    def resized(self, width: int, height: int) -> Costume:
+    def resized(self, width: int, height: int) -> Image:
         """Return an exact pixel size, scaling the anchor with the image.
 
         Nearest-neighbor sampling keeps pixel art crisp. Changing the aspect ratio
@@ -138,45 +188,45 @@ class Costume:
         pixels = pygame.transform.scale(self._pixels, (width, height))
         return _from_pixels(pixels, anchor)
 
-    def to_pillow(self) -> Image.Image:
+    def to_pillow(self) -> PillowImage.Image:
         """Return an independent RGBA image; editing it leaves this asset unchanged."""
-        return Image.frombytes(
+        return PillowImage.frombytes(
             "RGBA", (self.width, self.height), pygame.image.tobytes(self._pixels, "RGBA")
         )
 
 
-type CostumeSource = Costume | ImageSource
-"""An existing immutable costume, filename, or Pillow image."""
+type ImageSource = Image | str | Path | PillowImage.Image
+"""An existing immutable image, filename, or Pillow image."""
 
 
-def _from_pixels(pixels: pygame.Surface, anchor: Point) -> Costume:
+def _from_pixels(pixels: pygame.Surface, anchor: Point) -> Image:
     """Wrap private immutable pixels and a validated anchor without copying them."""
-    costume = object.__new__(Costume)
-    object.__setattr__(costume, "_pixels", pixels)
-    object.__setattr__(costume, "_anchor", anchor)
-    return costume
+    image = object.__new__(Image)
+    object.__setattr__(image, "_pixels", pixels)
+    object.__setattr__(image, "_anchor", anchor)
+    return image
 
 
-def _costume(source: CostumeSource) -> Costume:
-    return source if isinstance(source, Costume) else Costume(source)
+def _image(source: ImageSource) -> Image:
+    return source if isinstance(source, Image) else Image(source)
 
 
 @dataclass(frozen=True, init=False, eq=False)
-class SpriteSheet:
-    """A complete rectangular grid of costumes, addressed by row and column.
+class ImageGrid:
+    """A complete rectangular grid of images, addressed by row and column.
 
     Margins surround all four sides; spacing separates frames. Dimensions must
     fit a complete grid. Extracting a frame copies its pixels; no cache is kept.
     """
 
-    _source: Costume
+    _source: Image
     _frame_size: tuple[int, int]
     _margin: tuple[int, int]
     _spacing: tuple[int, int]
 
     def __init__(
         self,
-        source: CostumeSource,
+        source: ImageSource,
         *,
         frame_size: tuple[int, int],
         margin: tuple[int, int] = (0, 0),
@@ -187,12 +237,12 @@ class SpriteSheet:
         gap = tuple(_integer(value, "spacing", minimum=0) for value in spacing)
         if any(len(pair) != 2 for pair in (frame, border, gap)):
             raise ValueError("frame_size, margin, and spacing must each contain two integers")
-        costume = _costume(source)
-        for extent, size, edge, between in zip((costume.width, costume.height), frame, border, gap):
+        image = _image(source)
+        for extent, size, edge, between in zip((image.width, image.height), frame, border, gap):
             usable = extent - 2 * edge + between
             if usable < size + between or usable % (size + between):
-                raise ValueError("The image does not contain a complete spritesheet grid")
-        object.__setattr__(self, "_source", costume)
+                raise ValueError("The image does not contain a complete image grid grid")
+        object.__setattr__(self, "_source", image)
         object.__setattr__(self, "_frame_size", (frame[0], frame[1]))
         object.__setattr__(self, "_margin", (border[0], border[1]))
         object.__setattr__(self, "_spacing", (gap[0], gap[1]))
@@ -216,7 +266,7 @@ class SpriteSheet:
             self._frame_size[0] + self._spacing[0]
         )
 
-    def frame(self, *, row: int, column: int, anchor: Point | None = None) -> Costume:
+    def frame(self, *, row: int, column: int, anchor: Anchor | Point | None = None) -> Image:
         """Copy one frame. Row/column start at zero; invalid indexes raise IndexError."""
         _integer(row, "row")
         _integer(column, "column")
@@ -226,13 +276,44 @@ class SpriteSheet:
         x = self._margin[0] + column * (width + self._spacing[0])
         y = self._margin[1] + row * (height + self._spacing[1])
         image = self._source.to_pillow().crop((x, y, x + width, y + height))
-        return Costume(image, anchor=anchor)
+        return Image(image, anchor=anchor)
 
-    def frames(self, *, row: int | None = None) -> tuple[Costume, ...]:
+    def frames(
+        self, *, row: int | None = None, anchor: Anchor | Point | None = None
+    ) -> tuple[Image, ...]:
         """Return a row, or all frames in row-major order. Slice the returned tuple."""
         if row is not None:
             _integer(row, "row")
             if not 0 <= row < self.rows:
-                raise IndexError(f"Row {row} is outside the spritesheet")
+                raise IndexError(f"Row {row} is outside the image grid")
         rows = range(self.rows) if row is None else (row,)
-        return tuple(self.frame(row=r, column=c) for r in rows for c in range(self.columns))
+        return tuple(
+            self.frame(row=r, column=c, anchor=anchor) for r in rows for c in range(self.columns)
+        )
+
+
+# Static aliases preserve constructor signatures and exact runtime type identity.
+if TYPE_CHECKING:
+    Costume = Image
+    SpriteSheet = ImageGrid
+
+type CostumeSource = ImageSource
+"""Deprecated: use ImageSource. Includes immutable Image, path and Pillow inputs."""
+
+
+def _legacy_asset(name: str) -> type[Image | ImageGrid]:
+    """Resolve the two deprecated asset names without wrapping their classes."""
+    if name == "Costume":
+        warn("Costume is deprecated; use Image", DeprecationWarning, stacklevel=2)
+        return Image
+    if name == "SpriteSheet":
+        warn("SpriteSheet is deprecated; use ImageGrid", DeprecationWarning, stacklevel=2)
+        return ImageGrid
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+if not TYPE_CHECKING:
+    __getattr__ = _legacy_asset
+
+
+__all__ = ("Anchor", "Costume", "CostumeSource", "Image", "ImageGrid", "ImageSource", "SpriteSheet")

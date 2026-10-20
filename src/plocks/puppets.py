@@ -6,6 +6,8 @@ from collections.abc import Callable, Iterable, Mapping
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Generic, Self, TypeVar, cast, overload
 
+from typing_extensions import deprecated
+
 from ._operations import _PoseRun, _sample_pose
 from ._scripts import WhenBusy, _conflicts
 from .actions import Action
@@ -23,7 +25,7 @@ from .geometry import (
     _positive,
     _rotate,
 )
-from .imaging import Costume, CostumeSource, _costume
+from .imaging import Image, ImageSource, _image
 from .messages import Message
 from .motion import (
     Ease,
@@ -54,7 +56,7 @@ _R = TypeVar("_R", bound="None | Action | Script[Puppet] | Script[Actor]")
 class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports Python 3.12
     """An articulated image actor. Construct it, then add it with stage.add(puppet).
 
-    Positions use logical pixels and the costume anchor. Commands schedule Actions;
+    Positions use logical pixels and the image anchor. Commands schedule Actions;
     property assignments apply immediately. Direction 90 faces right.
     """
 
@@ -78,7 +80,7 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         self: Puppet[None],
         skeleton: Skeleton,
         *,
-        parts: Mapping[str, CostumeSource],
+        parts: Mapping[str, ImageSource],
         pose: Pose | None = None,
         body_type: BodyType = BodyType.DYNAMIC,
         state: None = None,
@@ -88,7 +90,7 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         self,
         skeleton: Skeleton,
         *,
-        parts: Mapping[str, CostumeSource],
+        parts: Mapping[str, ImageSource],
         pose: Pose | None = None,
         body_type: BodyType = BodyType.DYNAMIC,
         state: type[_State_co],
@@ -97,7 +99,7 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         self,
         skeleton: Skeleton,
         *,
-        parts: Mapping[str, CostumeSource],
+        parts: Mapping[str, ImageSource],
         pose: Pose | None = None,
         body_type: BodyType = BodyType.DYNAMIC,
         state: type[object] | None = None,
@@ -106,7 +108,7 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         if not parts or any(name not in skeleton.joints for name in parts):
             raise ValueError("Supply at least one image part on existing joints")
         self._skeleton = skeleton
-        self._parts = {name: _costume(source) for name, source in parts.items()}
+        self._parts = {name: _image(source) for name, source in parts.items()}
         initial = skeleton.rest_pose() if pose is None else pose
         if initial.skeleton is not skeleton:
             raise ValueError("Pose belongs to another skeleton")
@@ -180,13 +182,13 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         return self._skeleton
 
     @property
-    def parts(self) -> Mapping[str, Costume]:
+    def parts(self) -> Mapping[str, Image]:
         """Read-only image attachments in painting order; keys remain fixed."""
         return MappingProxyType(self._parts)
 
     @staticmethod
     def stick_figure(*, color: Color = "white", stroke_width: float = 4.0) -> Puppet[None]:
-        """Create a human Puppet using generated capsule/disc costumes; no files needed."""
+        """Create a human Puppet using generated capsule/disc images; no files needed."""
         return _stick_figure(color, stroke_width)
 
     @property
@@ -241,7 +243,7 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
     @property
     def position(self) -> Point:
-        """The same coordinates as (x, y), measured at the costume anchor."""
+        """The same coordinates as (x, y), measured at the image anchor."""
         return (
             self._transform.position
             if isinstance(self._transform, _Placement)
@@ -692,16 +694,23 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
         return _schedule(self, _Poses(poses, fps=fps), after=after)
 
-    def set_part_costume(
-        self, joint: str, costume: CostumeSource, *, after: Action | None = None
+    def set_part_image(
+        self, joint: str, image: ImageSource, *, after: Action | None = None
     ) -> Action:
         """Replace an existing attachment without changing topology or interrupting pose motion.
 
         Returns immediately. Use after to sequence; inspect the returned Action for completion.
         """
-        from ._commands import _schedule, _SetPartCostume
+        from ._commands import _schedule, _SetPartImage
 
-        return _schedule(self, _SetPartCostume(joint, costume), after=after)
+        return _schedule(self, _SetPartImage(joint, image), after=after)
+
+    @deprecated("set_part_costume is deprecated; use set_part_image")
+    def set_part_costume(
+        self, joint: str, costume: ImageSource, *, after: Action | None = None
+    ) -> Action:
+        """Deprecated alias for set_part_image; changes the same attachment."""
+        return self.set_part_image(joint, costume, after=after)
 
     def sequence(self) -> Script[Puppet]:
         """Create an empty reusable Script with this actor's capabilities.
@@ -796,11 +805,11 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 def _bounds(actor: Puppet, direction: float) -> Bounds:
     points: list[Point] = []
     pivots = _pivots(actor.pose)
-    for name, costume in actor._parts.items():
+    for name, image in actor._parts.items():
         (px, py), angle = pivots[name]
-        ax, ay = costume.anchor
-        for x in (0, costume.width):
-            for y in (0, costume.height):
+        ax, ay = image.anchor
+        for x in (0, image.width):
+            for y in (0, image.height):
                 dx, dy = _rotate((x - ax, ay - y), angle + 90)
                 local = (px + dx, py + dy)
                 if _mirrored(direction, actor.rotation_style):
@@ -821,12 +830,13 @@ def _stick_figure(color: Color, stroke_width: float) -> Puppet[None]:
     from math import ceil, floor
 
     import pygame
-    from PIL import Image, ImageDraw
+    from PIL import Image as PillowImage
+    from PIL import ImageDraw
 
     width = _positive(stroke_width, "stroke_width")
     rgba = tuple(pygame.Color(color))
     skeleton = Skeleton.human()
-    parts: dict[str, CostumeSource] = {}
+    parts: dict[str, ImageSource] = {}
     for name in skeleton.joints:
         ends = [joint.offset for joint in skeleton.joints.values() if joint.parent == name]
         radius = 10.0 if name == HumanJoint.HEAD else width / 2
@@ -837,12 +847,12 @@ def _stick_figure(color: Color, stroke_width: float) -> Puppet[None]:
         top = ceil(max(y for _, y in points) + radius)
         right = ceil(max(x for x, _ in points) + radius)
         bottom = floor(min(y for _, y in points) - radius)
-        image = Image.new("RGBA", (max(1, right - left + 1), max(1, top - bottom + 1)))
+        image = PillowImage.new("RGBA", (max(1, right - left + 1), max(1, top - bottom + 1)))
         draw = ImageDraw.Draw(image)
         for x, y in ends:
             draw.line([(-left, top), (x - left, top - y)], fill=rgba, width=max(1, round(width)))
         for x, y in points:
             r = radius if name == HumanJoint.HEAD else width / 2
             draw.ellipse((x - left - r, top - y - r, x - left + r, top - y + r), fill=rgba)
-        parts[name] = Costume(image, anchor=(-left, top))
+        parts[name] = Image(image, anchor=(-left, top))
     return Puppet(skeleton, parts=parts)

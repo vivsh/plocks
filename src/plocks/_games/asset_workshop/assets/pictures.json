@@ -1,0 +1,7 @@
+{
+  "frames": {
+    "big_tile": {"frame": {"x": 0, "y": 0, "w": 32, "h": 32}},
+    "small_tile": {"frame": {"x": 0, "y": 0, "w": 16, "h": 16}}
+  },
+  "meta": {"size": {"w": 32, "h": 32}, "scale": "1"}
+}

@@ -5,17 +5,19 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Generic, Self, TypeVar, cast, overload
 
+from typing_extensions import deprecated
+
 from ._commands import (
     Actor,
     _BounceOnEdge,
     _ClearBubble,
     _Command,
-    _Costumes,
     _DuringPlan,
     _FollowPath,
     _GlideBy,
     _GlideTo,
     _GoToRandom,
+    _Images,
     _Move,
     _MoveTo,
     _Plan,
@@ -24,8 +26,8 @@ from ._commands import (
     _Poses,
     _Say,
     _Send,
-    _SetCostume,
-    _SetPartCostume,
+    _SetImage,
+    _SetPartImage,
     _SetPose,
     _Think,
     _TurnLeft,
@@ -36,7 +38,7 @@ from ._commands import (
 from .audio import Sound
 from .conditions import Condition, _validate
 from .geometry import Bounds, Point, _integer
-from .imaging import CostumeSource
+from .imaging import ImageSource
 from .messages import Message
 from .motion import Ease
 from .puppets import Puppet
@@ -50,7 +52,7 @@ _D = TypeVar("_D")
 class Script(Generic[_T]):  # noqa: UP046 -- explicit invariance protects editable definitions and payloads
     """Record a reusable sequence without executing it or binding an actor.
 
-    Script() works on either actor. Script(Sprite) adds costumes; Script(Puppet)
+    Script() works on either actor. Script(Sprite) adds images; Script(Puppet)
     adds poses. act() snapshots the script; edits affect future executions only.
     All methods return this builder. Durations use simulated seconds.
     """
@@ -229,22 +231,22 @@ class Script(Generic[_T]):  # noqa: UP046 -- explicit invariance protects editab
         self._commands.append(_PlaySound(sound, volume=volume, wait=wait))
         return self
 
-    def set_costume(self: Script[Sprite], costume: CostumeSource) -> Script[Sprite]:
+    def set_image(self: Script[Sprite], image: ImageSource) -> Script[Sprite]:
         """Snapshot an image now and display it when reached. Records a command; schedules nothing."""
-        self._commands.append(_SetCostume(costume))
+        self._commands.append(_SetImage(image))
         return self
 
     @overload
-    def costumes(
-        self: Script[Sprite], frames: Iterable[CostumeSource], *, fps: float
+    def images(
+        self: Script[Sprite], frames: Iterable[ImageSource], *, fps: float
     ) -> Script[Sprite]: ...
     @overload
-    def costumes(
-        self: Script[Sprite], frames: Iterable[CostumeSource], *, durations: Iterable[float]
+    def images(
+        self: Script[Sprite], frames: Iterable[ImageSource], *, durations: Iterable[float]
     ) -> Script[Sprite]: ...
-    def costumes(
+    def images(
         self: Script[Sprite],
-        frames: Iterable[CostumeSource],
+        frames: Iterable[ImageSource],
         *,
         fps: float | None = None,
         durations: Iterable[float] | None = None,
@@ -254,7 +256,7 @@ class Script(Generic[_T]):  # noqa: UP046 -- explicit invariance protects editab
         Supply exactly one timing form. Every frame, including the final one,
         holds for its full positive duration. Sources/timings are snapshotted now.
         """
-        self._commands.append(_Costumes(frames, fps=fps, durations=durations))
+        self._commands.append(_Images(frames, fps=fps, durations=durations))
         return self
 
     def set_pose(self: Script[Puppet], pose: Pose) -> Script[Puppet]:
@@ -267,12 +269,45 @@ class Script(Generic[_T]):  # noqa: UP046 -- explicit invariance protects editab
         self._commands.append(_Poses(poses, fps=fps))
         return self
 
-    def set_part_costume(
-        self: Script[Puppet], joint: str, costume: CostumeSource
-    ) -> Script[Puppet]:
+    def set_part_image(self: Script[Puppet], joint: str, image: ImageSource) -> Script[Puppet]:
         """Replace an existing attachment without changing topology or interrupting pose motion. Records a command; schedules nothing."""
-        self._commands.append(_SetPartCostume(joint, costume))
+        self._commands.append(_SetPartImage(joint, image))
         return self
+
+    @deprecated("set_costume is deprecated; use set_image")
+    def set_costume(self: Script[Sprite], costume: ImageSource) -> Script[Sprite]:
+        """Deprecated alias for set_image; records the same command."""
+        return self.set_image(costume)
+
+    @overload
+    @deprecated("costumes is deprecated; use images")
+    def costumes(
+        self: Script[Sprite], frames: Iterable[ImageSource], *, fps: float
+    ) -> Script[Sprite]: ...
+    @overload
+    @deprecated("costumes is deprecated; use images")
+    def costumes(
+        self: Script[Sprite], frames: Iterable[ImageSource], *, durations: Iterable[float]
+    ) -> Script[Sprite]: ...
+    @deprecated("costumes is deprecated; use images")
+    def costumes(
+        self: Script[Sprite],
+        frames: Iterable[ImageSource],
+        *,
+        fps: float | None = None,
+        durations: Iterable[float] | None = None,
+    ) -> Script[Sprite]:
+        """Deprecated alias for images; records the same timed pass."""
+        if fps is not None and durations is None:
+            return self.images(frames, fps=fps)
+        if durations is not None and fps is None:
+            return self.images(frames, durations=durations)
+        raise ValueError("Supply exactly one of fps or durations")
+
+    @deprecated("set_part_costume is deprecated; use set_part_image")
+    def set_part_costume(self: Script[Puppet], joint: str, costume: ImageSource) -> Script[Puppet]:
+        """Deprecated alias for set_part_image; records the same attachment edit."""
+        return self.set_part_image(joint, costume)
 
 
 def _message_arguments(message: object, target: object, wait: bool) -> None:
@@ -324,9 +359,9 @@ def _check[T: Actor](plan: _Command[T], actor: T | None = None) -> None:
                 pending.append((command.either, depth + 1))
         if actor is None:
             continue
-        if isinstance(command, (_SetCostume, _Costumes)) and not isinstance(actor, Sprite):
-            raise TypeError("Costume Script requires a Sprite")
-        if isinstance(command, (_SetPose, _Poses, _SetPartCostume)):
+        if isinstance(command, (_SetImage, _Images)) and not isinstance(actor, Sprite):
+            raise TypeError("Image Script requires a Sprite")
+        if isinstance(command, (_SetPose, _Poses, _SetPartImage)):
             if not isinstance(actor, Puppet):
                 raise TypeError("Pose/part Script requires a Puppet")
             if isinstance(command, (_SetPose, _Poses)):

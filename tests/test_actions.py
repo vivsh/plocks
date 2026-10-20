@@ -3,7 +3,7 @@
 from collections.abc import Iterator
 
 import pytest
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import Action, Event, GamepadButton, GamepadPress, Key, Sprite, Stage, StageError
 from plocks._runtime import close, dispatch
@@ -21,7 +21,7 @@ def stage() -> Iterator[Stage]:
 
 
 def sprite(stage: Stage) -> Sprite:
-    actor = Sprite(Image.new("RGBA", (4, 4), "red"))
+    actor = Sprite(PillowImage.new("RGBA", (4, 4), "red"))
     stage.add(actor)
     return actor
 

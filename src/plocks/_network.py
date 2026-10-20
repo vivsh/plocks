@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 
 import msgspec
 import pygame
-from PIL import Image
+from PIL import Image as PillowImage
 from websockets.client import ClientProtocol
 from websockets.exceptions import WebSocketException
 from websockets.frames import Frame as WebFrame
@@ -467,12 +467,12 @@ def _decode_frame(packet: Frame) -> pygame.Surface:
     if len(packet.png) > MAX_FRAME:
         raise NetworkError("Frame exceeded its encoded size limit")
     try:
-        with Image.open(io.BytesIO(packet.png)) as picture:
+        with PillowImage.open(io.BytesIO(packet.png)) as picture:
             if picture.format != "PNG" or picture.size != packet.logical_size:
                 raise NetworkError("Frame dimensions or format rejected")
             rgba = picture.convert("RGBA")
             return pygame.image.frombytes(rgba.tobytes(), rgba.size, "RGBA")
-    except (OSError, ValueError, Image.DecompressionBombError) as error:
+    except (OSError, ValueError, PillowImage.DecompressionBombError) as error:
         raise NetworkError("Invalid frame PNG; image could not be safely decoded") from error
 
 
@@ -715,7 +715,7 @@ def capture(stage: Stage, now: float, *, presented: bool = False) -> None:
     if not waiting:
         return
     target = stage._target
-    picture = Image.frombytes("RGB", target.get_size(), pygame.image.tobytes(target, "RGB"))
+    picture = PillowImage.frombytes("RGB", target.get_size(), pygame.image.tobytes(target, "RGB"))
     stream = io.BytesIO()
     picture.save(stream, format="PNG", compress_level=1)
     data = stream.getvalue()

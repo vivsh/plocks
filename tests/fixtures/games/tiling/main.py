@@ -1,6 +1,7 @@
 """Three tile types, generated with Pillow. Click a cell to change its tile."""
 
-from PIL import Image, ImageDraw
+from PIL import Image as PillowImage
+from PIL import ImageDraw
 
 from plocks import Canvas, Click, Event, MouseButton, Stage, TileMap
 
@@ -9,18 +10,18 @@ def main() -> None:
     """Draw grass, dirt and stone; left-click cycles tiles, right-click clears."""
     stage = Stage(width=640, height=400, background="midnightblue")
 
-    grass = Image.new("RGBA", (32, 32), "forestgreen")
+    grass = PillowImage.new("RGBA", (32, 32), "forestgreen")
     grass_art = ImageDraw.Draw(grass)
     grass_art.rectangle((0, 0, 31, 5), fill="limegreen")
     for x in (5, 15, 25):
         grass_art.line((x, 18, x + 2, 12), fill="yellowgreen", width=2)
 
-    dirt = Image.new("RGBA", (32, 32), "saddlebrown")
+    dirt = PillowImage.new("RGBA", (32, 32), "saddlebrown")
     dirt_art = ImageDraw.Draw(dirt)
     for x, y in ((5, 7), (21, 5), (13, 19), (26, 26)):
         dirt_art.rectangle((x, y, x + 3, y + 2), fill="peru")
 
-    stone = Image.new("RGBA", (32, 32), "slategray")
+    stone = PillowImage.new("RGBA", (32, 32), "slategray")
     stone_art = ImageDraw.Draw(stone)
     stone_art.rectangle((0, 0, 31, 31), outline="darkslategray", width=2)
     stone_art.line((0, 16, 31, 16), fill="darkslategray", width=2)

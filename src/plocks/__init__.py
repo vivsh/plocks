@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ._commands import Actor as Actor
 from ._scripts import WhenBusy as WhenBusy
 from .actions import Action as Action
@@ -49,10 +51,12 @@ from .gamepads import GamepadLayout as GamepadLayout
 from .geometry import Bounds as Bounds
 from .geometry import Color as Color
 from .geometry import Point as Point
-from .imaging import Costume as Costume
+from .image_map import ImageMap as ImageMap
+from .imaging import Anchor as Anchor
 from .imaging import CostumeSource as CostumeSource
+from .imaging import Image as Image
+from .imaging import ImageGrid as ImageGrid
 from .imaging import ImageSource as ImageSource
-from .imaging import SpriteSheet as SpriteSheet
 from .input import Key as Key
 from .input import Mouse as Mouse
 from .input import MouseButton as MouseButton
@@ -80,3 +84,89 @@ from .tiling import TileMap as TileMap
 from .ui import Button as Button
 from .ui import Label as Label
 from .ui import ProgressBar as ProgressBar
+
+if TYPE_CHECKING:
+    Costume = Image
+    SpriteSheet = ImageGrid
+else:
+    from .imaging import _legacy_asset
+
+    __getattr__ = _legacy_asset
+
+
+__all__ = (
+    "Action",
+    "Actor",
+    "ActorCallback",
+    "ActorUpdateCallback",
+    "Anchor",
+    "AssetError",
+    "AudioError",
+    "Body",
+    "BodyType",
+    "Bounds",
+    "Box",
+    "Button",
+    "Callback",
+    "Canvas",
+    "Circle",
+    "Click",
+    "Color",
+    "Condition",
+    "Connection",
+    "Costume",
+    "CostumeSource",
+    "DrawCallback",
+    "Ease",
+    "Event",
+    "Gamepad",
+    "GamepadButton",
+    "GamepadDown",
+    "GamepadInput",
+    "GamepadLayout",
+    "GamepadPress",
+    "Grounded",
+    "Hinge",
+    "HumanJoint",
+    "Image",
+    "ImageGrid",
+    "ImageMap",
+    "ImageSource",
+    "Joint",
+    "Key",
+    "Label",
+    "Message",
+    "Motor",
+    "Mouse",
+    "MouseButton",
+    "Multiplayer",
+    "NavigationError",
+    "NetworkError",
+    "Not",
+    "Physics",
+    "PhysicsError",
+    "PixeloramaSheet",
+    "PlocksError",
+    "Point",
+    "Pose",
+    "ProgressBar",
+    "Puppet",
+    "RemoteChange",
+    "Rope",
+    "RotationStyle",
+    "Script",
+    "Skeleton",
+    "Sound",
+    "Spring",
+    "Sprite",
+    "SpriteSheet",
+    "Stage",
+    "StageError",
+    "TileMap",
+    "TiledBackground",
+    "TiledMap",
+    "Touching",
+    "UpdateCallback",
+    "Voice",
+    "WhenBusy",
+)

@@ -4,11 +4,11 @@ from plocks.motion import _bounce, _move, _point_towards, _random
 
 import pygame
 import pytest
-from PIL import Image
+from PIL import Image as PillowImage
 
 from plocks import (
     Bounds,
-    Costume,
+    Image,
     Joint,
     Puppet,
     Skeleton,
@@ -25,7 +25,10 @@ def tilemap() -> TileMap:
     """Two occupied cells, only one solid, with an explicit world top-left."""
     return TileMap(
         ["#.", ".x"],
-        {"#": Image.new("RGBA", (2, 2), "green"), "x": Image.new("RGBA", (2, 2), "blue")},
+        {
+            "#": PillowImage.new("RGBA", (2, 2), "green"),
+            "x": PillowImage.new("RGBA", (2, 2), "blue"),
+        },
         tile_size=(10, 10),
         solid={"#"},
         x=-10,
@@ -58,7 +61,7 @@ def test_solid_overlap_not_empty_area_or_edges() -> None:
     assert world.tiles_touching(Bounds(-20, -20, 20, 20)) == ((0, 0),)
     assert world.tiles_touching(Bounds(-20, -20, 20, 20), solid_only=False) == ((0, 0), (1, 1))
     assert world.tiles_touching(Bounds(0, 1, 2, 3)) == ()
-    sprite = Sprite(Image.new("RGBA", (2, 2)), x=-5, y=5, visible=False)
+    sprite = Sprite(PillowImage.new("RGBA", (2, 2)), x=-5, y=5, visible=False)
     assert sprite.touching(world)
     sprite.position = (5, -5)
     assert not sprite.touching(world)
@@ -70,8 +73,8 @@ def test_camera_layers_background_clip_and_overlay() -> None:
     """Scene members use the camera, repeating areas clip, and overlays use stage coordinates."""
     stage = Stage(20, 20, background="red")
     stage._target = pygame.display.set_mode((20, 20))
-    stage.add(TiledBackground(Image.new("RGBA", (1, 1), "green"), area=Bounds(-2, -2, 2, 2)))
-    sprite = Sprite(Image.new("RGBA", (2, 2), "blue"), x=5, y=0, layer=1)
+    stage.add(TiledBackground(PillowImage.new("RGBA", (1, 1), "green"), area=Bounds(-2, -2, 2, 2)))
+    sprite = Sprite(PillowImage.new("RGBA", (2, 2), "blue"), x=5, y=0, layer=1)
     stage.add(sprite)
     stage.camera = (5, 0)
     frame(stage)
@@ -90,7 +93,7 @@ def test_background_large_area_is_bounded_by_viewport() -> None:
     stage._target = pygame.display.set_mode((8, 8))
     stage.add(
         TiledBackground(
-            Image.new("RGBA", (2, 2), "blue"),
+            PillowImage.new("RGBA", (2, 2), "blue"),
             area=Bounds(-1_000_000, -1_000_000, 1_000_000, 1_000_000),
         )
     )
@@ -99,18 +102,18 @@ def test_background_large_area_is_bounded_by_viewport() -> None:
 
 
 def test_figures_tiles_and_anchors_render_in_world() -> None:
-    """The renderer handles articulated geometry and fits tiles without applying costume anchors."""
+    """The renderer handles articulated geometry and fits tiles without applying image anchors."""
     stage = Stage(40, 40)
     stage._target = pygame.display.set_mode((40, 40))
-    costume = Costume(Image.new("RGBA", (2, 2), "green"), anchor=(100, 100))
-    stage.add(TileMap(["#"], {"#": costume}, tile_size=(10, 10), x=-20, y=20))
+    image = Image(PillowImage.new("RGBA", (2, 2), "green"), anchor=(100, 100))
+    stage.add(TileMap(["#"], {"#": image}, tile_size=(10, 10), x=-20, y=20))
     rig = Skeleton({"root": Joint(None), "hand": Joint("root", (0, 10))})
     stage.add(
         Puppet(
             rig,
             parts={
-                "root": Image.new("RGBA", (6, 6), "white"),
-                "hand": Image.new("RGBA", (3, 3), "white"),
+                "root": PillowImage.new("RGBA", (6, 6), "white"),
+                "hand": PillowImage.new("RGBA", (3, 3), "white"),
             },
         )
     )
@@ -122,8 +125,8 @@ def test_figures_tiles_and_anchors_render_in_world() -> None:
 
 def test_transparency_and_edge_contact_are_explicit() -> None:
     """AABBs include transparent pixels, but touching at an edge is not overlap."""
-    a = Sprite(Image.new("RGBA", (10, 10)))
-    b = Sprite(Image.new("RGBA", (10, 10)), x=10)
+    a = Sprite(PillowImage.new("RGBA", (10, 10)))
+    b = Sprite(PillowImage.new("RGBA", (10, 10)), x=10)
     assert not a.touching(b)
     b.x = 9
     assert a.touching(b)
@@ -134,8 +137,8 @@ def test_rotated_anchor_pixel_placement(direction: float) -> None:
     """An off-center anchor stays in place through cardinal rotations and scaling."""
     stage = Stage(40, 40)
     stage._target = pygame.display.set_mode((40, 40))
-    image = Image.new("RGBA", (4, 6), "red")
-    sprite = Sprite(Costume(image, anchor=(0, 0)), direction=direction, scale=2)
+    image = PillowImage.new("RGBA", (4, 6), "red")
+    sprite = Sprite(Image(image, anchor=(0, 0)), direction=direction, scale=2)
     stage.add(sprite)
     frame(stage)
     point = _rotate((2, -3), direction, 2)
@@ -148,8 +151,8 @@ def test_rotated_anchor_pixel_placement(direction: float) -> None:
 
 def test_cardinal_rotation_has_no_phantom_edge_overlap() -> None:
     """Exact cardinal transforms avoid floating-point slivers at touching AABB edges."""
-    sprite = Sprite(Image.new("RGBA", (10, 20)), direction=0)
-    other = Sprite(Image.new("RGBA", (10, 20)), direction=0, x=20)
+    sprite = Sprite(PillowImage.new("RGBA", (10, 20)), direction=0)
+    other = Sprite(PillowImage.new("RGBA", (10, 20)), direction=0, x=20)
     assert not sprite.touching(other)
     _move(sprite, 10)
     assert sprite.position == (0, 10)
@@ -159,7 +162,7 @@ def test_rotation_styles_pointing_and_bounce() -> None:
     """Visual style does not change motion; bounce validates before changing oversized actors."""
     from plocks import RotationStyle
 
-    sprite = Sprite(Image.new("RGBA", (10, 20), "red"), x=47)
+    sprite = Sprite(PillowImage.new("RGBA", (10, 20), "red"), x=47)
     bounds = Bounds(-50, -50, 50, 50)
     assert _bounce(sprite, bounds)
     assert sprite.direction == 270 and sprite.bounds.right == 50
@@ -187,8 +190,8 @@ def test_puppet_part_order_and_mirrored_pivot_pixels() -> None:
     person = Puppet(
         skeleton,
         parts={
-            "root": Image.new("RGBA", (20, 20), "red"),
-            "hand": Costume(Image.new("RGBA", (4, 4), "blue"), anchor=(0, 0)),
+            "root": PillowImage.new("RGBA", (20, 20), "red"),
+            "hand": Image(PillowImage.new("RGBA", (4, 4), "blue"), anchor=(0, 0)),
         },
     )
     stage.add(person)

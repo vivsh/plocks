@@ -33,7 +33,7 @@ Run it again. The dinosaur should fall more slowly. Try one change at a time!
 - `body.velocity` controls speed. Keep its y speed when changing sideways movement.
 - `body.force(...)` gives a steady push; `body.torque(...)` twists a body.
 - `body.friction` changes grip; `body.bounce` changes bounciness.
-- `body.shape` is its invisible hit box. Changing a costume does not change that box.
+- `body.shape` is its invisible hit box. Changing an image does not change that box.
 
 For a physical jumper, use pushes instead of glides. Glides are for a path you
 choose yourself, like the hop in [movement scripts](movement.md).

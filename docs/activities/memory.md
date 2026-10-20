@@ -12,7 +12,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from plocks import Costume, Event, GamepadButton, Sprite, Stage, GamepadPress
+from plocks import Image, Event, GamepadButton, Sprite, Stage, GamepadPress
 
 
 @dataclass
@@ -22,7 +22,7 @@ class Memory:
 
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(background="skyblue")
-picture = Costume(assets / "dinosaur.png").resized(width=72, height=72)
+picture = Image(assets / "dinosaur.png").resized(width=72, height=72)
 hero = Sprite(picture, x=-100, state=Memory)
 friend = Sprite(picture, x=100, state=Memory)
 stage.add(hero)

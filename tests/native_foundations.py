@@ -32,7 +32,7 @@ def exercise(name: str, output: Path) -> dict[str, object]:
         (
             obj.x
             for obj in stage.objects
-            if isinstance(obj, Sprite) and obj.costume.width == 100 and obj.costume.height == 18
+            if isinstance(obj, Sprite) and obj.image.width == 100 and obj.image.height == 18
         ),
         None,
     )
@@ -103,7 +103,7 @@ def exercise(name: str, output: Path) -> dict[str, object]:
             chassis = next(
                 obj
                 for obj in stage.objects
-                if isinstance(obj, Sprite) and obj.costume.width == 100 and obj.costume.height == 18
+                if isinstance(obj, Sprite) and obj.image.width == 100 and obj.image.height == 18
             )
             assert chassis.x > initial_cart + 5
             assert any(
