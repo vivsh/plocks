@@ -16,17 +16,21 @@ Open that new folder and run `python main.py` there. Keep the `assets` folder.
 
 ## What you'll learn
 
-- **Timing:** `speed_y` changes as the cube rises and falls.
+- **Actions:** Two glides joined with `after` make a jump—no jump timer needed.
+- **Shapes:** `Image.rectangle` makes the cube; `Image.triangle` makes the spikes.
 - **Lists and loops:** The spike positions make your course.
 - **Hitboxes:** Invisible boxes check whether two things crash.
+- **Camera:** `stage.follow(...)` follows the cube; the floor and spikes stay put.
 
-The cube runs by itself. Jump timing is the challenge; there is no music timing.
+The cube runs by itself. Physics is off: glides give the jump its chosen path.
+The camera stays level during jumps and follows again after restarting.
+Jump timing is the challenge; there is no music timing.
 
 ## Make it yours
 
 1. Change running speed from 230 to 200.
 2. Move a spike in the setup loop.
-3. Replace `assets/cube.png` with your own face.
+3. Change the cube's color, or use `Image(assets / "cube.png")` for its picture.
 
 **Your own project?** Copy this whole folder, keep `assets/` beside `main.py`,
 and run `python main.py` with Plocks installed. From another folder, use

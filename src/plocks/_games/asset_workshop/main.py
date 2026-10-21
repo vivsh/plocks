@@ -17,10 +17,12 @@ from plocks import (
 )
 
 assets = Path(__file__).resolve().parent / "assets"
+# A fixed camera shows both players and the whole small level.
 stage = Stage(width=640, height=400, background="#203548")
 
-# Keys feed logical controls; gamepads and remote players work too.
-stage.gamepads[0].map_key(Key.E, GamepadButton.Y)
+# The first two players already have separate keyboard controls.
+one, two = stage.gamepads[:2]
+one.map_key(Key.E, GamepadButton.Y)
 
 # Tiled gives us ordinary tile maps and named places to start.
 level = TiledMap(assets / "jungle.tmj", x=-160, y=64, layer=-1)
@@ -38,7 +40,6 @@ hero.on_start(art.animation("walk").repeat())
 friend.on_start(art.animation("walk").repeat())
 
 # The first two players already have keyboard controls. Controllers work too.
-one, two = stage.gamepads[:2]
 two.layout = GamepadLayout.NINTENDO
 
 # One script can run on either character, with its own starting position.
@@ -50,15 +51,11 @@ friend.on_button_down(GamepadButton.A, jump, gamepad=two)
 
 
 @hero.on_update
-def move_hero(event: Event[Sprite, float]) -> None:
-    x, _ = one.left_stick
-    event.target.x += x * 120 * event.data
-
-
 @friend.on_update
-def move_friend(event: Event[Sprite, float]) -> None:
-    x, _ = two.left_stick
-    event.target.x += x * 120 * event.data
+def move(event: Event[Sprite, float]) -> None:
+    # Both use the same rule; target tells us which character needs to move.
+    gamepad = one if event.target is hero else two
+    event.target.x += gamepad.left_stick[0] * 120 * event.data
 
 
 @hero.on_button_down(GamepadButton.B, gamepad=one, repeat=0.2)
@@ -72,7 +69,7 @@ def friend_speaks(event: Event[Sprite, GamepadPress]) -> None:
     event.target.say("Pop!", seconds=0.15)
 
 
-@stage.on_button_down(GamepadButton.Y, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.Y, gamepad=one)
 def edit_ground(event: Event[Stage, GamepadPress]) -> None:
     # Imported cells can be edited just like a hand-made tile map.
     ground = level.layers["Ground"]

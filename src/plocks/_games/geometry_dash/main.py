@@ -3,11 +3,14 @@
 from pathlib import Path
 
 from plocks import (
+    Action,
     Bounds,
     Canvas,
+    Ease,
     Event,
     GamepadButton,
     GamepadPress,
+    Image,
     Key,
     Sound,
     Sprite,
@@ -19,9 +22,9 @@ from plocks import (
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=800, height=450, background="#19253d")
 
-# Keys feed logical controls; gamepads and remote players work too.
-stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
-stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
+# Player one already has Space for jumping; map extra controls here.
+player = stage.gamepads[0]
+player.map_key(Key.R, GamepadButton.SELECT)
 # Repeat a stone tile to make the floor. layer=-1 puts it behind the hero.
 ground = TileMap(
     ["#" * 100] * 2,
@@ -33,55 +36,55 @@ ground = TileMap(
     layer=-1,
 )
 stage.add(ground)
-hero = Sprite(assets / "cube.png", x=-240, y=-124)
+hero = Sprite(
+    Image.rectangle(32, 32, color="#ffe16a", outline="#fff0b0", outline_width=3), x=-240, y=-124
+)
 stage.add(hero)
+# Follow the cube through the world. One-screen-high bounds keep jumps from moving the view up.
+stage.follow(
+    hero, offset=(120, 0), bounds=Bounds(ground.bounds.left, -225, ground.bounds.right, 225)
+)
 spikes: list[Sprite] = []
 # Change these x positions to design your own obstacle course.
 for x in (40, 280, 520, 552, 840, 1100, 1132, 1420, 1680, 1712, 2000):
-    spike = Sprite(assets / "spike.png", x=x, y=-124)
+    spike = Sprite(Image.triangle(32, 32, color="#f06499", outline="#ffb0cf"), x=x, y=-124)
     stage.add(spike)
     spikes.append(spike)
 pop = Sound(assets / "pop.ogg")
-# Positive speed_y goes up. Gravity will pull it back down.
-speed_y = 0.0
 outcome = "playing"
 attempts = 1
 
 
 # @ connects this function to Space. Only jump when the cube is on the floor.
-@hero.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
-def jump(event: Event[Sprite, GamepadPress]) -> None:
-    # global lets this helper change speed_y at the top of this file.
-    global speed_y
-    if outcome == "playing" and hero.y == -124:
-        speed_y = 540
+@hero.on_button_down(GamepadButton.A, gamepad=player)
+def jump(event: Event[Sprite, GamepadPress]) -> Action | None:
+    if outcome != "playing" or hero.y != -124:
+        return None
+    # after joins the two halves. Returning the action keeps this jump busy.
+    up = hero.glide_by(y=100, seconds=0.35, easing=Ease.OUT)
+    return hero.glide_by(y=-100, seconds=0.35, easing=Ease.IN, after=up)
 
 
-@stage.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
 def restart(event: Event[Stage, GamepadPress]) -> None:
-    global speed_y, outcome, attempts
+    global outcome, attempts
+    hero.stop()
     hero.position = (-240, -124)
     hero.direction = 90
-    speed_y = 0
     outcome = "playing"
     attempts += 1
-    stage.camera = (0, 0)
 
 
 # Plocks runs update each game step. dt is that step's length in seconds.
 @stage.on_update
 def update(event: Event[Stage, float]) -> None:
     dt = event.data
-    global speed_y, outcome
+    global outcome
     if outcome != "playing":
         return
     # Speed × time tells us how far to move. The cube runs without a held key.
     hero.x += 230 * dt
-    speed_y -= 1600 * dt
-    # max keeps the cube from falling below the floor.
-    hero.y = max(-124, hero.y + speed_y * dt)
     if hero.y == -124:
-        speed_y = 0
         hero.direction = 90
     else:
         hero.direction += 360 * dt
@@ -92,11 +95,12 @@ def update(event: Event[Stage, float]) -> None:
         danger = Bounds(spike.x - 8, -140, spike.x + 8, -116)
         if body.intersects(danger):
             outcome = "Crash!"
+            hero.stop()
             stage.play(pop, volume=0.2)
             break
     if hero.x >= 2200:
         outcome = "Course complete!"
-    stage.camera = (max(0, hero.x + 120), 0)
+        hero.stop()
 
 
 # Draw the score and instructions after the sprites, so they stay on top.

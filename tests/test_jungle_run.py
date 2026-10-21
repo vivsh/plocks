@@ -1,16 +1,17 @@
 """Play the standalone action example through deterministic input and simulation."""
 
 import runpy
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from pathlib import Path
 from typing import cast
 from unittest.mock import patch
 
 import pytest
 
-from plocks import Event, GamepadPress, Key, Sprite, Stage
-from plocks._runtime import close, dispatch
-from plocks._scripts import _deliver, _sample, _step, _trigger
+from plocks import GamepadPress, Key, Sprite, Stage
+from plocks._runtime import advance as step_runtime
+from plocks._runtime import close
+from plocks._scripts import _step, _trigger
 
 
 @pytest.fixture
@@ -29,6 +30,8 @@ def game() -> Iterator[Stage]:
     for handler in tuple(stage._starts):
         _trigger(stage, handler)
     _step(stage)
+    stage._last_wall = 0
+    advance(stage, 10)
     yield stage
     close(stage)
 
@@ -39,22 +42,17 @@ def state(stage: Stage) -> dict[str, object]:
 
 
 def advance(stage: Stage, ticks: int) -> None:
-    """Use the engine's fixed-step order, including authored synchronous physics."""
+    """Use the real fixed-step driver, including physics, input repeats and actions."""
     for _ in range(ticks):
-        stage._tick += 1
-        _sample(stage)
-        _deliver(stage)
-        dispatch(stage)
-        _step(stage)
-        for actor, update in tuple(stage._updates):
-            occurrence = Event(stage, stage if actor is None else actor, 1 / stage.tick_rate)
-            cast(Callable[[object], None], update)(occurrence)
+        step_runtime(stage, (stage._last_wall or 0) + 1 / stage.tick_rate)
 
 
 def press(stage: Stage, key: Key) -> None:
     """Send a new key press and hold it for subsequent simulation ticks."""
     stage._held_keys.add(key)
-    stage._pending.append(GamepadPress(stage.gamepads[0], stage.gamepads[0]._key_buttons[key]))
+    button = stage.gamepads[0]._key_buttons.get(key)
+    if button is not None:
+        stage._pending.append(GamepadPress(stage.gamepads[0], button))
 
 
 def test_running_jump_and_airborne_shooting(game: Stage) -> None:
@@ -64,27 +62,28 @@ def test_running_jump_and_airborne_shooting(game: Stage) -> None:
     press(game, Key.SPACE)
     press(game, Key.X)
     advance(game, 15)
-    assert hero.x > -300 and hero.y > -150
+    assert hero.x > -300 and hero.bounds.bottom > -120
     assert state(game)["shots"]
     press(game, Key.SPACE)
     advance(game, 12)
-    assert hero.y < -5  # A second Space cannot restart the ascent.
+    assert hero.bounds.bottom < -5  # A second Space cannot restart the ascent.
     game._held_keys.clear()
     advance(game, 50)
-    assert hero.y == -150
+    assert hero.bounds.bottom == pytest.approx(-150, abs=0.5) and hero.body.grounded
 
 
 def test_platform_landing_and_walking_off(game: Stage) -> None:
     """A jump passes through a ledge, lands on top and falls when walking off."""
     hero = cast(Sprite, state(game)["hero"])
     hero.x = 150
+    advance(game, 10)
     press(game, Key.SPACE)
     advance(game, 55)
-    assert hero.y == -86
-    assert state(game)["vertical_speed"] == 0
+    assert hero.bounds.bottom == pytest.approx(-86, abs=0.5)
+    assert hero.body.grounded
     press(game, Key.LEFT)
     advance(game, 85)
-    assert hero.x < 0 and hero.y == -150
+    assert hero.x < 0 and hero.bounds.bottom == pytest.approx(-150, abs=0.5) and hero.body.grounded
 
 
 def test_projectiles_defeat_sentry_and_restart(game: Stage) -> None:
@@ -101,7 +100,7 @@ def test_projectiles_defeat_sentry_and_restart(game: Stage) -> None:
     assert len(cast(list[Sprite], state(game)["enemies"])) == 6
     assert state(game)["health"] == 3 and state(game)["defeated"] == 0
     assert not state(game)["shots"]
-    assert hero.position == (-300, -150)
+    assert hero.x == -300 and hero.bounds.bottom == pytest.approx(-150, abs=0.5)
 
 
 def test_contact_damage_has_grace_period(game: Stage) -> None:

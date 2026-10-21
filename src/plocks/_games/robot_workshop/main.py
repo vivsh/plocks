@@ -1,7 +1,6 @@
 """Robot Workshop: build a moving arm, a wheeled cart, and a hanging chain."""
 
 from dataclasses import dataclass
-from pathlib import Path
 
 from plocks import (
     BodyType,
@@ -40,15 +39,16 @@ class Cart:
     right_motor: Motor
 
 
-assets = Path(__file__).resolve().parent / "assets"
+# A fixed camera shows the workshop; buttons and labels stay on the screen.
 stage = Stage(width=960, height=600, physics=True, background="#172536")
+player = stage.gamepads[0]
 stage.physics.gravity = (0, -600)
-stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
-stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
-stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
-stage.gamepads[0].map_key(Key.X, GamepadButton.B)
-beam = Image(assets / "beam.png")
-wheel_picture = Image(assets / "wheel.png").resized(32, 32)
+player.map_key(Key.R, GamepadButton.SELECT)
+player.map_key(Key.LEFT, GamepadButton.LEFT)
+player.map_key(Key.RIGHT, GamepadButton.RIGHT)
+player.map_key(Key.X, GamepadButton.B)
+beam = Image.rectangle(96, 14, color="steelblue", outline="lightblue")
+wheel_picture = Image.circle(16, color="gold", outline="orange", outline_width=2)
 floor = Sprite(beam.resized(940, 20), y=-230, body_type=BodyType.STATIC)
 stage.add(floor)
 
@@ -135,7 +135,6 @@ stage.add(cut)
 
 @stage.on_update
 def controls(event: Event[Stage, float]) -> None:
-    player = stage.gamepads[0]
     speed = 0
     if player.is_down(GamepadButton.RIGHT):
         speed += 240
@@ -156,7 +155,7 @@ def drop_chain(event: Event[Button, None]) -> None:
     event.target.enabled = False
 
 
-@stage.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
 def new_cart(event: Event[Stage, GamepadPress]) -> None:
     global cart
     # Make another assembly with the same factory; no hidden whole-group clone.

@@ -19,9 +19,12 @@ Open that new folder and run `python main.py` there. Keep the `assets` folder.
 - **Functions:** `fire` makes bullets; `hurt` changes health.
 - **Lists and collisions:** Check each bullet, then remove it when it hits something.
 - **Scripts:** Robots walk and fire at the same time.
+- **Physics:** Gravity and one-way platforms handle jumps and landings.
+- **Turbo input:** `repeat=0.16` keeps shooting while X is held.
 
 Try this after Sky Steps. Jump through platforms from below and land on top.
-This bigger game writes its own gravity and landing rules.
+Plocks handles gravity, landing and camera scrolling. This bigger game still
+checks the path of each bullet so fast shots cannot skip a robot.
 
 ## Make it yours
 

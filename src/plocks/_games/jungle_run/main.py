@@ -1,6 +1,6 @@
 """Jungle Run: run, jump and shoot your way past six robots.
 
-This bigger example writes its own jump and bullet rules. Try Sky Steps first.
+Physics handles jumping and landing. Try Sky Steps before the bullet rules here.
 """
 
 from math import sin
@@ -8,7 +8,10 @@ from pathlib import Path
 
 from plocks import (
     Action,
+    Anchor,
+    BodyType,
     Bounds,
+    Box,
     Canvas,
     Event,
     GamepadButton,
@@ -17,26 +20,32 @@ from plocks import (
     Key,
     Message,
     RotationStyle,
-    Script,
     Sprite,
     Stage,
-    TiledBackground,
     TileMap,
 )
 
 # Find assets beside this script, even when running from another folder.
 assets = Path(__file__).resolve().parent / "assets"
-stage = Stage(width=800, height=450, background="#102735")
+stage = Stage(width=800, height=450, physics=True, background="#102735")
+stage.physics.gravity = (0, -1500)
 
-# Keys feed logical controls; gamepads and remote players work too.
-stage.gamepads[0].map_left_stick(left=Key.LEFT, right=Key.RIGHT, up=Key.UP, down=Key.DOWN)
-stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
-stage.gamepads[0].map_key(Key.P, GamepadButton.START)
-stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
-stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
-stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-stage.gamepads[0].map_key(Key.X, GamepadButton.X)
-backdrop = TiledBackground(assets / "jungle.png")
+# Player one already has Space for jumping; map extra controls here.
+player = stage.gamepads[0]
+player.map_left_stick(left=Key.LEFT, right=Key.RIGHT)
+player.map_key(Key.P, GamepadButton.START)
+player.map_key(Key.R, GamepadButton.SELECT)
+player.map_key(Key.X, GamepadButton.X)
+# This distant layer scrolls automatically at 22% of the camera's speed.
+backdrop = TileMap(
+    ["J" * 5],
+    {"J": assets / "jungle.png"},
+    tile_size=(256, 450),
+    x=-400,
+    y=225,
+    layer=-100,
+    parallax=(0.22, 0),
+)
 stage.add(backdrop)
 
 # Each # makes a ground tile. Lower layers are drawn behind the hero.
@@ -53,30 +62,48 @@ stage.add(ground)
 
 platforms: list[Sprite] = []
 for x, y, width in ((100, -86, 160), (390, -22, 160), (910, -86, 170), (1450, -86, 150)):
-    platform = Sprite(Image(assets / f"ledge{width}.png", anchor=(0, 0)), x=x, y=y, layer=-2)
+    platform = Sprite(
+        Image(assets / f"ledge{width}.png", anchor=(0, 0)),
+        x=x,
+        y=y,
+        layer=-2,
+        body_type=BodyType.STATIC,
+        one_way=True,
+    )
     platforms.append(platform)
     stage.add(platform)
 
-stage.add(Sprite(Image(assets / "flag.png", anchor=(4, 100)), x=1720, y=-150, layer=-1))
+stage.add(
+    Sprite(
+        Image(assets / "flag.png", anchor=(4, 100)),
+        x=1720,
+        y=-150,
+        layer=-1,
+        body_type=BodyType.NONE,
+    )
+)
 
-idle = Image(assets / "hero.png", anchor=(14, 40))
-# Anchors put each image's feet at the same point when we swap pictures.
+idle = Image(assets / "hero.png")
+# Equal-sized centered images can take turns without moving the hero.
 walking_frames = (
-    Image(assets / "walk1.png", anchor=(14, 40)),
-    Image(assets / "walk2.png", anchor=(14, 40)),
+    Image(assets / "walk1.png"),
+    Image(assets / "walk2.png"),
 )
 walking: Action | None = None
-hero = Sprite(idle, x=-300, y=-150, scale=1.5, layer=2)
+hero = Sprite(idle, x=-300, y=-120, scale=1.5, layer=2)
 hero.rotation_style = RotationStyle.LEFT_RIGHT
 stage.add(hero)
-sentry = Image(assets / "robot.png", anchor=(16, 40))
+# A centered body keeps the same hitbox when we face left or right.
+hero.body.shape = Box(28, 40)
+hero.body.rotation_locked = True
+hero.body.friction = 0
+stage.follow(hero, offset=(-60, 0), bounds=Bounds(-400, -225, 1800, 225))
+sentry = Image(assets / "robot.png", anchor=Anchor.BOTTOM_CENTER)
 friendly_shot = Image(assets / "friendly_shot.png")
 hostile_shot = Image(assets / "hostile_shot.png")
 enemies: list[Sprite] = []
 # A shot stores (sprite, sideways speed, friendly). True means the hero fired it.
 shots: list[tuple[Sprite, float, bool]] = []
-vertical_speed = 0.0
-next_shot = 0.0
 protected_until = 0.0
 health = 3
 defeated = 0
@@ -86,48 +113,36 @@ def finished() -> bool:
     return health <= 0 or (not enemies and hero.x >= 1680)
 
 
-def grounded() -> bool:
-    """Are the hero's feet resting on the ground or a platform?"""
-    if vertical_speed > 0:
-        return False
-    surfaces = [ground.bounds]
-    for platform in platforms:
-        surfaces.append(platform.bounds)
-    for surface in surfaces:
-        feet_at_top = abs(hero.y - surface.top) < 0.01
-        overlaps_sideways = hero.bounds.right > surface.left and hero.bounds.left < surface.right
-        if feet_at_top and overlaps_sideways:
-            return True
-    return False
-
-
 def fire(actor: Sprite, friendly: bool) -> None:
     """Make a bullet. The hero aims forward; robots aim toward the hero."""
     direction = 1
     if friendly:
         image = friendly_shot
         speed = 560
+        height = actor.y + 2
         if actor.direction != 90:
             direction = -1
     else:
         image = hostile_shot
         speed = 230
+        height = actor.y + 32
         if hero.x <= actor.x:
             direction = -1
     shot = Sprite(
         image,
         x=actor.x + direction * 30,
-        y=actor.y + 32,
+        y=height,
         layer=3,
+        body_type=BodyType.NONE,
     )
     stage.add(shot)
     shots.append((shot, direction * speed, friendly))
 
 
 fire_requested = Message[None]("enemy fire requested")
-patrol = Script().repeat().glide_by(x=45, seconds=1.2).glide_by(x=-45, seconds=1.2)
-firing = Script().repeat().wait(1.5).broadcast(fire_requested)
-sentry_behavior = Script().during(patrol, meanwhile=firing)
+patrol = hero.repeat().glide_by(x=45, seconds=1.2).glide_by(x=-45, seconds=1.2)
+firing = hero.repeat().wait(1.5).broadcast(fire_requested)
+sentry_behavior = hero.sequence().during(patrol, meanwhile=firing)
 
 
 @stage.on_broadcast(fire_requested)
@@ -142,7 +157,7 @@ def fire_when_near(event: Event[Stage, None]) -> None:
 
 def spawn_enemies() -> None:
     for x, y in ((140, -150), (440, -22), (730, -150), (970, -86), (1260, -150), (1490, -86)):
-        enemy = Sprite(sentry, x=x, y=y, scale=1.5, layer=1)
+        enemy = Sprite(sentry, x=x, y=y, scale=1.5, layer=1, body_type=BodyType.NONE)
         enemy.rotation_style = RotationStyle.LEFT_RIGHT
         stage.add(enemy)
         enemies.append(enemy)
@@ -166,20 +181,28 @@ def hurt() -> None:
         hero.stop()
         for enemy in enemies:
             enemy.stop()
+        hero.image = idle
+        hero.visible = True
+        stage.pause()
 
 
-# @ connects a function to a key press. Holding X is checked in update instead.
-@stage.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
-def jump(event: Event[Stage, GamepadPress]) -> None:
-    # global lets this helper change the jump speed at the top of this file.
-    global vertical_speed
-    if not finished() and grounded():
-        vertical_speed = 650
+# grounded stops air jumps; physics brings the hero back to the platforms.
+@hero.on_button_down(GamepadButton.A, gamepad=player)
+def jump(event: Event[Sprite, GamepadPress]) -> None:
+    if not finished() and hero.body.grounded:
+        hero.body.impulse(y=650)
 
 
-@stage.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+# Turbo repeats for us while X stays held; no cooldown timer is needed.
+@hero.on_button_down(GamepadButton.X, gamepad=player, repeat=0.16)
+def shoot(event: Event[Sprite, GamepadPress]) -> None:
+    if not finished() and not stage.paused:
+        fire(event.target, True)
+
+
+@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
 def restart(event: Event[Stage, GamepadPress]) -> None:
-    global health, defeated, vertical_speed, next_shot, protected_until
+    global health, defeated, protected_until
     hero.stop()
     for enemy in enemies:
         stage.remove(enemy)
@@ -187,20 +210,19 @@ def restart(event: Event[Stage, GamepadPress]) -> None:
     # A copy lets us remove bullets without skipping the next one in the list.
     for shot in shots.copy():
         remove_shot(shot)
-    hero.position = (-300, -150)
+    hero.position = (-300, -120)
     hero.direction = 90
     hero.image = idle
     hero.visible = True
-    vertical_speed = 0
+    hero.body.velocity = (0, 0)
     health = 3
     defeated = 0
-    next_shot = stage.time
     protected_until = stage.time + 1
-    stage.camera = (0, 0)
+    stage.resume()
     spawn_enemies()
 
 
-@stage.on_button_down(GamepadButton.START, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.START, gamepad=player)
 def toggle_pause(event: Event[Stage, GamepadPress]) -> None:
     if stage.paused:
         stage.resume()
@@ -212,53 +234,34 @@ def toggle_pause(event: Event[Stage, GamepadPress]) -> None:
 @stage.on_update
 def update(event: Event[Stage, float]) -> None:
     dt = event.data
-    global vertical_speed, next_shot, defeated, walking
+    global defeated, walking
     if finished():
         if walking is not None:
             walking.cancel()
         hero.image = idle
         hero.visible = True
+        stage.pause()
         return
-    direction = 0
-    if stage.gamepads[0].left_stick[0] > 0:
-        direction += 1
-    if stage.gamepads[0].left_stick[0] < 0:
-        direction -= 1
-    hero.x = max(-365, min(1770, hero.x + direction * 220 * dt))
-    if direction > 0:
+    direction = player.left_stick[0]
+    hero.body.velocity = (direction * 220, hero.body.velocity[1])
+    if hero.x < -365:
+        hero.x = -365
+    elif hero.x > 1770:
+        hero.x = 1770
+    if direction > 0 and hero.direction != 90:
         hero.direction = 90
-    elif direction < 0:
+    elif direction < 0 and hero.direction != 270:
         hero.direction = 270
-    if direction and grounded():
+    if direction and hero.body.grounded:
         if walking is None or walking.done:
-            walking = hero.act(Script(Sprite).repeat().images(walking_frames, fps=9))
+            walking = hero.act(hero.repeat().images(walking_frames, fps=9))
     else:
         if walking is not None:
             walking.cancel()
         hero.image = idle
 
-    previous_feet = hero.y
-    vertical_speed -= 1500 * dt
-    hero.y += vertical_speed * dt
-    # Land only while falling across a platform's top. This lets us jump through below.
-    surfaces = [ground.bounds]
-    for platform in platforms:
-        surfaces.append(platform.bounds)
-    landings: list[float] = []
-    for surface in surfaces:
-        crossed_top = previous_feet >= surface.top >= hero.y
-        overlaps_sideways = hero.bounds.right > surface.left and hero.bounds.left < surface.right
-        if vertical_speed <= 0 and crossed_top and overlaps_sideways:
-            landings.append(surface.top)
-    if landings:
-        hero.y = max(landings)
-        vertical_speed = 0
     # Blink during the safe moment after a hit. % 2 alternates between zero and one.
     hero.visible = stage.time >= protected_until or int(stage.time * 12) % 2 == 0
-    if stage.gamepads[0].is_down(GamepadButton.X) and stage.time >= next_shot:
-        fire(hero, True)
-        next_shot = stage.time + 0.16
-
     # A copy lets us remove bullets without skipping the next one in the list.
     for shot in shots.copy():
         sprite, speed, friendly = shot
@@ -298,8 +301,6 @@ def update(event: Event[Stage, float]) -> None:
         if hero.touching(enemy):
             hurt()
             break
-    stage.camera = (max(0, min(1400, hero.x - 60)), 0)
-    backdrop.offset = (-stage.camera[0] * 0.22, 0)
 
 
 @stage.on_draw

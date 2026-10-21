@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from plocks import (
+    Bounds,
     Canvas,
     Click,
     Event,
@@ -13,7 +14,6 @@ from plocks import (
     MouseButton,
     Sprite,
     Stage,
-    TiledBackground,
     TileMap,
 )
 
@@ -21,26 +21,26 @@ from plocks import (
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=800, height=450, background="#9bc7d2")
 
-# Keys feed logical controls; gamepads and remote players work too.
-stage.gamepads[0].map_left_stick(left=Key.LEFT, right=Key.RIGHT, up=Key.UP, down=Key.DOWN)
-stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
-stage.gamepads[0].map_key(Key.ONE, GamepadButton.L)
-stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
-stage.gamepads[0].map_key(Key.THREE, GamepadButton.X)
-stage.gamepads[0].map_key(Key.TWO, GamepadButton.R)
-# Smaller layer numbers go behind bigger ones: sky, mountains, hills, then tiles.
-clouds = TiledBackground(assets / "clouds.png", layer=-30, offset=(0, 0))
-mountains = TiledBackground(assets / "mountains.png", layer=-20)
-hills = TiledBackground(assets / "hills.png", layer=-10)
-for background in (clouds, mountains, hills):
+# Add this game's controls to player one.
+player = stage.gamepads[0]
+player.map_left_stick(left=Key.LEFT, right=Key.RIGHT)
+player.map_key(Key.ONE, GamepadButton.L)
+player.map_key(Key.THREE, GamepadButton.X)
+player.map_key(Key.TWO, GamepadButton.R)
+# Smaller layers go behind. Distant scenery scrolls less: this is parallax.
+for picture, layer, factor in (("clouds", -30, 0.1), ("mountains", -20, 0.3), ("hills", -10, 0.6)):
+    background = TileMap(
+        ["BBBB"],
+        {"B": assets / f"{picture}.png"},
+        tile_size=(512, 450),
+        x=-400,
+        y=225,
+        layer=layer,
+        parallax=(factor, 0),
+    )
     stage.add(background)
 # Each letter paints one tile. Dots leave empty space above the ground.
-rows: list[str] = []
-for _ in range(10):
-    rows.append("." * 70)
-rows.append("G" * 70)
-rows.append("D" * 70)
-rows.append("S" * 70)
+rows = ["." * 70] * 10 + ["G" * 70, "D" * 70, "S" * 70]
 world = TileMap(
     rows,
     {"G": assets / "grass.png", "D": assets / "dirt.png", "S": assets / "stone.png"},
@@ -60,28 +60,30 @@ leaves = TileMap(
     layer=10,
 )
 stage.add(leaves)
-# A spritesheet is several pictures in one file. Pick its first 32 × 40 frame.
+# An image grid holds equal-sized pictures. Pick its first 32 × 40 frame.
 sheet = ImageGrid(assets / "hero_sheet.png", frame_size=(32, 40))
 hero = Sprite(sheet.frame(row=0, column=0), x=-260, y=-76, layer=5)
 stage.add(hero)
+# A one-window-tall rectangle keeps the view scrolling sideways only.
+stage.follow(hero, bounds=Bounds(world.bounds.left, -225, world.bounds.right, 225))
 selected = "G"
 
 
 # These @ lines connect functions to keys. selected remembers our paint choice.
-@stage.on_button_down(GamepadButton.L, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.L, gamepad=player)
 def grass(event: Event[Stage, GamepadPress]) -> None:
     # global means: change selected at the top of this file, not a new local variable.
     global selected
     selected = "G"
 
 
-@stage.on_button_down(GamepadButton.R, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.R, gamepad=player)
 def dirt(event: Event[Stage, GamepadPress]) -> None:
     global selected
     selected = "D"
 
 
-@stage.on_button_down(GamepadButton.X, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.X, gamepad=player)
 def stone(event: Event[Stage, GamepadPress]) -> None:
     global selected
     selected = "S"
@@ -105,18 +107,8 @@ def edit(event: Event[Stage, Click]) -> None:
 @stage.on_update
 def update(event: Event[Stage, float]) -> None:
     dt = event.data
-    direction = 0
-    if stage.gamepads[0].left_stick[0] > 0:
-        direction += 1
-    if stage.gamepads[0].left_stick[0] < 0:
-        direction -= 1
+    direction = player.left_stick[0]
     hero.x = max(-360, min(1780, hero.x + direction * 220 * dt))
-    stage.camera = (max(0, min(1440, hero.x)), 0)
-    # Faraway scenery moves less than nearby scenery. This trick is called parallax.
-    camera_x = stage.camera[0]
-    clouds.offset = (-camera_x * 0.1, 0)
-    mountains.offset = (-camera_x * 0.3, 0)
-    hills.offset = (-camera_x * 0.6, 0)
 
 
 @stage.on_draw

@@ -1,7 +1,5 @@
 """Swing Lab: a physical rope, one ball, and a safe landing."""
 
-from pathlib import Path
-
 from plocks import (
     BodyType,
     Button,
@@ -17,12 +15,13 @@ from plocks import (
     Stage,
 )
 
-assets = Path(__file__).resolve().parent / "assets"
+# Keep the camera fixed so the whole swing and its controls stay in view.
 stage = Stage(width=640, height=400, physics=True, background="#172536")
+player = stage.gamepads[0]
 stage.physics.gravity = (0, -500)
-stage.gamepads[0].map_key(Key.R, GamepadButton.B)
-ball = Sprite(Image(assets / "ball.png").resized(32, 32), x=80, y=-20)
-floor = Sprite(Image(assets / "beam.png").resized(620, 20), y=-170, body_type=BodyType.STATIC)
+player.map_key(Key.R, GamepadButton.B)
+ball = Sprite(Image.circle(16, color="gold", outline="orange", outline_width=2), x=80, y=-20)
+floor = Sprite(Image.rectangle(620, 20, color="steelblue"), y=-170, body_type=BodyType.STATIC)
 stage.add(ball)
 stage.add(floor)
 ball.body.shape = Circle(16)
@@ -33,7 +32,7 @@ stage.add(hint)
 stage.add(cut)
 
 
-@stage.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.A, gamepad=player)
 def release(event: Event[Stage, GamepadPress]) -> None:
     rope.disconnect()
 
@@ -44,7 +43,7 @@ def click_cut(event: Event[Button, None]) -> None:
     stage.focus(None)
 
 
-@stage.on_button_down(GamepadButton.B, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.B, gamepad=player)
 def reset(event: Event[Stage, GamepadPress]) -> None:
     global rope
     # Remove the old link before moving the ball back to its starting place.

@@ -9,6 +9,7 @@
 [Download Dino Dash](../dino-run/assets.md), unzip it, and open `03_jump.py`.
 Run `python 03_jump.py`. Let the dinosaur land, then press Space.
 
+`Stage()` leaves physics off: characters stay where you put them.
 `Stage(physics=True)` turns on **physics**: gravity pulls things down, and solid
 ground holds them up. `dino.body` lets you change how the dinosaur's body behaves.
 

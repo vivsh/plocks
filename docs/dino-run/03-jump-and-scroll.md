@@ -37,7 +37,11 @@ A TileMap's `x, y` mark its **top-left corner**; y decreases down the rows.
 
 A `TiledBackground` repeats a picture behind the game. Changing its `offset`
 scrolls the pattern. The dinosaur stays near the left; the scenery travels past.
-In the final game clouds scroll slowly and obstacles move quickly, giving depth.
+The complete game takes the next step: the dinosaur runs forwards and
+`stage.follow(...)` moves the camera. World tiles and obstacles stay in place;
+you do not need to move them yourself. `extend_ground()` adds fixed floor sections
+ahead and removes old ones behind. The decorative background scrolls more slowly
+for depth.
 
 **Make it yours:** change gravity with `stage.physics.gravity = (0, -700)` after
 creating the stage. Lower gravity gives floatier jumps.

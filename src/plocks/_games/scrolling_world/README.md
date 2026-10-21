@@ -19,8 +19,9 @@ Open that new folder and run `python main.py` there. Keep the `assets` folder.
 ## What you'll learn
 
 - **Tilemaps and layers:** A grid builds the ground; another puts plants in front.
-- **Camera:** The window follows the explorer through a bigger world.
-- **Parallax:** Distant clouds move less than nearby hills, making the world feel deep.
+- **Camera:** `stage.follow` follows the explorer and stops at the world's edges.
+- **Parallax:** Each background tile map has a scrolling factor. Clouds move
+  less than nearby hills; Plocks does the scrolling for us.
 
 The explorer is a guide for painting. There is no falling or tile collision in this game.
 

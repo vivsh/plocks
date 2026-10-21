@@ -16,8 +16,8 @@ cd my-swing_lab
 python main.py
 ```
 
-**Python ideas:** physical ropes, fixed anchors, gravity, collision shapes, drawing and buttons. Pictures are in `assets/` beside `main.py`.
+**Python ideas:** physical ropes, fixed anchors, gravity, collision shapes, drawing and buttons. The ball and floor use `Image.circle` and `Image.rectangle`; no picture files are needed.
 
-**Try this:** change one speed, picture or distance. Save, run, and see what changed!
+**Try this:** change the ball's color or the rope's length. Save, run, and see what changed!
 
 [More activities](../../../../docs/activities/index.md)

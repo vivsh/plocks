@@ -4,6 +4,7 @@ from pathlib import Path
 
 from plocks import (
     Action,
+    Anchor,
     Bounds,
     Canvas,
     Ease,
@@ -12,21 +13,21 @@ from plocks import (
     GamepadPress,
     Image,
     Key,
-    Script,
     Sprite,
     Stage,
 )
 
 # Find assets beside this script, even when running from another folder.
 assets = Path(__file__).resolve().parent / "assets"
+# Keep the camera fixed. Our perspective code makes distant objects look smaller.
 stage = Stage(width=800, height=450, background="#234b43")
 
-# Keys feed logical controls; gamepads and remote players work too.
-stage.gamepads[0].map_key(Key.DOWN, GamepadButton.DOWN)
-stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
-stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
-stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
-stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
+# Player one already has Space for jumping; map extra controls here.
+player = stage.gamepads[0]
+player.map_key(Key.DOWN, GamepadButton.DOWN)
+player.map_key(Key.LEFT, GamepadButton.LEFT)
+player.map_key(Key.R, GamepadButton.SELECT)
+player.map_key(Key.RIGHT, GamepadButton.RIGHT)
 # A dictionary lets us choose a picture by its name.
 roads = {
     "straight": Image(assets / "road_straight.png"),
@@ -37,20 +38,20 @@ road = Sprite(roads["straight"], layer=-1000)
 stage.add(road)
 # The anchor is at the feet, so changing pictures keeps the runner on the path.
 running = (
-    Image(assets / "run1.png", anchor=(18, 48)),
-    Image(assets / "run2.png", anchor=(18, 48)),
+    Image(assets / "run1.png", anchor=Anchor.BOTTOM_CENTER),
+    Image(assets / "run2.png", anchor=Anchor.BOTTOM_CENTER),
 )
-jumping = Image(assets / "jump.png", anchor=(18, 48))
-sliding = Image(assets / "slide.png", anchor=(30, 28))
+jumping = Image(assets / "jump.png", anchor=Anchor.BOTTOM_CENTER)
+sliding = Image(assets / "slide.png", anchor=Anchor.BOTTOM_CENTER)
 hero = Sprite(running[0], y=-110, scale=1.6, layer=10)
 stage.add(hero)
 # A sequence is a script: do these steps in order while the rest of the game runs.
-jump = Script(Sprite)
+jump = hero.sequence()
 jump.set_image(jumping)
 jump.glide_by(y=85, seconds=0.35, easing=Ease.OUT)
 jump.glide_by(y=-85, seconds=0.35, easing=Ease.IN)
 jump.set_image(running[0])
-slide = Script(Sprite)
+slide = hero.sequence()
 slide.set_image(sliding)
 slide.wait(0.8)
 slide.set_image(running[0])
@@ -74,11 +75,11 @@ course = (
     (1780, 0, "coin"),
 )
 images = {
-    "coin": Image(assets / "coin.png", anchor=(10, 24)),
-    "hurdle": Image(assets / "hurdle.png", anchor=(230, 40)),
-    "arch": Image(assets / "arch.png", anchor=(240, 105)),
-    "left": Image(assets / "left.png", anchor=(65, 96)),
-    "right": Image(assets / "right.png", anchor=(65, 96)),
+    "coin": Image(assets / "coin.png", anchor=Anchor.BOTTOM_CENTER),
+    "hurdle": Image(assets / "hurdle.png", anchor=Anchor.BOTTOM_CENTER),
+    "arch": Image(assets / "arch.png", anchor=Anchor.BOTTOM_CENTER),
+    "left": Image(assets / "left.png", anchor=Anchor.BOTTOM_CENTER),
+    "right": Image(assets / "right.png", anchor=Anchor.BOTTOM_CENTER),
 }
 # Each live item stores (sprite, distance along the trail, lane, kind).
 objects: list[tuple[Sprite, int, int, str]] = []
@@ -128,7 +129,7 @@ def reset() -> None:
 
 
 # @ connects the function to a key. A held key does not start another jump.
-@hero.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+@hero.on_button_down(GamepadButton.A, gamepad=player)
 def start_jump(event: Event[Sprite, GamepadPress]) -> None:
     # global changes the game's action; .done tells us when it has finished.
     global maneuver
@@ -136,7 +137,7 @@ def start_jump(event: Event[Sprite, GamepadPress]) -> None:
         maneuver = hero.act(jump)
 
 
-@hero.on_button_down(GamepadButton.DOWN, gamepad=stage.gamepads[0])
+@hero.on_button_down(GamepadButton.DOWN, gamepad=player)
 def start_slide(event: Event[Sprite, GamepadPress]) -> None:
     # global changes the game's action; .done tells us when it has finished.
     global maneuver
@@ -168,12 +169,12 @@ def steer(direction: int) -> None:
     hero.x = max(-145, min(145, hero.x + direction * 145))
 
 
-@hero.on_button_down(GamepadButton.LEFT, gamepad=stage.gamepads[0])
+@hero.on_button_down(GamepadButton.LEFT, gamepad=player)
 def left(event: Event[Sprite, GamepadPress]) -> None:
     steer(-1)
 
 
-@hero.on_button_down(GamepadButton.RIGHT, gamepad=stage.gamepads[0])
+@hero.on_button_down(GamepadButton.RIGHT, gamepad=player)
 def right(event: Event[Sprite, GamepadPress]) -> None:
     steer(1)
 
@@ -252,7 +253,7 @@ def draw(canvas: Canvas) -> None:
         canvas.text("Press R to run again", (-150, 25), size=22, color="#ffe19a")
 
 
-@stage.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
 def restart(event: Event[Stage, GamepadPress]) -> None:
     reset()
 

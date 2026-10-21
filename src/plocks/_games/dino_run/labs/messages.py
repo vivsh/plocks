@@ -55,13 +55,10 @@ def turbo(event: Event[Sprite[PlayerMemory], GamepadPress]) -> None:
 
 
 @one.on_update
-def move_one(event: Event[Sprite[PlayerMemory], float]) -> None:
-    event.target.x += first.left_stick[0] * 100 * event.data
-
-
 @two.on_update
-def move_two(event: Event[Sprite[PlayerMemory], float]) -> None:
-    event.target.x += second.left_stick[0] * 100 * event.data
+def move(event: Event[Sprite[PlayerMemory], float]) -> None:
+    gamepad = first if event.target is one else second
+    event.target.x += gamepad.left_stick[0] * 100 * event.data
 
 
 @stage.on_draw

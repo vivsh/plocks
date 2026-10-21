@@ -78,7 +78,9 @@ def ticks(stage: Stage, count: int) -> None:
 def press(stage: Stage, key: Key) -> None:
     """Dispatch a key transition and leave it held until explicitly released."""
     stage._held_keys.add(key)
-    stage._pending.append(GamepadPress(stage.gamepads[0], stage.gamepads[0]._key_buttons[key]))
+    button = stage.gamepads[0]._key_buttons.get(key)
+    if button is not None:
+        stage._pending.append(GamepadPress(stage.gamepads[0], button))
     ticks(stage, 1)
 
 
@@ -113,7 +115,7 @@ def test_games_render_and_close_from_another_folder(
 
 
 def test_collection_is_focused_games_and_workshop_without_artwork_code() -> None:
-    """The teaching surface stays small, self-contained and free from image generation."""
+    """The teaching surface uses ready-made art or ordinary Image shapes, never imaging backends."""
     assert {
         p.name
         for p in (ROOT / "src/plocks/_games").iterdir()
@@ -141,17 +143,20 @@ def test_mario_jump_coin_stomp_gap_and_restart(load_game: Callable[[str], Stage]
     """Jumping lands; collecting and stomping remove actors; falling and restart reset state."""
     stage = load_game("mario")
     hero = cast(Sprite, state(stage)["hero"])
+    ticks(stage, 20)
     press(stage, Key.SPACE)
     ticks(stage, 10)
-    assert hero.y > -80
+    assert hero.bounds.bottom > -80
     ticks(stage, 50)
-    assert hero.y == -128 and state(stage)["on_ground"]
+    # Native contacts can settle within half a logical pixel of the tile edge.
+    assert hero.bounds.bottom == pytest.approx(-128, abs=0.5) and hero.body.grounded
     coin = cast(list[Sprite], state(stage)["coins"])[0]
     hero.position = coin.position
     ticks(stage, 1)
     assert state(stage)["score"] == 1 and coin not in stage.objects
     enemy = cast(list[Sprite], state(stage)["enemies"])[0]
-    hero.position = (enemy.x, enemy.bounds.top + 1)
+    hero.position = (enemy.x, enemy.bounds.top + hero.image.height / 2 + 1)
+    hero.body.velocity = (0, -10)
     ticks(stage, 12)
     assert enemy not in stage.objects and state(stage)["outcome"] == "playing"
     hero.position = (425, -310)
@@ -159,8 +164,8 @@ def test_mario_jump_coin_stomp_gap_and_restart(load_game: Callable[[str], Stage]
     assert state(stage)["outcome"] == "Mind the gap!"
     press(stage, Key.R)
     assert state(stage)["score"] == 0 and len(cast(list[Sprite], state(stage)["coins"])) == 9
-    hero.position = (1555, -128)
-    ticks(stage, 1)
+    hero.position = (1555, -108)
+    ticks(stage, 2)
     assert state(stage)["outcome"] == "You reached the flag!"
 
 
@@ -168,15 +173,22 @@ def test_mario_ceiling_and_wall_stop_motion(load_game: Callable[[str], Stage]) -
     """Tile geometry stops upward and horizontal movement without allowing an air jump."""
     stage = load_game("mario")
     hero = cast(Sprite, state(stage)["hero"])
-    hero.position = (20, -128)
+    hero.position = (20, -108)
+    ticks(stage, 20)
     press(stage, Key.SPACE)
     ticks(stage, 8)
-    assert hero.bounds.top <= -64
-    assert cast(float, state(stage)["speed_y"]) <= 0
-    hero.position = (-32, -44)
+    assert hero.bounds.top <= -64 + 0.3
+    assert hero.body.velocity[1] <= 1
+    # Extend the ledge into a pillar, so falling below it cannot bypass the wall.
+    world = cast(TileMap, state(stage)["world"])
+    world.set_tile(row=9, column=12, tile="S")
+    world.set_tile(row=10, column=12, tile="S")
+    hero.position = (-32, -108)
+    hero.body.velocity = (0, 0)
     press(stage, Key.RIGHT)
-    ticks(stage, 3)
-    assert hero.bounds.right <= -16
+    ticks(stage, 60)
+    assert hero.bounds.right <= -16 + 0.5
+    assert abs(hero.body.velocity[0]) < 1
 
 
 def test_platformer_ground_jump_checkpoint_and_respawn(load_game: Callable[[str], Stage]) -> None:
@@ -271,9 +283,29 @@ def test_world_camera_parallax_and_editing(load_game: Callable[[str], Stage]) ->
     hero.x = 400
     ticks(stage, 1)
     assert stage.camera == (400, 0)
-    backgrounds = [obj for obj in stage.objects if isinstance(obj, TiledBackground)]
-    assert [obj.offset[0] for obj in backgrounds] == [-40, -120, -240]
-    world = next(obj for obj in stage.objects if isinstance(obj, TileMap))
+    backgrounds = [obj for obj in stage.objects if isinstance(obj, TileMap) and obj.layer < 0]
+    assert [obj.parallax[0] for obj in backgrounds] == [0.1, 0.3, 0.6]
+    world = cast(TileMap, state(stage)["world"])
+    # Compare the new automatic layers with the old independent background renderer.
+    stage._target = pygame.display.set_mode((stage.width, stage.height))
+    frame(stage)
+    automatic = pygame.image.tobytes(stage._target, "RGBA")
+    references = []
+    for background in backgrounds:
+        background.visible = False
+        reference = TiledBackground(
+            background.palette["B"],
+            layer=background.layer,
+            offset=(-400 * background.parallax[0], 0),
+        )
+        stage.add(reference)
+        references.append(reference)
+    frame(stage)
+    assert pygame.image.tobytes(stage._target, "RGBA") == automatic
+    for reference in references:
+        stage.remove(reference)
+    for background in backgrounds:
+        background.visible = True
     press(stage, Key.THREE)
     stage._pending.append(((0, 0), MouseButton.LEFT))
     ticks(stage, 1)
@@ -465,3 +497,126 @@ def test_importing_example_prepares_game_without_starting(
     finally:
         close(stage)
     assert not stage.objects and not stage._actions and stage._target is None
+
+
+@pytest.mark.parametrize("name,floor", (("mario", -128), ("jungle_run", -150)))
+def test_physical_heroes_can_turn_left_then_jump(
+    name: str, floor: float, load_game: Callable[[str], Stage]
+) -> None:
+    """Mirroring a centered physical hero leaves its feet and landing collider aligned."""
+    stage = load_game(name)
+    hero = cast(Sprite, state(stage)["hero"])
+    ticks(stage, 20)
+    press(stage, Key.LEFT)
+    ticks(stage, 15)
+    assert hero.direction == 270 and hero.body.grounded
+    stage._held_keys.clear()
+    ticks(stage, 30)  # Let contact correction settle after crossing tile seams.
+    assert hero.bounds.bottom == pytest.approx(floor, abs=0.5)
+    press(stage, Key.SPACE)
+    ticks(stage, 10)
+    assert hero.bounds.bottom > floor + 30 and not hero.body.grounded
+
+
+def test_jungle_jump_through_platform_and_land(load_game: Callable[[str], Stage]) -> None:
+    """One-way platforms allow an upward pass, then support the hero's feet on descent."""
+    stage = load_game("jungle_run")
+    hero = cast(Sprite, state(stage)["hero"])
+    hero.position = (180, -120)
+    hero.body.velocity = (0, 0)
+    ticks(stage, 10)
+    assert hero.body.grounded
+    press(stage, Key.SPACE)
+    highest_feet = hero.bounds.bottom
+    for _ in range(75):
+        ticks(stage, 1)
+        highest_feet = max(highest_feet, hero.bounds.bottom)
+    assert highest_feet > -40
+    assert hero.body.grounded and hero.bounds.bottom == pytest.approx(-86, abs=0.5)
+
+
+def test_jungle_turbo_pause_release_and_game_over_restart(
+    load_game: Callable[[str], Stage],
+) -> None:
+    """Held fire repeats without a game timer, pause suppresses shots, and restart clears work."""
+    stage = load_game("jungle_run")
+    namespace = stage._updates[0][1].__globals__
+    ticks(stage, 20)
+    press(stage, Key.X)
+    ticks(stage, 25)
+    shots = cast(list[tuple[Sprite, float, bool]], namespace["shots"])
+    before = {sprite for sprite, _, friendly in shots if friendly}
+    assert 3 <= len(before) <= 4
+    stage._held_keys.clear()
+    ticks(stage, 10)
+    assert all(sprite in before for sprite, _, friendly in shots if friendly)
+    press(stage, Key.P)
+    assert stage.paused
+    frozen = stage.time
+    count = len(shots)
+    press(stage, Key.X)
+    ticks(stage, 30)
+    assert stage.time == frozen and len(shots) == count
+    stage._held_keys.clear()
+    press(stage, Key.P)
+    ticks(stage, 2)
+    assert not stage.paused
+    namespace["health"] = 0
+    ticks(stage, 1)
+    assert stage.paused
+    press(stage, Key.R)
+    assert not stage.paused and namespace["health"] == 3
+    assert len(cast(list[Sprite], namespace["enemies"])) == 6 and not shots
+
+
+def test_dash_restart_cancels_both_halves_of_jump(load_game: Callable[[str], Stage]) -> None:
+    """Busy presses do not stack jumps and restarting never leaves a late downward action."""
+    stage = load_game("geometry_dash")
+    hero = cast(Sprite, state(stage)["hero"])
+    press(stage, Key.SPACE)
+    ticks(stage, 8)
+    assert hero.y > -100
+    actions = len(stage._actions)
+    press(stage, Key.SPACE)
+    assert len(stage._actions) <= actions
+    press(stage, Key.R)
+    ticks(stage, 45)
+    assert hero.y == -124 and state(stage)["outcome"] == "playing"
+    assert not stage._actions
+
+
+def test_dash_following_camera_keeps_world_fixed_and_survives_restart(
+    load_game: Callable[[str], Stage],
+) -> None:
+    """Following scrolls a fixed course, stays level through a scripted jump, and survives reset."""
+    stage = load_game("geometry_dash")
+    values = state(stage)
+    hero = cast(Sprite, values["hero"])
+    ground = cast(TileMap, values["ground"])
+    spikes = cast(list[Sprite], values["spikes"])
+    fixed_positions = [(spike.x, spike.y) for spike in spikes]
+    ground_position = (ground.x, ground.y)
+    assert stage._physics is None
+    ticks(stage, 35)
+    assert stage.camera[0] == pytest.approx(hero.x + 120)
+    assert stage.camera[1] == 0
+    screen_x = stage.to_screen(spikes[0].position)[0]
+    press(stage, Key.SPACE)
+    ticks(stage, 10)
+    assert hero.y > -124 and stage.camera[1] == 0
+    assert stage.to_screen(hero.position)[0] == pytest.approx(280)
+    assert stage.to_screen(spikes[0].position)[0] < screen_x
+    assert [(spike.x, spike.y) for spike in spikes] == fixed_positions
+    assert (ground.x, ground.y) == ground_position
+    press(stage, Key.R)
+    assert stage.camera == (0, 0)
+    assert hero.y == -124 and state(stage)["outcome"] == "playing"
+    ticks(stage, 40)
+    assert stage.camera[0] > 0 and stage.camera[1] == 0
+    assert stage.to_screen(hero.position)[0] == pytest.approx(280)
+    # The same follow configuration clamps to both ends of the level.
+    hero.x = 2600
+    ticks(stage, 1)
+    assert stage.world_bounds.right == ground.bounds.right
+    press(stage, Key.R)
+    assert stage.camera == (0, 0)

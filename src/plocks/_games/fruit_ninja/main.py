@@ -40,10 +40,12 @@ def crosses(start: Point, end: Point, center: Point, radius: float) -> bool:
 
 # Find assets beside this script, even when running from another folder.
 assets = Path(__file__).resolve().parent / "assets"
+# Keep the camera fixed: fruit and mouse positions share the same coordinates.
 stage = Stage(width=800, height=450, background="#192b40")
 
-# Keys feed logical controls; gamepads and remote players work too.
-stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
+# Add this game's controls to player one.
+player = stage.gamepads[0]
+player.map_key(Key.R, GamepadButton.SELECT)
 names = ("apple", "orange", "melon", "bomb")
 # Dictionaries let us look up the whole fruit and its two cut pieces by name.
 images: dict[str, Image] = {}
@@ -84,7 +86,7 @@ def throw() -> None:
     flying.append((fruit, speed_x, speed_y, spin, name))
 
 
-@stage.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
 def restart(event: Event[Stage, GamepadPress]) -> None:
     global score, missed, over, thrown, next_throw, previous
     for item in flying:

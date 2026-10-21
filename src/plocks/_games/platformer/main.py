@@ -4,6 +4,7 @@ from pathlib import Path
 
 from plocks import (
     BodyType,
+    Bounds,
     Box,
     Canvas,
     Event,
@@ -11,7 +12,6 @@ from plocks import (
     GamepadPress,
     Image,
     Key,
-    Script,
     Sprite,
     Stage,
     TileMap,
@@ -21,12 +21,10 @@ from plocks import (
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=800, height=450, physics=True, background="#22364d")
 
-# Keys feed logical controls; gamepads and remote players work too.
-stage.gamepads[0].map_left_stick(left=Key.LEFT, right=Key.RIGHT, up=Key.UP, down=Key.DOWN)
-stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
-stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
-stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
-stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
+# Player one already has Space for jumping. Add arrows and R for this game.
+player = stage.gamepads[0]
+player.map_left_stick(left=Key.LEFT, right=Key.RIGHT)
+player.map_key(Key.R, GamepadButton.SELECT)
 # G means grass; a dot leaves a gap. Each letter makes one 32-pixel tile.
 ground = TileMap(
     ["GGGGGGGG.................GGGGGGGGGGGG"],
@@ -45,7 +43,7 @@ for x, y in ((-90, -90), (180, 30), (380, -40)):
 # Jump through the lift from below, then land on its top.
 lift = Sprite(assets / "platform.png", x=45, y=-110, body_type=BodyType.KINEMATIC, one_way=True)
 stage.add(lift)
-lift_trip = Script(Sprite).repeat()
+lift_trip = lift.repeat()
 lift_trip.glide_to(y=65, seconds=2)
 lift_trip.wait(0.5)
 lift_trip.glide_to(y=-110, seconds=2)
@@ -62,6 +60,8 @@ checkpoint = Sprite(
 goal = Sprite(Image(assets / "flag.png", anchor=(4, 100)), x=650, y=-150, body_type=BodyType.NONE)
 stage.add(checkpoint)
 stage.add(goal)
+# Follow sideways, keeping the window inside this stretch of the level.
+stage.follow(hero, offset=(-20, 0), bounds=Bounds(-400, -225, 750, 225))
 # These variables remember our progress. spawn is where we return after a fall.
 spawn = (-300.0, -125.0)
 saved = False
@@ -76,13 +76,13 @@ def respawn() -> None:
 
 
 # @ connects this function to a key press. grounded prevents jumping in midair.
-@hero.on_button_down(GamepadButton.A, gamepad=stage.gamepads[0])
+@hero.on_button_down(GamepadButton.A, gamepad=player)
 def jump(event: Event[Sprite, GamepadPress]) -> None:
     if hero.body.grounded and not won:
         hero.body.impulse(y=440)
 
 
-@stage.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
 def restart(event: Event[Stage, GamepadPress]) -> None:
     global spawn, saved, won, falls
     # global lets this function change the game variables at the top of this file.
@@ -99,12 +99,7 @@ def restart(event: Event[Stage, GamepadPress]) -> None:
 def update(event: Event[Stage, float]) -> None:
     global spawn, saved, won, falls
     # Change sideways speed, but keep the up/down speed that physics calculated.
-    speed_x = 0
-    if not won:
-        if stage.gamepads[0].left_stick[0] > 0:
-            speed_x += 175
-        if stage.gamepads[0].left_stick[0] < 0:
-            speed_x -= 175
+    speed_x = player.left_stick[0] * 175 if not won else 0
     vertical_speed = hero.body.velocity[1]
     hero.body.velocity = (speed_x, vertical_speed)
     if not saved and hero.touching(checkpoint):
@@ -116,8 +111,6 @@ def update(event: Event[Stage, float]) -> None:
         respawn()
     if hero.x > 620 and hero.body.grounded:
         won = True
-    # Follow the hero, but stop the camera at the ends of the level.
-    stage.camera = (max(0, min(350, hero.x - 20)), 0)
 
 
 # Drawing adds words on top of the game. It does not move the characters.

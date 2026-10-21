@@ -17,11 +17,11 @@ from plocks import (
 assets = Path(__file__).resolve().parents[1] / "assets"
 stage = Stage(background="#fff0cc")
 
-# Keys feed logical controls; gamepads and remote players work too.
-stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
-stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
-stage.gamepads[0].map_key(Key.SPACE, GamepadButton.A)
-stage.gamepads[0].map_key(Key.UP, GamepadButton.UP)
+# Player one already has Space for jumping; map extra controls here.
+player = stage.gamepads[0]
+player.map_key(Key.H, GamepadButton.Y)
+player.map_key(Key.R, GamepadButton.SELECT)
+player.map_key(Key.UP, GamepadButton.UP)
 hero = Sprite(Image(assets / "dinosaur.png").resized(width=72, height=72), x=-120)
 stage.add(hero)
 trip = hero.sequence().glide_to(x=120, seconds=1, easing=Ease.IN_OUT)
@@ -32,12 +32,12 @@ no = hero.sequence().say("Try holding Up next time.", seconds=1)
 outing = (
     hero.sequence()
     .call(together)
-    .when(GamepadDown(GamepadButton.UP, gamepad=stage.gamepads[0]), then=yes, either=no)
+    .when(GamepadDown(GamepadButton.UP, gamepad=player), then=yes, either=no)
 )
-hero.on_button_down(GamepadButton.A, outing, gamepad=stage.gamepads[0])
+hero.on_button_down(GamepadButton.A, outing, gamepad=player)
 
 
-@hero.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+@hero.on_button_down(GamepadButton.SELECT, gamepad=player)
 def return_home(event: Event[Sprite, GamepadPress]) -> None:
     # stop cancels this character's work. Properties change immediately.
     event.target.stop()
@@ -45,7 +45,7 @@ def return_home(event: Event[Sprite, GamepadPress]) -> None:
     event.target.clear_bubble()
 
 
-@hero.on_button_down(GamepadButton.Y, gamepad=stage.gamepads[0])
+@hero.on_button_down(GamepadButton.Y, gamepad=player)
 def hop(event: Event[Sprite, GamepadPress]) -> None:
     # after connects commands without a separate script or timer.
     up = event.target.glide_by(y=80, seconds=0.3, easing=Ease.OUT)

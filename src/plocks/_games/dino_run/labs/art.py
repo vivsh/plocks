@@ -7,7 +7,7 @@ from plocks import HumanJoint, Image, Joint, Puppet, Skeleton, Sprite, Stage
 assets = Path(__file__).resolve().parents[1] / "assets"
 stage = Stage(width=800, height=450, background="#24384b")
 idle = Image(assets / "dinosaur.png").resized(width=72, height=72)
-# Transforming a Image makes another image; idle is still unchanged.
+# Transforming an Image makes another image; idle is still unchanged.
 hero = Sprite(idle, x=-260)
 stage.add(hero)
 flip = idle.flipped(horizontal=True)

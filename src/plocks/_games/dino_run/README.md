@@ -28,3 +28,8 @@ change the `200` score that unlocks birds. Try one change at a time.
 
 The best score lasts for this window's session. Physics handles falling and landing;
 scripts handle spawn timing. No Pillow code is needed.
+
+The dinosaur runs forwards and `stage.follow(...)` follows it. Obstacles use
+`BodyType.STATIC`; floor tiles and coins stay in world coordinates. The camera
+makes them scroll past! `extend_ground()` adds floor ahead and removes sections
+behind, so a long run does not keep every old tile.

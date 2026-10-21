@@ -18,9 +18,12 @@ Open that new folder and run `python main.py` there. Keep the `assets` folder.
 
 - **Tilemaps:** `rows` builds the world: G is grass, D is dirt, S is stone, . is empty.
 - **Lists:** Collected coins leave the `coins` list.
+- **Physics:** A force pushes the hero; an impulse starts a jump.
+- **Camera:** `stage.follow` keeps the hero in view.
 - **Conditions:** Land on an enemy to bounce; touch its side and the run ends.
 
-Solid tiles stop you from the side, above and below. Read the short comments in `update`.
+Solid tiles stop you from the side, above and below. Plocks handles gravity
+and landing; `body.grounded` tells us when another jump is allowed.
 
 ## Make it yours
 

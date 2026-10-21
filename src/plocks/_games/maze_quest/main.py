@@ -30,7 +30,8 @@ class Game:
 # Pictures stay beside this file, so your copied game runs from any folder.
 assets = Path(__file__).resolve().parent / "assets"
 stage = Stage(width=640, height=400, background="#172536", state=Game)
-stage.gamepads[0].map_key(Key.P, GamepadButton.START)
+player = stage.gamepads[0]
+player.map_key(Key.P, GamepadButton.START)
 world = TileMap(
     [
         "#################",
@@ -129,7 +130,7 @@ def choose_route(event: Event[Stage, Click]) -> None:
         hero.follow_path(route, speed=180)
 
 
-@stage.on_button_down(GamepadButton.START, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.START, gamepad=player)
 def pause(event: Event[Stage, GamepadPress]) -> None:
     resume.text = "Continue"
     resume.visible = True

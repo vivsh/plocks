@@ -16,8 +16,8 @@ cd my-robot_workshop
 python main.py
 ```
 
-**Python ideas:** hinges, angular limits, motors, articulated parts, dataclasses and construction functions. Pictures are in `assets/` beside `main.py`.
+**Python ideas:** hinges, angular limits, motors, articulated parts, dataclasses and construction functions. Beams and wheels use shape Images. Existing pictures in `assets/` are there if you want to swap them in.
 
-**Try this:** change one speed, picture or distance. Save, run, and see what changed!
+**Try this:** change a beam's size, a wheel's color or a motor's speed. Save, run, and see what changed!
 
 [More activities](../../../../docs/activities/index.md)

@@ -117,16 +117,25 @@ Python command occupies the same thread as the game. Ordinary game files still u
 | [Robot Workshop](src/plocks/_games/robot_workshop) | Turn an arm, drive a cart and drop a chain | Hinges, springs, motors and construction functions |
 | [Dino Dash](src/plocks/_games/dino_run) | Jump cacti, duck birds and collect coins | A complete beginner course, physics, scores, restart |
 | [Sky Steps](src/plocks/_games/platformer) — start here | Jump through a lift and reach the flag | Physics, one-way platforms, repeating moves, checkpoints |
-| [Beat Blocks](src/plocks/_games/geometry_dash) | Jump over spikes | Timing, gravity, crash checks |
+| [Beat Blocks](src/plocks/_games/geometry_dash) | Jump over spikes | Shape images, linked glide actions, crash checks |
 | [Asset Workshop](src/plocks/_games/asset_workshop) | Use Tiled and Pixelorama artwork | Exported levels, animation, two-player controls |
 | [Scrolling World](src/plocks/_games/scrolling_world) | Explore and paint a world | Tile grids, layers, a following camera |
-| [Coin Quest](src/plocks/_games/mario) | Grab coins and stomp enemies | Lists, solid tiles, scoring |
+| [Coin Quest](src/plocks/_games/mario) | Grab coins and stomp enemies | Physics, a following camera, scoring |
 | [Temple Trail](src/plocks/_games/temple_run) | Jump, slide and turn corners | Movement scripts, images, perspective |
 | [Snake Run](src/plocks/_games/snake_run) | Eat apples and grow a tail | Remembering positions, size and distance |
 | [Fruit Slice](src/plocks/_games/fruit_ninja) | Swipe fruit, dodge bombs | Mouse input, randomness, swipe maths |
 | [Jungle Run](src/plocks/_games/jungle_run) | Run, jump and shoot robots | Bullets, health, several things moving together |
 
-Each `main.py` has short comments. Start small; Fruit Slice and Jungle Run are
+**The camera is your view of the world.** Scrolling games use
+[`stage.follow(...)`](docs/activities/camera.md); tiles and obstacles stay in their
+world positions. Arena games keep a fixed view. Temple Trail and Snake Run use
+perspective to look 3D. Scores and buttons stay on the screen in every view.
+Physics is **off by default**; use `Stage(physics=True)` when you want gravity and
+physical collisions.
+
+Each `main.py` has short comments and uses Plocks for timed moves, physical
+jumps and camera following. Simple balls and blocks use shape Images; characters
+keep their ready-made artwork. Start small; Fruit Slice and Jungle Run are
 stretch challenges. Run a bundled game from any folder with `plocks run NAME`.
 The older spelling `plocks run examples/NAME` works too.
 

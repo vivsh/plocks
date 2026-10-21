@@ -6,13 +6,13 @@ from plocks import Canvas, Event, GamepadButton, GamepadPress, Key, Sprite, Stag
 
 # Find assets beside this script, even when running from another folder.
 assets = Path(__file__).resolve().parent / "assets"
+# Keep the camera fixed. We draw distance by making faraway objects smaller.
 stage = Stage(width=800, height=450, background="#172d46")
 
-# Keys feed logical controls; gamepads and remote players work too.
-stage.gamepads[0].map_left_stick(left=Key.LEFT, right=Key.RIGHT, up=Key.UP, down=Key.DOWN)
-stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)
-stage.gamepads[0].map_key(Key.R, GamepadButton.SELECT)
-stage.gamepads[0].map_key(Key.RIGHT, GamepadButton.RIGHT)
+# Add this game's controls to player one.
+player = stage.gamepads[0]
+player.map_left_stick(left=Key.LEFT, right=Key.RIGHT)
+player.map_key(Key.R, GamepadButton.SELECT)
 stage.add(Sprite(assets / "track.png", layer=-1000))
 head = Sprite(assets / "snake_head.png", y=-100, scale=1.2, layer=100)
 stage.add(head)
@@ -71,11 +71,7 @@ def update(event: Event[Stage, float]) -> None:
     global distance, score, outcome
     if outcome != "playing":
         return
-    direction = 0
-    if stage.gamepads[0].left_stick[0] > 0:
-        direction += 1
-    if stage.gamepads[0].left_stick[0] < 0:
-        direction -= 1
+    direction = player.left_stick[0]
     head.x = max(-185, min(185, head.x + direction * 280 * dt))
     history.append(head.x)
     # Keep only the latest 64 positions; old ones are no longer needed.
@@ -125,7 +121,7 @@ def draw(canvas: Canvas) -> None:
         canvas.text(outcome + " Press R.", (-220, 65), size=30, color="#ffe29b")
 
 
-@stage.on_button_down(GamepadButton.SELECT, gamepad=stage.gamepads[0])
+@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
 def restart(event: Event[Stage, GamepadPress]) -> None:
     reset()
 
