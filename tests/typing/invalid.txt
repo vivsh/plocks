@@ -247,3 +247,13 @@ ImageMap("hero.png", metadata=invalid_loader)  # error
 ImageMap("hero.png", metadata=async_loader)  # error
 ImageMap("hero.png")["hero"] = hero.image  # error
 hero.image = ImageMap("hero.png")  # error
+
+# Shape factories return ordinary assets and have pixel-sized, typed inputs.
+Image.rectangle(12.5, 20)  # error
+Image.circle("12")  # error
+Image.ellipse(20, 30, color=123)  # error
+Image.triangle(20, 30, outline_width=1.5)  # error
+Image.polygon(((0, "up"), (10, 0), (0, 10)))  # error
+Image.polygon(((0, 0), (10, 0), (0, 10)), anchor="middle")  # error
+Image.circle(12, color=(0.5, 0, 0))  # error
+Image.rectangle(12, 20, outline=(255, 255))  # error

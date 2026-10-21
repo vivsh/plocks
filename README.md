@@ -19,6 +19,7 @@ hints. Start with a bundled game, change one thing, and see what happens!
 | Bring characters to life | Sprites, [images, grids, named pictures and anchors](docs/art/images.md), speech and thought bubbles, and jointed Puppets |
 | Give characters a plan | Movement scripts: glide, wait, repeat and react to events |
 | Make characters work together | Broadcasts, typed message data and clones with their own controls |
+| Make a ball or block | [Shape images](docs/art/shapes.md) with colors, outlines and anchors—no picture files needed |
 | Build a world | Tile maps, automatic camera following, parallax, and Tiled and Pixelorama artwork |
 | Jump and land | Built-in physics, moving platforms, and platforms you can jump through from below |
 | Solve a maze | [Find a route around walls](docs/activities/navigation.md), then follow it at your chosen speed |

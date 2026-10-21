@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -11,8 +12,9 @@ from warnings import warn
 import pygame
 from PIL import Image as PillowImage
 
+from . import _shapes
 from .errors import AssetError
-from .geometry import Point, _integer, _number, _point, _rotate
+from .geometry import Color, Point, _integer, _number, _point, _rotate
 
 
 class Anchor(Enum):
@@ -80,6 +82,113 @@ class Image:
             raise AssetError(f"Cannot read image {source!s}: {error}") from error
         object.__setattr__(self, "_pixels", pixels)
         object.__setattr__(self, "_anchor", _anchor(anchor, rgba.width, rgba.height))
+
+    @staticmethod
+    def rectangle(
+        width: int,
+        height: int,
+        *,
+        color: Color | None = "white",
+        outline: Color | None = None,
+        outline_width: int = 1,
+        anchor: Anchor | Point | None = None,
+    ) -> Image:
+        """Make a rectangle with positive integer pixel dimensions, without a file.
+
+        Color is the fill (white by default); None leaves it transparent. Optional
+        outline stays inside the size, with positive integer outline_width pixels.
+        Named colors and RGB/RGBA tuples work. The default anchor is CENTER.
+        Invalid values raise ValueError; wrong types raise TypeError. No window
+        is opened. Example: Sprite(Image.rectangle(80, 20, color="seagreen")).
+        """
+        pixels = _shapes.box("rectangle", width, height, color, outline, outline_width)
+        return Image(pixels, anchor=anchor)
+
+    @staticmethod
+    def circle(
+        radius: int,
+        *,
+        color: Color | None = "white",
+        outline: Color | None = None,
+        outline_width: int = 1,
+        anchor: Anchor | Point | None = None,
+    ) -> Image:
+        """Make a circle, twice the positive integer radius in pixel width/height.
+
+        Outside pixels are transparent. Color is the fill (white by default);
+        None leaves a transparent center. Optional outline stays inside, with a
+        positive integer outline_width. Named colors and RGB/RGBA tuples work.
+        Anchor defaults to CENTER. Invalid values raise ValueError; wrong types
+        raise TypeError. Example: ball = Sprite(Image.circle(16, color="gold")).
+        Physics/collision shapes are configured separately, not inferred.
+        """
+        radius = _integer(radius, "radius", minimum=1)
+        pixels = _shapes.box("ellipse", radius * 2, radius * 2, color, outline, outline_width)
+        return Image(pixels, anchor=anchor)
+
+    @staticmethod
+    def ellipse(
+        width: int,
+        height: int,
+        *,
+        color: Color | None = "white",
+        outline: Color | None = None,
+        outline_width: int = 1,
+        anchor: Anchor | Point | None = None,
+    ) -> Image:
+        """Make an oval inside positive integer pixel dimensions, without a file.
+
+        Outside pixels are transparent. Color is the fill (white by default);
+        None leaves it transparent. Optional outline stays inside the dimensions,
+        with positive integer outline_width. Named colors and RGB/RGBA tuples
+        work; anchor defaults to CENTER. Invalid values raise ValueError; wrong
+        types raise TypeError. Example: Image.ellipse(48, 24, color="skyblue").
+        """
+        pixels = _shapes.box("ellipse", width, height, color, outline, outline_width)
+        return Image(pixels, anchor=anchor)
+
+    @staticmethod
+    def triangle(
+        width: int,
+        height: int,
+        *,
+        color: Color | None = "white",
+        outline: Color | None = None,
+        outline_width: int = 1,
+        anchor: Anchor | Point | None = None,
+    ) -> Image:
+        """Make an upward triangle inside positive integer pixel dimensions.
+
+        Use rotated() for another direction. Outside pixels are transparent.
+        Color is the fill (white by default); None leaves it transparent. Optional
+        outline stays inside, with positive integer outline_width. Named colors
+        and RGB/RGBA tuples work; anchor defaults to CENTER. Invalid values raise
+        ValueError; wrong types raise TypeError. Example: Image.triangle(32, 40).
+        """
+        pixels = _shapes.box("triangle", width, height, color, outline, outline_width)
+        return Image(pixels, anchor=anchor)
+
+    @staticmethod
+    def polygon(
+        points: Iterable[Point],
+        *,
+        color: Color | None = "white",
+        outline: Color | None = None,
+        outline_width: int = 1,
+        anchor: Anchor | Point | None = None,
+    ) -> Image:
+        """Make a tightly cropped simple polygon from at least three pixel points.
+
+        Image coordinates go right/down. Finite points are floored to pixels,
+        translated to top-left, and extreme pixels included: (0,0),(20,0),(10,10)
+        gives 21x11. Negative coordinates and concave shapes work; collinear points
+        fail and self-crossing paths are unsupported. The iterable is consumed
+        once. Anchor refers to the result, CENTER by default. Color fills white;
+        None leaves it transparent. Optional outline stays inside with positive
+        integer outline_width. Colors accept names or RGB/RGBA tuples. Invalid
+        values raise ValueError; wrong types raise TypeError.
+        """
+        return Image(_shapes.polygon(points, color, outline, outline_width), anchor=anchor)
 
     @property
     def width(self) -> int:
@@ -241,7 +350,7 @@ class ImageGrid:
         for extent, size, edge, between in zip((image.width, image.height), frame, border, gap):
             usable = extent - 2 * edge + between
             if usable < size + between or usable % (size + between):
-                raise ValueError("The image does not contain a complete image grid grid")
+                raise ValueError("The image does not contain a complete image grid")
         object.__setattr__(self, "_source", image)
         object.__setattr__(self, "_frame_size", (frame[0], frame[1]))
         object.__setattr__(self, "_margin", (border[0], border[1]))

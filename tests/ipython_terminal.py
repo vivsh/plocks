@@ -197,6 +197,20 @@ def _foundation_tools(command: Callable[[str], None]) -> None:
         "assert grid.frame(row=0,column=0,anchor=Anchor.TOP_LEFT).anchor==(0,0)"
     )
 
+    command(
+        "hero.image=Image.circle(12,color='gold',outline='white',outline_width=2); "
+        "assert hero.image.width==24 and hero.image.anchor==(12,12); "
+        "hero.image=Image.triangle(24,32,anchor=Anchor.BOTTOM_CENTER).rotated(90); "
+        "assert hero.image.width==32 and hero.image.height==24"
+    )
+    command(
+        "hero.image=Image.polygon(((0,0),(24,0),(12,24)),color='skyblue'); "
+        "assert hero.image.width==25; "
+        "hero.image=Image.ellipse(32,24,outline='gold'); "
+        "assert hero.image.height==24; "
+        "hero.image=Image.rectangle(24,32,color='orange')"
+    )
+
 
 def _live_game(command: Callable[[str], None], child: pexpect.spawn[str]) -> None:
     """Drive independent actors, key scripts, audio, live edits and normal/error shutdown."""

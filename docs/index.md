@@ -19,6 +19,7 @@ Need the pictures? [Download the sprites and complete game](dino-run/assets.md).
 | I want to… | Try this |
 | --- | --- |
 | Make my character do something new | [Pick a small activity](activities/index.md) |
+| Make a ball or block | [Create a shape picture](art/shapes.md) |
 | Draw and animate my own character | [Make a character wiggle](art/pixelorama.md) |
 | Paint my own level | [Build a tiny world](art/tiled.md) |
 | Try another game | [Choose an example](../src/plocks/_games/README.md) |

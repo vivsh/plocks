@@ -396,3 +396,20 @@ def image_assets() -> None:
     hero.image = source
     assert_type(hero.images(grid.frames(), fps=10), Action)
     assert_type(hero.sequence().set_image(image).images(grid.frames(), fps=10), Script[Sprite])
+
+
+def shape_images() -> None:
+    """Generated assets need no author-side Pillow imports and retain ordinary Image types."""
+    from plocks import Anchor, Image, ImageSource, Point
+
+    assert_type(Image.rectangle(80, 20, color="green"), Image)
+    assert_type(Image.circle(12, color=None, outline="white", outline_width=2), Image)
+    assert_type(Image.ellipse(40, 24, color=(255, 0, 0, 128)), Image)
+    assert_type(Image.triangle(32, 48, anchor=Anchor.BOTTOM_CENTER), Image)
+    points: tuple[Point, ...] = ((0, 0), (24, 0), (12, 16))
+    assert_type(Image.polygon(point for point in points), Image)
+    image: ImageSource = Image.circle(16)
+    hero = Sprite(image)
+    assert_type(hero.image, Image)
+    assert_type(hero.set_image(Image.triangle(32, 32).rotated(90)), Action)
+    assert_type(hero.sequence().images((Image.circle(8), Image.circle(12)), fps=2), Script[Sprite])
