@@ -23,7 +23,7 @@ def test_installed_catalog_and_copy_are_available_from_any_cwd(
     monkeypatch.chdir(tmp_path)
     assert command(monkeypatch, "examples") == 0
     listed = capsys.readouterr().out.splitlines()
-    assert listed == list(_names()) and len(listed) == 13
+    assert listed == list(_names()) and len(listed) == 14
     assert "dojo_duel" not in listed and "sunset_sprint" not in listed
     assert command(monkeypatch, "examples", "platformer", "--copy-to", "my-game") == 0
     assert (tmp_path / "my-game/main.py").read_bytes() == _example("platformer").joinpath(

@@ -26,6 +26,7 @@ from plocks._runtime import advance, close
 from plocks._scripts import _step, _trigger
 
 GAMES = (
+    "alpine_racer",
     "jungle_run",
     "mario",
     "fruit_ninja",

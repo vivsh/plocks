@@ -112,6 +112,7 @@ Python command occupies the same thread as the game. Ordinary game files still u
 
 | Game | Your mission | New ideas to try |
 | --- | --- | --- |
+| [Alpine Racer](src/plocks/_games/alpine_racer) | Race five rivals for five minutes | Steering pictures, acceleration, perspective and a circuit map |
 | [Maze Quest](src/plocks/_games/maze_quest) | Click a route and collect four coins | Navigation, touch events, camera following and screen controls |
 | [Swing Lab](src/plocks/_games/swing_lab) | Cut a swinging ball's rope | Anchors, physics and buttons |
 | [Robot Workshop](src/plocks/_games/robot_workshop) | Turn an arm, drive a cart and drop a chain | Hinges, springs, motors and construction functions |

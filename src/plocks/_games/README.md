@@ -11,6 +11,7 @@ plocks run platformer
 
 | Game | What you'll do | What you'll learn |
 | --- | --- | --- |
+| [Alpine Racer](alpine_racer) | Race five rivals for five minutes | Steering images, speed, perspective and race positions |
 | [Maze Quest](maze_quest) | Click routes and collect coins | Navigation, touch events and a following camera |
 | [Swing Lab](swing_lab) | Cut a rope and let a ball fall | Shape images, physics, ropes and buttons |
 | [Robot Workshop](robot_workshop) | Build an arm, cart and chain | Image shapes, motors and connected parts |
