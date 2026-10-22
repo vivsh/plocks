@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from plocks import (
+    Anchor,
     BodyType,
     Button,
     Canvas,
@@ -15,8 +16,10 @@ from plocks import (
     Key,
     Label,
     Motor,
+    Panel,
     Sprite,
     Stage,
+    UITheme,
 )
 
 
@@ -40,7 +43,13 @@ class Cart:
 
 
 # A fixed camera shows the workshop; buttons and labels stay on the screen.
-stage = Stage(width=960, height=600, physics=True, background="#172536")
+stage = Stage(
+    width=960,
+    height=600,
+    physics=True,
+    background="#172536",
+    ui_theme=UITheme(accent_color="#ffe09a", button_color="#315263"),
+)
 player = stage.gamepads[0]
 stage.physics.gravity = (0, -600)
 player.map_key(Key.R, GamepadButton.SELECT)
@@ -128,9 +137,17 @@ spring_ball.body.shape = Circle(16)
 spring = stage.physics.spring((340, 140), spring_ball, rest_length=70, stiffness=60, damping=8)
 
 hint = Label("Arrows: drive. Hold Space/X: move the arm. R: new cart.", position=(0, 260), size=24)
-cut = Button("Drop chain", position=(250, 180))
+tools = Panel(position=(330, 235), width=190, height=110, anchor=Anchor.TOP_RIGHT)
+cut = Button("Drop chain", width=170)
+tools.add(cut)
 stage.add(hint)
-stage.add(cut)
+stage.add(tools)
+for text, position in (
+    ("ROBOT ARM", (-410, 180)),
+    ("HINGED CHAIN", (-60, 150)),
+    ("MOTOR CART", (120, -90)),
+):
+    stage.add(Label(text, position=position, anchor=Anchor.TOP_LEFT, size=22, color="#ffe09a"))
 
 
 @stage.on_update
@@ -153,6 +170,7 @@ def controls(event: Event[Stage, float]) -> None:
 def drop_chain(event: Event[Button, None]) -> None:
     chain[0].disconnect()
     event.target.enabled = False
+    stage.focus(None)
 
 
 @stage.on_button_down(GamepadButton.SELECT, gamepad=player)
@@ -168,9 +186,6 @@ def new_cart(event: Event[Stage, GamepadPress]) -> None:
 def draw(canvas: Canvas) -> None:
     canvas.connection(spring, color="#ffe09a", width=2)
     canvas.circle((340, 140), 5, color="#ffe09a")
-    canvas.text("ROBOT ARM", (-410, 180), size=22, color="#ffe09a")
-    canvas.text("HINGED CHAIN", (-60, 150), size=22, color="#ffe09a")
-    canvas.text("MOTOR CART", (120, -90), size=22, color="#ffe09a")
 
 
 if __name__ == "__main__":

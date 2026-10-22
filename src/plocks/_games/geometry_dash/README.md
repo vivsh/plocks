@@ -35,3 +35,7 @@ Jump timing is the challenge; there is no music timing.
 **Your own project?** Copy this whole folder, keep `assets/` beside `main.py`,
 and run `python main.py` with Plocks installed. From another folder, use
 `python path/to/the/game/main.py` or `plocks run path/to/the/game`.
+
+## Screen controls
+
+The progress bar fills as you run. After a crash or the finish, click Play again—or press R.

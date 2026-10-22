@@ -232,3 +232,28 @@ def test_frame_pixels_are_lossless_and_actual_image_bounds_are_checked() -> None
     forged[29:33] = struct.pack(">I", zlib.crc32(forged[12:29]))
     with pytest.raises(NetworkError, match="safely decoded"):
         _decode_frame(Frame(0, 0, False, (1, 1), bytes(forged)))
+
+
+def test_remote_can_acknowledge_modal_without_a_false_new_game_press(
+    world: tuple[Stage, _Host],
+) -> None:
+    """An alert pauses simulation rather than transport; held remote input retains edge history."""
+    from plocks._runtime import dispatch
+
+    stage, owner = world
+    peer = incoming(owner)
+    peer.slot, peer.connection.phase = 1, "active"
+    log: list[str] = []
+    stage.on_button_down(GamepadButton.A)(lambda event: log.append("game"))
+    stage.alert("Remote alert", on_close=lambda event: log.append("closed"))
+    sample = GamepadInput(buttons=frozenset({GamepadButton.A}))
+    _host_packet(stage, owner, peer.connection, Input(0, sample), 0)
+    dispatch(stage)
+    assert log == ["closed"] and stage._alert is None
+    _host_packet(stage, owner, peer.connection, Input(1, sample), 0.1)
+    dispatch(stage)
+    assert log == ["closed"]
+    _host_packet(stage, owner, peer.connection, Input(2, GamepadInput()), 0.2)
+    _host_packet(stage, owner, peer.connection, Input(3, sample), 0.3)
+    dispatch(stage)
+    assert log == ["closed", "game"]

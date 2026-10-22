@@ -1,6 +1,7 @@
 """Swing Lab: a physical rope, one ball, and a safe landing."""
 
 from plocks import (
+    Anchor,
     BodyType,
     Button,
     Canvas,
@@ -11,12 +12,20 @@ from plocks import (
     Image,
     Key,
     Label,
+    Panel,
     Sprite,
     Stage,
+    UITheme,
 )
 
 # Keep the camera fixed so the whole swing and its controls stay in view.
-stage = Stage(width=640, height=400, physics=True, background="#172536")
+stage = Stage(
+    width=640,
+    height=400,
+    physics=True,
+    background="#172536",
+    ui_theme=UITheme(accent_color="gold", button_color="#315263"),
+)
 player = stage.gamepads[0]
 stage.physics.gravity = (0, -500)
 player.map_key(Key.R, GamepadButton.B)
@@ -26,10 +35,14 @@ stage.add(ball)
 stage.add(floor)
 ball.body.shape = Circle(16)
 rope = stage.physics.rope((0, 100), ball, length=150)
-hint = Label("Space: cut the rope. R: try again.", position=(0, 170))
-cut = Button("Cut rope", position=(210, -120))
+hint = Label(
+    "Space: cut the rope. R: try again.", position=(-300, 180), anchor=Anchor.TOP_LEFT, size=22
+)
+tools = Panel(position=(300, -85), width=180, height=110, anchor=Anchor.TOP_RIGHT)
+cut = Button("Cut rope", width=150)
+tools.add(cut)
 stage.add(hint)
-stage.add(cut)
+stage.add(tools)
 
 
 @stage.on_button_down(GamepadButton.A, gamepad=player)

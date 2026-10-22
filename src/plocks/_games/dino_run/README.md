@@ -33,3 +33,7 @@ The dinosaur runs forwards and `stage.follow(...)` follows it. Obstacles use
 `BodyType.STATIC`; floor tiles and coins stay in world coordinates. The camera
 makes them scroll past! `extend_ground()` adds floor ahead and removes sections
 behind, so a long run does not keep every old tile.
+
+## Screen controls
+
+Labels show your score, coins and best run. A Panel holds the Continue / Play again button; P and R still work.

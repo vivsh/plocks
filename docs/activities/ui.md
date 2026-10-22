@@ -32,6 +32,15 @@ health.value = 75
 ```
 
 These positions are on the screen, so the world camera never moves them.
+By default, position is the control's center. Use the existing `Anchor` names
+to choose another point:
+
+```python
+score = Label("Coins: 0", position=(-220, 160), anchor=Anchor.TOP_LEFT)
+```
+
+Import `Anchor` from `plocks`. Now a longer score keeps its top-left corner in
+place. All nine anchors work with labels, bars, buttons and panels.
 
 ## 3. Try the pause button
 
@@ -43,6 +52,12 @@ Button functions receive `Event[Button, None]`. They can change game objects,
 broadcast messages or resume the stage. Hiding the focused button releases focus.
 
 **Try this:** change the Continue button's text or `text_size`.
-Your existing `Canvas` drawings still work above these controls.
+Your existing `Canvas` drawings still work above these ordinary controls.
 
-[Next: ropes and springs](connections.md)
+## Build your own menu
+
+[Put controls in a colored Panel](panels.md) and give them a matching `UITheme`.
+[Show an alert](alerts.md) for “Game over!” or “You won!”—it appears above the game
+and pauses play until the player acknowledges it.
+
+[Next: panels and styling](panels.md)

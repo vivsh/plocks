@@ -4,14 +4,18 @@ from pathlib import Path
 
 from plocks import (
     Action,
+    Anchor,
     Bounds,
-    Canvas,
+    Button,
     Ease,
     Event,
     GamepadButton,
     GamepadPress,
     Image,
     Key,
+    Label,
+    Panel,
+    ProgressBar,
     Sound,
     Sprite,
     Stage,
@@ -55,6 +59,25 @@ outcome = "playing"
 attempts = 1
 
 
+# A progress bar fills as we travel. The panel keeps our score together.
+hud = Panel(position=(0, 185), width=800, height=80)
+status = Label("BEAT BLOCKS    Attempt 1", position=(-380, 18), anchor=Anchor.CENTER_LEFT)
+progress = ProgressBar(position=(-380, -16), width=760, height=10, anchor=Anchor.CENTER_LEFT)
+hud.add(status)
+hud.add(progress)
+stage.add(hud)
+help_bar = Panel(position=(0, -205), width=800, height=40)
+help_bar.add(Label("Space: jump   R: restart    Time your jumps!", size=18))
+stage.add(help_bar)
+result = Panel(width=520, height=150, layer=10)
+result_title = Label("Round over!", position=(0, 40), size=28)
+again = Button("Play again", position=(0, -25), width=200)
+result.add(result_title)
+result.add(again)
+result.visible = False
+stage.add(result)
+
+
 # @ connects this function to Space. Only jump when the cube is on the floor.
 @hero.on_button_down(GamepadButton.A, gamepad=player)
 def jump(event: Event[Sprite, GamepadPress]) -> Action | None:
@@ -65,14 +88,27 @@ def jump(event: Event[Sprite, GamepadPress]) -> Action | None:
     return hero.glide_by(y=-100, seconds=0.35, easing=Ease.IN, after=up)
 
 
-@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
-def restart(event: Event[Stage, GamepadPress]) -> None:
+def reset() -> None:
     global outcome, attempts
     hero.stop()
     hero.position = (-240, -124)
     hero.direction = 90
     outcome = "playing"
     attempts += 1
+    result.visible = False
+    status.text = f"BEAT BLOCKS    Attempt {attempts}"
+    progress.value = 0
+
+
+@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
+def restart(event: Event[Stage, GamepadPress]) -> None:
+    reset()
+
+
+@again.on_click
+def play_again(event: Event[Button, None]) -> None:
+    stage.focus(None)
+    reset()
 
 
 # Plocks runs update each game step. dt is that step's length in seconds.
@@ -103,14 +139,13 @@ def update(event: Event[Stage, float]) -> None:
         hero.stop()
 
 
-# Draw the score and instructions after the sprites, so they stay on top.
-@stage.on_draw
-def draw(canvas: Canvas) -> None:
-    progress = min(100, int((hero.x + 240) / 2440 * 100))
-    canvas.text(f"BEAT BLOCKS    {progress}%    Attempt {attempts}", (-380, 207), size=27)
-    canvas.text("Space: jump   R: restart    Time your jumps!", (-380, -198), size=20)
-    if outcome != "playing":
-        canvas.text(outcome + " Press R.", (-200, 40), size=32, color="#ffd782")
+# Updating a label changes its words; Plocks handles the drawing.
+@stage.on_update
+def show_progress(event: Event[Stage, float]) -> None:
+    progress.value = max(0, min(100, (hero.x + 240) / 2440 * 100))
+    status.text = f"BEAT BLOCKS    {int(progress.value)}%    Attempt {attempts}"
+    result.visible = outcome != "playing"
+    result_title.text = outcome
 
 
 if __name__ == "__main__":

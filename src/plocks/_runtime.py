@@ -95,7 +95,7 @@ def _clear_input(stage: Stage) -> None:
 
 def poll(stage: Stage) -> None:
     """Translate desktop window, controller, keyboard and mouse events once."""
-    was_suspended = bool(stage._pause_reasons - {"user"})
+    was_suspended = bool(stage._pause_reasons - {"user", "alert"})
     refresh = False
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -131,7 +131,7 @@ def poll(stage: Stage) -> None:
             pygame.CONTROLLERBUTTONDOWN,
             pygame.CONTROLLERBUTTONUP,
         ):
-            if not was_suspended and not (stage._pause_reasons - {"user"}):
+            if not was_suspended and not (stage._pause_reasons - {"user", "alert"}):
                 _gamepads._native_button_event(stage, event)
         elif event.type in (pygame.KEYDOWN, pygame.KEYUP):
             _key(stage, event)
@@ -139,7 +139,7 @@ def poll(stage: Stage) -> None:
             stage.mouse._position = stage.from_screen(event.pos, world=False)
         elif event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP):
             _mouse(stage, event)
-    suspended = bool(stage._pause_reasons - {"user"})
+    suspended = bool(stage._pause_reasons - {"user", "alert"})
     if suspended:
         _clear_input(stage)
     else:
@@ -181,6 +181,7 @@ def dispatch(stage: Stage, *, simulation: bool = True) -> None:
     pending = tuple(stage._pending)
     stage._pending.clear()
     clone_ready = simulation and not stage.paused
+    modal = stage._alert
     for event in pending:
         if not stage.running:
             break
@@ -197,6 +198,14 @@ def dispatch(stage: Stage, *, simulation: bool = True) -> None:
             else:
                 _start_clone(stage, event)
             continue
+        if stage._alert is not None or modal is not None:
+            from ._alerts import _input as alert_input
+
+            if modal is None:
+                modal = stage._alert
+            if stage._alert is modal:
+                alert_input(stage, event)
+            continue
         if isinstance(event, GamepadPress):
             from ._ui import _key as ui_key
 
@@ -204,7 +213,7 @@ def dispatch(stage: Stage, *, simulation: bool = True) -> None:
                 continue
             bindings = tuple(stage._gamepad_handlers.get((event.gamepad, event.button), ()))
             for binding in bindings:
-                if stage.running:
+                if stage.running and stage._alert is None:
                     held = event.gamepad.is_down(event.button)
                     _gamepads._arm(stage, binding, held)
                     _trigger(stage, binding.handler, event)
@@ -218,10 +227,12 @@ def dispatch(stage: Stage, *, simulation: bool = True) -> None:
             targeted = tuple(stage._clicks.get(target, ())) if target is not None else ()
             callbacks = (*observers, *targeted)
             for clicked in callbacks:
-                if stage.running:
+                if stage.running and stage._alert is None:
                     _trigger(stage, clicked, event)
-            if button is not None and stage.running:
+            if button is not None and stage.running and stage._alert is None:
                 ui_click(stage, button)
+        if modal is None:
+            modal = stage._alert
 
 
 def _clicked_actor(stage: Stage, position: Point) -> Actor | None:
@@ -328,6 +339,8 @@ def close(stage: Stage) -> None:
     primary = sys.exception()
     errors: list[BaseException] = []
     stage._state = "closed"
+    stage._alert = None
+    stage._pause_reasons.discard("alert")
     if stage._network is not None:
         from ._network import close as close_network
 

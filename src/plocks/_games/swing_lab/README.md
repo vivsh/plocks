@@ -21,3 +21,7 @@ python main.py
 **Try this:** change the ball's color or the rope's length. Save, run, and see what changed!
 
 [More activities](../../../../docs/activities/index.md)
+
+## Screen controls
+
+A themed Panel holds Cut rope. The hint stays on screen; Canvas still draws the actual rope.

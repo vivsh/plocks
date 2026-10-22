@@ -34,3 +34,7 @@ and landing; `body.grounded` tells us when another jump is allowed.
 **Your own project?** Copy this whole folder, keep `assets/` beside `main.py`,
 and run `python main.py` with Plocks installed. From another folder, use
 `python path/to/the/game/main.py` or `plocks run path/to/the/game`.
+
+## Screen controls
+
+The score Label counts your coins. A Panel shows your result and a Play again button; R still restarts.

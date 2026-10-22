@@ -5,14 +5,15 @@ from pathlib import Path
 from plocks import (
     Action,
     Anchor,
-    Bounds,
-    Canvas,
+    Button,
     Ease,
     Event,
     GamepadButton,
     GamepadPress,
     Image,
     Key,
+    Label,
+    Panel,
     Sprite,
     Stage,
 )
@@ -91,6 +92,26 @@ heading = 0
 outcome = "playing"
 
 
+hud = Panel(position=(0, 192), width=800, height=66, color="#172e32")
+status = Label("TEMPLE TRAIL   Coins 0/8", position=(-380, 0), anchor=Anchor.CENTER_LEFT, size=28)
+compass = Label("North", position=(380, 0), anchor=Anchor.CENTER_RIGHT, size=20)
+hud.add(status)
+hud.add(compass)
+stage.add(hud)
+turn_hint = Label("", position=(0, 105), size=30, color="#ffe19a")
+stage.add(turn_hint)
+help_bar = Panel(position=(0, -205), width=800, height=40)
+help_bar.add(Label("Left/Right: lanes + turns   Space: jump   Down: slide   R: restart", size=18))
+stage.add(help_bar)
+result = Panel(width=760, height=150, layer=10)
+result_title = Label("Round over!", position=(0, 40), size=25)
+again = Button("Play again", position=(0, -25), width=200)
+result.add(result_title)
+result.add(again)
+result.visible = False
+stage.add(result)
+
+
 def next_corner() -> tuple[Sprite, int, int, str] | None:
     """Find the first corner still ahead, or return None if there are no more."""
     for item in objects:
@@ -116,6 +137,10 @@ def reset() -> None:
     score = 0
     heading = 0
     outcome = "playing"
+    result.visible = False
+    turn_hint.text = ""
+    status.text = "TEMPLE TRAIL   Coins 0/8"
+    compass.text = "North"
     road.image = roads["straight"]
     stage.background = "#234b43"
     for item in objects:
@@ -229,28 +254,25 @@ def update(event: Event[Stage, float]) -> None:
         finish("Temple reached! Well run.")
 
 
-@stage.on_draw
-def draw(canvas: Canvas) -> None:
-    canvas.text(f"TEMPLE TRAIL   Coins {score}/8", (-380, 207), size=28)
-    canvas.text(f"Heading: {('North', 'East', 'South', 'West')[heading]}", (185, 205), size=20)
-    canvas.text(
-        "Left/Right: lanes + turns   Space: jump   Down: slide   R: restart",
-        (-380, -202),
-        size=18,
-    )
+@stage.on_update
+def show_progress(event: Event[Stage, float]) -> None:
+    status.text = f"TEMPLE TRAIL   Coins {score}/8"
+    compass.text = ("North", "East", "South", "West")[heading]
+    turn_hint.text = ""
     corner = next_corner()
     if outcome == "playing" and corner is not None:
-        corner_distance = corner[1]
-        corner_kind = corner[3]
-        if corner_distance - distance < 180:
-            cue = "soon..."
-            if corner_distance - distance <= 65:
-                cue = "NOW!"
-            canvas.text(f"Turn {corner_kind.upper()} {cue}", (-150, 105), size=30, color="#ffe19a")
-    if outcome != "playing":
-        canvas.rectangle(Bounds(-360, 0, 360, 90), color="#172e32")
-        canvas.text(outcome, (-340, 65), size=25)
-        canvas.text("Press R to run again", (-150, 25), size=22, color="#ffe19a")
+        ahead = corner[1] - distance
+        if ahead < 180:
+            cue = "NOW!" if ahead <= 65 else "soon..."
+            turn_hint.text = f"Turn {corner[3].upper()} {cue}"
+    result.visible = outcome != "playing"
+    result_title.text = outcome
+
+
+@again.on_click
+def play_again(event: Event[Button, None]) -> None:
+    stage.focus(None)
+    reset()
 
 
 @stage.on_button_down(GamepadButton.SELECT, gamepad=player)

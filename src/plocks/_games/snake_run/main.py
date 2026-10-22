@@ -2,7 +2,17 @@
 
 from pathlib import Path
 
-from plocks import Canvas, Event, GamepadButton, GamepadPress, Key, Sprite, Stage
+from plocks import (
+    Button,
+    Event,
+    GamepadButton,
+    GamepadPress,
+    Key,
+    Label,
+    Panel,
+    Sprite,
+    Stage,
+)
 
 # Find assets beside this script, even when running from another folder.
 assets = Path(__file__).resolve().parent / "assets"
@@ -24,6 +34,22 @@ objects: list[tuple[Sprite, int, float, str]] = []
 distance = 0.0
 score = 0
 outcome = "playing"
+
+
+hud = Panel(position=(0, 195), width=800, height=60)
+status = Label("SNAKE RUN    Apples 0    Length 4", size=27)
+hud.add(status)
+stage.add(hud)
+help_bar = Panel(position=(0, -205), width=800, height=40)
+help_bar.add(Label("Arrows: steer   Apples: grow   Rocks: shrink   R: restart", size=18))
+stage.add(help_bar)
+result = Panel(width=520, height=150, layer=10)
+result_title = Label("Round over!", position=(0, 40), size=28)
+again = Button("Play again", position=(0, -25), width=200)
+result.add(result_title)
+result.add(again)
+result.visible = False
+stage.add(result)
 
 
 def grow() -> None:
@@ -50,6 +76,8 @@ def reset() -> None:
     distance = 0
     score = 0
     outcome = "playing"
+    result.visible = False
+    status.text = "SNAKE RUN    Apples 0    Length 4"
     for _ in range(3):
         grow()
     # lane -1 is left, 0 is the middle, 1 is right; distance is down the track.
@@ -112,13 +140,18 @@ def update(event: Event[Stage, float]) -> None:
         outcome = "Finish line!"
 
 
-# Drawing shows our changing score without changing the game itself.
-@stage.on_draw
-def draw(canvas: Canvas) -> None:
-    canvas.text(f"SNAKE RUN    Apples {score}    Length {len(segments) + 1}", (-380, 207), size=27)
-    canvas.text("Arrows: steer   Apples: grow   Rocks: shrink   R: restart", (-380, -202), size=19)
-    if outcome != "playing":
-        canvas.text(outcome + " Press R.", (-220, 65), size=30, color="#ffe29b")
+# A label shows our changing score without a drawing callback.
+@stage.on_update
+def show_score(event: Event[Stage, float]) -> None:
+    status.text = f"SNAKE RUN    Apples {score}    Length {len(segments) + 1}"
+    result.visible = outcome != "playing"
+    result_title.text = outcome
+
+
+@again.on_click
+def play_again(event: Event[Button, None]) -> None:
+    stage.focus(None)
+    reset()
 
 
 @stage.on_button_down(GamepadButton.SELECT, gamepad=player)

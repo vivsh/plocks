@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Generic, Literal, Self, TypeVar, cast, overloa
 
 import pygame
 
+from ._alerts import _Alert
 from ._camera import _CameraFollow
 from ._cloning import _CloneStart
 from ._commands import Actor, _Command
@@ -29,8 +30,9 @@ from .puppets import Puppet
 from .scripts import Script, _message_arguments, _snapshot
 from .sprites import Sprite
 from .state import _new_state, _State_co
+from .theme import _DEFAULT_THEME, AlertLevel, UITheme
 from .tiling import TiledBackground, TileMap
-from .ui import Button, Label, ProgressBar
+from .ui import Button, Label, Panel, ProgressBar
 
 type _Result = None | Action
 _D = TypeVar("_D")
@@ -41,7 +43,9 @@ if TYPE_CHECKING:
     from ._touches import _TouchWatch
 
 type _InputEvent = tuple[Point, MouseButton] | GamepadPress | _CloneStart | RemoteChange
-type _StageObject = Sprite | Puppet | TileMap | TiledBackground | Button | Label | ProgressBar
+type _StageObject = (
+    Sprite | Puppet | TileMap | TiledBackground | Button | Label | ProgressBar | Panel
+)
 
 
 class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports Python 3.12
@@ -54,6 +58,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
     __slots__ = (
         "_accumulator",
         "_actions",
+        "_alert",
         "_background",
         "_bots",
         "_bubble_text_size",
@@ -85,6 +90,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         "_tick_rate",
         "_touches",
         "_ui_focus",
+        "_ui_theme",
         "_updates",
         "_voices",
         "_volume",
@@ -100,6 +106,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         tick_rate: int = 60,
         background: Color = "black",
         bubble_text_size: int = 24,
+        ui_theme: UITheme | None = None,
         physics: bool = False,
         gamepad_count: int = 4,
         gamepad_layout: GamepadLayout = GamepadLayout.XBOX,
@@ -114,6 +121,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         tick_rate: int = 60,
         background: Color = "black",
         bubble_text_size: int = 24,
+        ui_theme: UITheme | None = None,
         physics: bool = False,
         gamepad_count: int = 4,
         gamepad_layout: GamepadLayout = GamepadLayout.XBOX,
@@ -127,11 +135,13 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         tick_rate: int = 60,
         background: Color = "black",
         bubble_text_size: int = 24,
+        ui_theme: UITheme | None = None,
         physics: bool = False,
         gamepad_count: int = 4,
         gamepad_layout: GamepadLayout = GamepadLayout.XBOX,
         state: type[object] | None = None,
     ) -> None:
+        self.ui_theme = _DEFAULT_THEME if ui_theme is None else ui_theme
         self._game_state: _State_co = cast(_State_co, _new_state(state))
         self._width = _integer(width, "width", minimum=1)
         self._bubble_text_size = _integer(bubble_text_size, "bubble_text_size", minimum=1)
@@ -153,6 +163,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         self._messages: list[_Delivery] = []
         self._message_handlers: dict[Message[object], list[_Handler]] = {}
         self._draws: list[_Draw] = []
+        self._alert: _Alert | None = None
         self._ui_focus: Button | None = None
         count = _integer(gamepad_count, "gamepad_count", minimum=1)
         if count > 16:
@@ -283,7 +294,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
 
     @property
     def paused(self) -> bool:
-        """Whether user pause or automatic suspension currently freezes simulation."""
+        """Whether user pause, a modal alert or automatic suspension freezes simulation."""
         return bool(self._pause_reasons)
 
     @property
@@ -345,6 +356,17 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         self._camera_follow = None
 
     @property
+    def ui_theme(self) -> UITheme:
+        """Live immutable styling shared by screen widgets and alerts."""
+        return self._ui_theme
+
+    @ui_theme.setter
+    def ui_theme(self, value: UITheme) -> None:
+        if not isinstance(value, UITheme):
+            raise TypeError("ui_theme must be UITheme")
+        self._ui_theme = value
+
+    @property
     def background(self) -> Color:
         """Color used to clear the viewport before drawing each frame."""
         return self._background
@@ -386,7 +408,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
                 )
             raise ValueError("This object is already in the stage")
         if not isinstance(
-            obj, (Sprite, Puppet, TileMap, TiledBackground, Button, Label, ProgressBar)
+            obj, (Sprite, Puppet, TileMap, TiledBackground, Button, Label, ProgressBar, Panel)
         ):
             raise TypeError("Stage objects are actors, tile worlds, backgrounds or UI controls")
         if isinstance(obj, (Sprite, Puppet, TileMap)):
@@ -404,10 +426,15 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
                 else:
                     _attach(self._physics, obj)
             obj._stage = self
-        if isinstance(obj, (Button, Label, ProgressBar)):
+        if isinstance(obj, (Button, Label, ProgressBar, Panel)):
+            if isinstance(obj, (Button, Label, ProgressBar)) and obj._panel is not None:
+                raise StageError("Add the containing panel instead of its child")
             if obj._stage is not None:
                 raise StageError("A UI control belongs to at most one stage")
             obj._stage = self
+            if isinstance(obj, Panel):
+                for child in obj._children:
+                    child._stage = self
         self._members.append(obj)
 
     def remove(self, obj: _StageObject) -> None:
@@ -419,6 +446,12 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         if obj not in self._members:
             raise ValueError("This object is not in the stage")
         try:
+            if isinstance(obj, Panel):
+                for child in obj._children:
+                    if self._ui_focus is child:
+                        self._ui_focus = None
+                    child._stage = None
+                obj._stage = None
             if isinstance(obj, (Button, Label, ProgressBar)):
                 if self._ui_focus is obj:
                     self._ui_focus = None
@@ -471,7 +504,9 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         if button is not None:
             if not isinstance(button, Button):
                 raise TypeError("focus requires Button or None")
-            if button._stage is not self or not button.visible or not button.enabled:
+            from ._ui_layout import _available
+
+            if button._stage is not self or not _available(self, button):
                 raise StageError("Focus a visible, enabled button attached to this stage")
         self._ui_focus = button
         if button is not None:
@@ -773,6 +808,43 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         x, y = _point(point)
         cx, cy = self.camera if world else (0, 0)
         return x - self.width / 2 + cx, self.height / 2 - y + cy
+
+    def alert(
+        self,
+        text: str,
+        *,
+        button_text: str = "OK",
+        level: AlertLevel = AlertLevel.INFO,
+        on_close: Callable[[Event[Self, None]], None] | None = None,
+    ) -> None:
+        """Show one nonblocking, screen-centered alert and pause gameplay.
+
+        Requires a running stage; a second open alert raises StageError. Mouse or
+        logical A dismisses it before invoking synchronous on_close(event) once.
+        The callback receives this Stage as target/source and None as data.
+        Existing user/automatic pause and ordinary button focus are preserved.
+        Text wraps and oversized content is truncated to fit the window. Level
+        changes presentation only. Stage closure discards the alert silently.
+        """
+        from ._alerts import _reset_input
+        from .ui import _text
+
+        if not self.running:
+            raise StageError("Alerts require a running stage; use an on_start or event callback")
+        if self._alert is not None:
+            raise StageError("An alert is already open; close it before showing another")
+        _text(text)
+        _text(button_text, multiline=False)
+        if not button_text.strip():
+            raise ValueError("button_text must not be empty")
+        if not isinstance(level, AlertLevel):
+            raise TypeError("level must be an AlertLevel")
+        if on_close is not None:
+            _sync(on_close, "alert")
+        callback = cast(Callable[[Event[Stage, None]], None] | None, on_close)
+        self._alert = _Alert(text, button_text, level, callback)
+        self._set_pause("alert", True)
+        _reset_input(self)
 
     def pause(self) -> None:
         """Freeze simulation/audio. Input and drawing callbacks continue."""

@@ -13,6 +13,8 @@ For the code activities, use the [Dino Dash download](../dino-run/assets.md).
 | Walk around maze walls | [Find a route](navigation.md) |
 | Keep a character in view | [Follow with the camera](camera.md) |
 | Add a score, health meter or menu | [Screen controls](ui.md) |
+| Group controls in a colored box | [Panels and styling](panels.md) |
+| Show “Game over!” or “You won!” | [Alerts](alerts.md) |
 | Swing a ball and cut its rope | [Ropes and springs](connections.md) |
 | Build arms, wheels and chains | [Moving machines](assemblies.md) |
 | Make copies of a character | [Launch some clones](clones.md) |

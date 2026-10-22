@@ -397,7 +397,7 @@ def _host_packet(
                 raise NetworkError("Release controls before joining")
             _phase(connection, "view", now)
         else:
-            suspended = bool(stage._pause_reasons - {"user"})
+            suspended = bool(stage._pause_reasons - {"user", "alert"})
             _apply(stage.gamepads[peer.slot], GamepadInput() if suspended else packet.sample)
             _queue(connection, Accepted(packet.sequence), now)
     elif isinstance(packet, FrameRequest):

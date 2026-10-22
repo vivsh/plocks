@@ -32,3 +32,7 @@ ends the run. The snake grows to eleven pieces, including its head.
 **Your own project?** Copy this whole folder, keep `assets/` beside `main.py`,
 and run `python main.py` with Plocks installed. From another folder, use
 `python path/to/the/game/main.py` or `plocks run path/to/the/game`.
+
+## Screen controls
+
+Labels show apples and snake length. After the finish or a crash, click Play again—or press R.

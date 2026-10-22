@@ -23,7 +23,8 @@ hints. Start with a bundled game, change one thing, and see what happens!
 | Build a world | Tile maps, automatic camera following, parallax, and Tiled and Pixelorama artwork |
 | Jump and land | Built-in physics, moving platforms, and platforms you can jump through from below |
 | Solve a maze | [Find a route around walls](docs/activities/navigation.md), then follow it at your chosen speed |
-| Collect coins and show progress | [Touch events](docs/activities/touch.md), [labels, health bars and buttons](docs/activities/ui.md) |
+| Collect coins and show progress | [Touch events](docs/activities/touch.md), [labels, health bars, buttons and colored panels](docs/activities/ui.md) |
+| Show a message or match your colors | [Alerts with levels](docs/activities/alerts.md), widget anchors and a shared [UI theme](docs/activities/panels.md#keep-a-matching-style) |
 | Make a machine | [Ropes, springs, hinges and motors](docs/activities/assemblies.md) joining ordinary characters |
 | Play together | Logical gamepads with mapped keys or controllers, plus optional [LAN shared-view play](docs/activities/multiplayer.md) |
 | Give the computer a turn | [Automated gamepads](docs/activities/computer-players.md) that use the human player's controls |
@@ -113,19 +114,19 @@ Python command occupies the same thread as the game. Ordinary game files still u
 | Game | Your mission | New ideas to try |
 | --- | --- | --- |
 | [Alpine Racer](src/plocks/_games/alpine_racer) | Race five rivals for five minutes | Steering pictures, acceleration, perspective and a circuit map |
-| [Maze Quest](src/plocks/_games/maze_quest) | Click a route and collect four coins | Navigation, touch events, camera following and screen controls |
+| [Maze Quest](src/plocks/_games/maze_quest) | Click a route and collect four coins | Navigation, health bars, pause panels and a success alert |
 | [Swing Lab](src/plocks/_games/swing_lab) | Cut a swinging ball's rope | Anchors, physics and buttons |
 | [Robot Workshop](src/plocks/_games/robot_workshop) | Turn an arm, drive a cart and drop a chain | Hinges, springs, motors and construction functions |
 | [Dino Dash](src/plocks/_games/dino_run) | Jump cacti, duck birds and collect coins | A complete beginner course, physics, scores, restart |
 | [Sky Steps](src/plocks/_games/platformer) — start here | Jump through a lift and reach the flag | Physics, one-way platforms, repeating moves, checkpoints |
-| [Beat Blocks](src/plocks/_games/geometry_dash) | Jump over spikes | Shape images, linked glide actions, crash checks |
+| [Beat Blocks](src/plocks/_games/geometry_dash) | Jump over spikes | Linked glides, a progress bar and a Play again button |
 | [Asset Workshop](src/plocks/_games/asset_workshop) | Use Tiled and Pixelorama artwork | Exported levels, animation, two-player controls |
 | [Scrolling World](src/plocks/_games/scrolling_world) | Explore and paint a world | Tile grids, layers, a following camera |
 | [Coin Quest](src/plocks/_games/mario) | Grab coins and stomp enemies | Physics, a following camera, scoring |
 | [Temple Trail](src/plocks/_games/temple_run) | Jump, slide and turn corners | Movement scripts, images, perspective |
 | [Snake Run](src/plocks/_games/snake_run) | Eat apples and grow a tail | Remembering positions, size and distance |
 | [Fruit Slice](src/plocks/_games/fruit_ninja) | Swipe fruit, dodge bombs | Mouse input, randomness, swipe maths |
-| [Jungle Run](src/plocks/_games/jungle_run) | Run, jump and shoot robots | Bullets, health, several things moving together |
+| [Jungle Run](src/plocks/_games/jungle_run) | Run, jump and shoot robots | Bullets, a health bar, pause menus and several things moving together |
 
 **The camera is your view of the world.** Scrolling games use
 [`stage.follow(...)`](docs/activities/camera.md); tiles and obstacles stay in their
@@ -186,6 +187,52 @@ Each example puts setup first, functions underneath, and the guarded `stage.run(
 last. Importing the file prepares its pictures and game objects, but does not start
 its window. Use `global score` to reassign the shared score inside a function;
 changing `hero.x` or adding to a list does not need `global`.
+
+## 🎛️ Give your game a dashboard
+
+Use **Label** for words, **ProgressBar** for health or distance, and **Button** for
+clicks. A **Panel** keeps controls together. They stay on the screen while your
+camera follows the action.
+
+Try this as a new `main.py`—no pictures needed:
+
+```python
+from plocks import (
+    AlertLevel, Anchor, Button, Event, Label, Panel, ProgressBar, Stage, UITheme,
+)
+
+stage = Stage(ui_theme=UITheme(accent_color="gold"))
+board = Panel(position=(-220, 160), width=280, height=180, anchor=Anchor.TOP_LEFT)
+score = Label("Coins: 0", position=(-120, 55), anchor=Anchor.CENTER_LEFT)
+coins = ProgressBar(maximum=3, position=(0, 10), width=240)
+collect = Button("Collect a coin", position=(0, -50), width=240)
+board.add(score)
+board.add(coins)
+board.add(collect)
+stage.add(board)
+
+
+@collect.on_click
+def collect_coin(event: Event[Button, None]) -> None:
+    coins.value += 1
+    score.text = f"Coins: {int(coins.value)}"
+    if coins.value == 3:
+        collect.enabled = False
+        stage.alert("Three coins! Well done!", level=AlertLevel.SUCCESS)
+
+
+if __name__ == "__main__":
+    stage.run()
+```
+
+**Anchors** choose which point of a control sits at its position. Inside a panel,
+`(0, 0)` is the panel's middle. **UITheme** gives your controls matching colors.
+**Alerts** pause the game until you click OK or press Space; choose `INFO`,
+`WARNING`, `SUCCESS` or `ERROR` for different messages.
+
+See them in action with `plocks run maze_quest`, `plocks run geometry_dash` or
+`plocks run jungle_run`. Try the [controls activity](docs/activities/ui.md),
+[panels and styling](docs/activities/panels.md), or [alerts](docs/activities/alerts.md).
 
 ## 🧬 Make a copy
 

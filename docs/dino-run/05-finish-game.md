@@ -28,9 +28,10 @@ not resize its physical collider.
 it, adds to `coins`, and calls `stage.play(pop, volume=0.25)`. The sound is a
 portable OGG file. One Sound can play several separate times.
 
-**Words:** `@stage.on_draw` receives a `Canvas`. `canvas.text(...)` draws the score
-on top of the world. An f-string, such as `f"Coins {coins}"`, inserts the current
-number whenever that drawing function runs.
+**Words:** a `Label` keeps words on screen. `status.text = f"Score {score()}"`
+changes them as you run. `refresh_ui()` also changes the menu's words; Plocks draws
+the controls for us. A `Panel` groups them, and its `Button` continues or restarts.
+Try [panels](../activities/panels.md) to build your own dashboard.
 
 **Pause:** `stage.pause()` freezes simulation, physics, and scripts. Key callbacks
 still run, so P can resume. Changing applications also suspends play automatically.

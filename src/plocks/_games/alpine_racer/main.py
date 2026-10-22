@@ -5,16 +5,19 @@ from pathlib import Path
 
 from plocks import (
     Anchor,
-    Bounds,
+    Button,
     Canvas,
     Event,
     GamepadButton,
     GamepadPress,
     Image,
     Key,
+    Label,
+    Panel,
     Sound,
     Sprite,
     Stage,
+    UITheme,
 )
 
 # Time is in seconds, speed is in km/h, and lane 0 is the road's middle.
@@ -38,7 +41,12 @@ def map_point(at: float) -> tuple[float, float]:
 
 
 assets = Path(__file__).resolve().parent / "assets"
-stage = Stage(width=960, height=540, background="#76b84d")
+stage = Stage(
+    width=960,
+    height=540,
+    background="#76b84d",
+    ui_theme=UITheme(panel_color="#14263b", accent_color="#ffdf70"),
+)
 player = stage.gamepads[0]
 player.map_key(Key.P, GamepadButton.START)
 player.map_key(Key.R, GamepadButton.SELECT)
@@ -96,6 +104,34 @@ speed = 0.0
 lane = 0.0
 started_at: float | None = None
 bump_until = 0.0
+
+
+# Screen controls stay in place while the road rushes past.
+hud = Panel(position=(0, 231), width=936, height=54)
+lap_label = Label("LAP 1", position=(-452, 0), anchor=Anchor.CENTER_LEFT, size=32)
+position_label = Label("POSITION 6/6", size=32)
+time_label = Label("TIME 05:00", position=(452, 0), anchor=Anchor.CENTER_RIGHT, size=32)
+for control in (lap_label, position_label, time_label):
+    hud.add(control)
+stage.add(hud)
+speed_panel = Panel(position=(-468, -152), width=223, height=64, anchor=Anchor.TOP_LEFT)
+speed_label = Label("0 km/h", size=38, color="#ffdf70")
+speed_panel.add(speed_label)
+stage.add(speed_panel)
+help_bar = Panel(position=(0, -249), width=960, height=42)
+help_bar.add(Label("Arrows / WASD: drive    P: pause    R: restart", size=23))
+stage.add(help_bar)
+route_panel = Panel(position=(405, -172.5), width=110, height=95)
+route_panel.add(Label("ROUTE", position=(0, 33), size=18))
+route_panel.add(Label("START     FINISH", position=(0, -35), size=14))
+stage.add(route_panel)
+menu = Panel(position=(0, 35), width=560, height=170, layer=10)
+menu_title = Label("HOLD UP OR W TO RACE", position=(0, 40), size=29, color="#ffdf70")
+continue_button = Button("Continue", position=(0, -25), width=200)
+continue_button.visible = False
+menu.add(menu_title)
+menu.add(continue_button)
+stage.add(menu)
 
 
 def time_left() -> float:
@@ -174,6 +210,7 @@ def reset() -> None:
         rivals.append((actor, (-0.6, 0, 0.6)[index % 3], 250.0 + index * 220, cruise))
     stage.resume()
     show_road()
+    refresh_ui()
 
 
 @stage.on_start
@@ -193,6 +230,7 @@ def pause(event: Event[Stage, GamepadPress]) -> None:
             stage.resume()
         else:
             stage.pause()
+        refresh_ui()
 
 
 @stage.on_update
@@ -215,6 +253,7 @@ def update(event: Event[Stage, float]) -> None:
         started_at = stage.time
     if time_left() <= 0:
         stage.pause()
+        refresh_ui()
         return
 
     # Brakes and grass slow the car; steering changes its lane.
@@ -255,27 +294,40 @@ def update(event: Event[Stage, float]) -> None:
     show_road()
 
 
+def refresh_ui() -> None:
+    position = 1 + sum(location > distance for _, _, location, _ in rivals)
+    minutes, seconds = divmod(ceil(time_left()), 60)
+    lap_label.text = f"LAP {1 + int(distance / TRACK_LENGTH)}"
+    position_label.text = f"POSITION {position}/6"
+    time_label.text = f"TIME {minutes:02}:{seconds:02}"
+    speed_label.text = f"{int(speed)} km/h"
+    menu.visible = started_at is None or stage.paused
+    menu_title.text = "HOLD UP OR W TO RACE" if started_at is None else "PAUSED"
+    if time_left() == 0:
+        menu_title.text = f"FINISHED {position}/6"
+    continue_button.visible = started_at is not None
+    continue_button.text = "Race again" if time_left() == 0 else "Continue"
+
+
+@stage.on_update
+def show_race_info(event: Event[Stage, float]) -> None:
+    refresh_ui()
+
+
+@continue_button.on_click
+def continue_race(event: Event[Button, None]) -> None:
+    stage.focus(None)
+    if time_left() == 0:
+        reset()
+    else:
+        stage.resume()
+        refresh_ui()
+
+
 @stage.on_draw
 def draw(canvas: Canvas) -> None:
-    # Canvas is screen space: the race information stays put while the world moves.
-    position = 1
-    for _, _, location, _ in rivals:
-        if location > distance:
-            position += 1
-    minutes, seconds = divmod(ceil(time_left()), 60)
-    canvas.rectangle(Bounds(-468, 204, -260, 258), color="#14263b")
-    canvas.rectangle(Bounds(-114, 204, 140, 258), color="#14263b")
-    canvas.rectangle(Bounds(258, 204, 468, 258), color="#14263b")
-    canvas.rectangle(Bounds(-468, -216, -245, -152), color="#14263b")
-    canvas.rectangle(Bounds(-480, -270, 480, -228), color="#14263b")
-    canvas.text(f"LAP {1 + int(distance / TRACK_LENGTH)}", (-452, 245), size=32)
-    canvas.text(f"POSITION {position}/6", (-100, 245), size=32)
-    canvas.text(f"TIME {minutes:02}:{seconds:02}", (270, 245), size=32)
-    canvas.text(f"{int(speed)} km/h", (-450, -175), size=42, color="#ffdf70")
-    canvas.text("Arrows / WASD: drive    P: pause    R: restart", (-450, -240), size=23)
     # The route is the actual road offset against distance, not an invented oval.
     # It repeats each lap; the start is on the left and the finish is on the right.
-    canvas.rectangle(Bounds(350, -220, 460, -125), color="#14263b")
     for index in range(128):
         canvas.line(
             map_point(TRACK_LENGTH * index / 128),
@@ -286,14 +338,6 @@ def draw(canvas: Canvas) -> None:
     for _, _, location, _ in rivals:
         canvas.circle(map_point(location % TRACK_LENGTH), 2, color="#72c4ff")
     canvas.circle(map_point(distance % TRACK_LENGTH), 3, color="#ffac43")
-    canvas.text("ROUTE", (378, -132), size=18)
-    canvas.text("START     FINISH", (357, -204), size=14)
-    if started_at is None or stage.paused:
-        canvas.rectangle(Bounds(-260, -20, 260, 85), color="#14263b")
-        title = "HOLD UP OR W TO RACE" if started_at is None else "PAUSED — P TO CONTINUE"
-        if time_left() == 0:
-            title = f"FINISHED {position}/6 — R TO RACE AGAIN"
-        canvas.text(title, (-235, 50), size=29, color="#ffdf70")
 
 
 if __name__ == "__main__":

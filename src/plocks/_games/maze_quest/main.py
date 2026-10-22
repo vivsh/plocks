@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from plocks import (
+    AlertLevel,
+    Anchor,
     Button,
     Click,
     Event,
@@ -13,11 +15,13 @@ from plocks import (
     Key,
     Label,
     MouseButton,
+    Panel,
     ProgressBar,
     Sound,
     Sprite,
     Stage,
     TileMap,
+    UITheme,
 )
 
 
@@ -29,7 +33,13 @@ class Game:
 
 # Pictures stay beside this file, so your copied game runs from any folder.
 assets = Path(__file__).resolve().parent / "assets"
-stage = Stage(width=640, height=400, background="#172536", state=Game)
+stage = Stage(
+    width=640,
+    height=400,
+    background="#172536",
+    state=Game,
+    ui_theme=UITheme(panel_color="#24374b", accent_color="#ffd166"),
+)
 player = stage.gamepads[0]
 player.map_key(Key.P, GamepadButton.START)
 world = TileMap(
@@ -56,13 +66,24 @@ spawn = world.cell_center(row=1, column=1)
 hero.position = spawn
 stage.add(hero)
 stage.follow(hero, bounds=world.bounds, smoothing=0.12)
-score = Label("Coins: 0 / 4", position=(-225, 172))
-health = ProgressBar(value=100, position=(-225, 144), width=150, height=12)
+# A panel keeps its labels and health bar together, even if we move the panel.
+hud = Panel(position=(0, 160), width=640, height=80)
+score = Label("Coins: 0 / 4", position=(-300, 20), anchor=Anchor.CENTER_LEFT)
+health = ProgressBar(
+    value=100, position=(-300, -10), width=180, height=12, anchor=Anchor.CENTER_LEFT
+)
+hud.add(score)
+hud.add(health)
+stage.add(hud)
 hint = Label("Click a floor tile. P pauses.", position=(0, -177), size=22)
-resume = Button("Continue", position=(0, 0))
+stage.add(hint)
+menu = Panel(width=320, height=140)
+menu.add(Label("Ready to explore?", position=(0, 35)))
+resume = Button("Continue", position=(0, -25), width=200)
+menu.add(resume)
+menu.visible = False
 resume.visible = False
-for control in (score, health, hint, resume):
-    stage.add(control)
+stage.add(menu)
 pop = Sound(assets / "pop.ogg")
 
 
@@ -74,6 +95,7 @@ def collect(event: Event[Sprite, Sprite]) -> None:
     stage.play(pop)
     if stage.state.coins == 4:
         hint.text = "All four coins! You solved the maze."
+        stage.alert("You found all four coins!", level=AlertLevel.SUCCESS)
 
 
 for row, column in ((1, 5), (1, 15), (5, 9), (7, 13)):
@@ -102,6 +124,7 @@ def hurt(event: Event[Sprite, Sprite]) -> None:
     hero.say("Ouch! Try another route.", seconds=1)
     if stage.state.health == 0:
         hero.stop()
+        menu.visible = True
         resume.text = "Try again"
         resume.visible = True
         stage.focus(resume)
@@ -115,7 +138,7 @@ hero.on_touch(enemy)(hurt)
 @stage.on_click
 def choose_route(event: Event[Stage, Click]) -> None:
     position, button = event.data
-    if stage.paused or button is not MouseButton.LEFT:
+    if stage.paused or button is not MouseButton.LEFT or position[1] > 120:
         return
     # Clicks are on the screen. Add the camera to find that place in the world.
     point = (position[0] + stage.camera[0], position[1] + stage.camera[1])
@@ -132,6 +155,7 @@ def choose_route(event: Event[Stage, Click]) -> None:
 
 @stage.on_button_down(GamepadButton.START, gamepad=player)
 def pause(event: Event[Stage, GamepadPress]) -> None:
+    menu.visible = True
     resume.text = "Continue"
     resume.visible = True
     stage.focus(resume)
@@ -144,7 +168,9 @@ def continue_game(event: Event[Button, None]) -> None:
         stage.state.health = 100
         health.value = 100
         hero.position = spawn
+    menu.visible = False
     event.target.visible = False
+    stage.focus(None)
     stage.resume()
 
 

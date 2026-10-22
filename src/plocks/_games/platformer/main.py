@@ -3,23 +3,32 @@
 from pathlib import Path
 
 from plocks import (
+    AlertLevel,
+    Anchor,
     BodyType,
     Bounds,
     Box,
-    Canvas,
     Event,
     GamepadButton,
     GamepadPress,
     Image,
     Key,
+    Label,
     Sprite,
     Stage,
     TileMap,
+    UITheme,
 )
 
 # Find assets beside this script, even when running from another folder.
 assets = Path(__file__).resolve().parent / "assets"
-stage = Stage(width=800, height=450, physics=True, background="#22364d")
+stage = Stage(
+    width=800,
+    height=450,
+    physics=True,
+    background="#22364d",
+    ui_theme=UITheme(accent_color="#ffd07a"),
+)
 
 # Player one already has Space for jumping. Add arrows and R for this game.
 player = stage.gamepads[0]
@@ -69,6 +78,16 @@ won = False
 falls = 0
 
 
+# Labels stay on the screen while the camera follows the hero.
+title = Label("SKY STEPS", position=(-380, 207), anchor=Anchor.TOP_LEFT, color="#ffd07a", size=30)
+status = Label(
+    "Falls: 0    Checkpoint: ahead", position=(-380, 165), anchor=Anchor.TOP_LEFT, size=22
+)
+help_text = Label("Arrows: move   Space: jump   R: restart", position=(0, -205), size=20)
+for control in (title, status, help_text):
+    stage.add(control)
+
+
 def respawn() -> None:
     """Return to the saved spot and stop any leftover falling speed."""
     hero.position = spawn
@@ -82,8 +101,7 @@ def jump(event: Event[Sprite, GamepadPress]) -> None:
         hero.body.impulse(y=440)
 
 
-@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
-def restart(event: Event[Stage, GamepadPress]) -> None:
+def reset() -> None:
     global spawn, saved, won, falls
     # global lets this function change the game variables at the top of this file.
     spawn = (-300, -125)
@@ -92,6 +110,16 @@ def restart(event: Event[Stage, GamepadPress]) -> None:
     falls = 0
     hero.clear_bubble()
     respawn()
+    status.text = "Falls: 0    Checkpoint: ahead"
+
+
+@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
+def restart(event: Event[Stage, GamepadPress]) -> None:
+    reset()
+
+
+def play_again(event: Event[Stage, None]) -> None:
+    reset()
 
 
 # Plocks calls update many times a second. dt is the time since the last game step.
@@ -109,21 +137,16 @@ def update(event: Event[Stage, float]) -> None:
     if hero.y < -300:
         falls += 1
         respawn()
-    if hero.x > 620 and hero.body.grounded:
+    checkpoint_text = "saved" if saved else "ahead"
+    status.text = f"Falls: {falls}    Checkpoint: {checkpoint_text}"
+    if not won and hero.x > 620 and hero.body.grounded:
         won = True
-
-
-# Drawing adds words on top of the game. It does not move the characters.
-@stage.on_draw
-def draw(canvas: Canvas) -> None:
-    canvas.text("SKY STEPS", (-380, 207), size=30, color="#ffd07a")
-    checkpoint_text = "ahead"
-    if saved:
-        checkpoint_text = "saved"
-    canvas.text(f"Falls: {falls}    Checkpoint: {checkpoint_text}", (-380, 170), size=22)
-    canvas.text("Arrows: move   Space: jump   R: restart", (-380, -198), size=20)
-    if won:
-        canvas.text("You made it! Press R to replay.", (-220, 120), size=28)
+        stage.alert(
+            "You reached the flag!",
+            level=AlertLevel.SUCCESS,
+            button_text="Play again",
+            on_close=play_again,
+        )
 
 
 if __name__ == "__main__":

@@ -413,3 +413,35 @@ def shape_images() -> None:
     assert_type(hero.image, Image)
     assert_type(hero.set_image(Image.triangle(32, 32).rotated(90)), Action)
     assert_type(hero.sequence().images((Image.circle(8), Image.circle(12)), fps=2), Script[Sprite])
+
+
+def themed_ui() -> None:
+    """Panels, live theme inheritance and alert callbacks retain their public target types."""
+    from plocks import AlertLevel, Anchor, Button, Color, Label, Panel, ProgressBar, UITheme
+
+    stage = Stage(state=PlayerState, ui_theme=UITheme(accent_color="orange"))
+    panel = Panel(anchor=Anchor.TOP_LEFT, color=(20, 30, 40, 200))
+    label = Label("Health", anchor=Anchor.TOP_LEFT)
+    bar = ProgressBar(value=100, anchor=Anchor.CENTER_LEFT)
+    button = Button("Lose 10 health")
+    for child in (label, bar, button):
+        panel.add(child)
+    stage.add(panel)
+    assert_type(panel.children, tuple[Label | Button | ProgressBar, ...])
+    assert_type(label.color, Color)
+    assert_type(label.size, int)
+    assert_type(stage.ui_theme, UITheme)
+    label.color = None
+    label.size = None
+    button.text_size = None
+    bar.color = None
+
+    def restart(event: Event[Stage[PlayerState], None]) -> None:
+        assert_type(event.target.state.health, int)
+        assert_type(event.data, None)
+        event.target.state.health = 100
+
+    @button.on_click
+    def lose(event: Event[Button, None]) -> None:
+        assert_type(event.target, Button)
+        stage.alert("Game over", level=AlertLevel.ERROR, on_close=restart)

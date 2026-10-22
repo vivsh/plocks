@@ -21,3 +21,7 @@ python main.py
 **Try this:** change a beam's size, a wheel's color or a motor's speed. Save, run, and see what changed!
 
 [More activities](../../../../docs/activities/index.md)
+
+## Screen controls
+
+A themed Panel holds Drop chain. Labels name each machine; Canvas still draws the spring.

@@ -12,7 +12,7 @@ import pygame
 import pytest
 from PIL import Image as PillowImage
 
-from plocks import BodyType, Box, GamepadButton, GamepadPress, Key, Sprite, Stage, TileMap
+from plocks import BodyType, Box, GamepadButton, GamepadPress, Key, Panel, Sprite, Stage, TileMap
 from plocks._render import frame
 from plocks._runtime import advance, close
 from plocks._scripts import _step, _trigger
@@ -101,7 +101,8 @@ def test_pickup_collision_restart_and_bounded_work(game: dict[str, object]) -> N
     for _ in range(12):
         key(stage, Key.R)
         ticks(stage, 2)
-        assert len(stage.objects) == 7
+        assert len([obj for obj in stage.objects if not isinstance(obj, Panel)]) == 7
+        assert len([obj for obj in stage.objects if isinstance(obj, Panel)]) == 3
         assert len(stage._actions) == 1
 
 

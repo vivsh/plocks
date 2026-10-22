@@ -35,3 +35,7 @@ checks the path of each bullet so fast shots cannot skip a robot.
 **Your own project?** Copy this whole folder, keep `assets/` beside `main.py`,
 and run `python main.py` with Plocks installed. From another folder, use
 `python path/to/the/game/main.py` or `plocks run path/to/the/game`.
+
+## Screen controls
+
+The green health bar shrinks when you get hit. A pause Panel has Continue or Play again; P and R still work.

@@ -18,10 +18,11 @@ from .geometry import Color, Point, _integer, _number, _point, _rotate
 
 
 class Anchor(Enum):
-    """Nine image pivots, resolved once to pixels: x right, y down.
+    """Nine named attachment points for images and screen controls.
 
-    CENTER is the default. BOTTOM_CENTER makes an actor's position its feet.
-    Edges use the full width/height; precise pixel Points are also supported.
+    CENTER is the default. Images resolve these once to top-left pixel coordinates;
+    BOTTOM_CENTER makes an actor's position its feet. UI controls retain the named
+    anchor as their content changes size. Images also accept precise pixel Points.
     """
 
     TOP_LEFT = (0.0, 0.0)

@@ -12,22 +12,33 @@ from plocks import (
     BodyType,
     Bounds,
     Box,
+    Button,
     Canvas,
     Event,
     GamepadButton,
     GamepadPress,
     Image,
     Key,
+    Label,
     Message,
+    Panel,
+    ProgressBar,
     RotationStyle,
     Sprite,
     Stage,
     TileMap,
+    UITheme,
 )
 
 # Find assets beside this script, even when running from another folder.
 assets = Path(__file__).resolve().parent / "assets"
-stage = Stage(width=800, height=450, physics=True, background="#102735")
+stage = Stage(
+    width=800,
+    height=450,
+    physics=True,
+    background="#102735",
+    ui_theme=UITheme(panel_color="#0c1c29", accent_color="#edc46e"),
+)
 stage.physics.gravity = (0, -1500)
 
 # Player one already has Space for jumping; map extra controls here.
@@ -109,6 +120,38 @@ health = 3
 defeated = 0
 
 
+hud = Panel(position=(0, 195), width=800, height=60)
+hud.add(
+    Label("JUNGLE RUN", position=(-380, 0), anchor=Anchor.CENTER_LEFT, size=28, color="#edc46e")
+)
+health_bar = ProgressBar(
+    value=3, maximum=3, position=(-140, 0), width=130, anchor=Anchor.CENTER_LEFT, color="#86d994"
+)
+status = Label("SENTRIES 0/6", position=(45, 0), anchor=Anchor.CENTER_LEFT, size=22)
+hud.add(Label("HEALTH", position=(-140, 20), anchor=Anchor.CENTER_LEFT, size=14, color="#abd2bc"))
+hud.add(health_bar)
+hud.add(status)
+stage.add(hud)
+objective = Label(
+    "Clear the sentries, then reach the gold flag.",
+    position=(-380, 160),
+    anchor=Anchor.CENTER_LEFT,
+    size=18,
+    color="#abd2bc",
+)
+stage.add(objective)
+help_bar = Panel(position=(0, -205), width=800, height=40)
+help_bar.add(Label("Arrows: move   Space: jump   Hold X: fire   P: pause   R: restart", size=18))
+stage.add(help_bar)
+menu = Panel(width=520, height=150, layer=10)
+menu_title = Label("PAUSED", position=(0, 40), size=34, color="#edc46e")
+continue_button = Button("Continue", position=(0, -25), width=200)
+menu.add(menu_title)
+menu.add(continue_button)
+menu.visible = False
+stage.add(menu)
+
+
 def finished() -> bool:
     return health <= 0 or (not enemies and hero.x >= 1680)
 
@@ -184,6 +227,7 @@ def hurt() -> None:
         hero.image = idle
         hero.visible = True
         stage.pause()
+        refresh_ui()
 
 
 # grounded stops air jumps; physics brings the hero back to the platforms.
@@ -200,8 +244,7 @@ def shoot(event: Event[Sprite, GamepadPress]) -> None:
         fire(event.target, True)
 
 
-@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
-def restart(event: Event[Stage, GamepadPress]) -> None:
+def reset() -> None:
     global health, defeated, protected_until
     hero.stop()
     for enemy in enemies:
@@ -220,6 +263,12 @@ def restart(event: Event[Stage, GamepadPress]) -> None:
     protected_until = stage.time + 1
     stage.resume()
     spawn_enemies()
+    refresh_ui()
+
+
+@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
+def restart(event: Event[Stage, GamepadPress]) -> None:
+    reset()
 
 
 @stage.on_button_down(GamepadButton.START, gamepad=player)
@@ -228,6 +277,7 @@ def toggle_pause(event: Event[Stage, GamepadPress]) -> None:
         stage.resume()
     else:
         stage.pause()
+    refresh_ui()
 
 
 # dt is the time since the last game step. Speed × dt gives the distance to move.
@@ -241,6 +291,7 @@ def update(event: Event[Stage, float]) -> None:
         hero.image = idle
         hero.visible = True
         stage.pause()
+        refresh_ui()
         return
     direction = player.left_stick[0]
     hero.body.velocity = (direction * 220, hero.body.velocity[1])
@@ -303,33 +354,37 @@ def update(event: Event[Stage, float]) -> None:
             break
 
 
+def refresh_ui() -> None:
+    health_bar.value = max(0, health)
+    status.text = f"SENTRIES {defeated}/6"
+    menu.visible = stage.paused or finished()
+    menu_title.text = "PAUSED"
+    if health <= 0:
+        menu_title.text = "TRY AGAIN"
+    elif finished():
+        menu_title.text = "MISSION CLEAR!"
+    continue_button.text = "Play again" if finished() else "Continue"
+
+
+@stage.on_update
+def show_health(event: Event[Stage, float]) -> None:
+    refresh_ui()
+
+
+@continue_button.on_click
+def continue_game(event: Event[Button, None]) -> None:
+    stage.focus(None)
+    if finished():
+        reset()
+    else:
+        stage.resume()
+        refresh_ui()
+
+
 @stage.on_draw
 def draw(canvas: Canvas) -> None:
-    canvas.rectangle(Bounds(-400, 177, 400, 225), color="#0c1c29")
-    canvas.text("JUNGLE RUN", (-380, 212), size=28, color="#edc46e")
-    canvas.text(f"HEALTH {'|' * health}    SENTRIES {defeated}/6", (-150, 207), size=22)
-    canvas.text(
-        "Arrows: move   Space: jump   Hold X: fire   P: pause   R: restart",
-        (-380, -197),
-        size=20,
-    )
-    canvas.text(
-        "Clear the sentries, then reach the gold flag.", (-380, 167), size=18, color="#abd2bc"
-    )
-    if finished() or stage.paused:
-        canvas.rectangle(Bounds(-260, -45, 260, 65), color="#0c1c29")
-        title = "PAUSED"
-        if health <= 0:
-            title = "TRY AGAIN"
-        elif finished():
-            title = "MISSION CLEAR!"
-        canvas.text(title, (-110, 40), size=34, color="#edc46e")
-        instruction = "Press P to continue"
-        if finished():
-            instruction = "Press R to restart"
-        canvas.text(instruction, (-105, -5), size=23)
-    else:
-        # A pulsing light marks the extraction point ahead.
+    # Canvas is for the custom pulsing goal light; controls draw the HUD for us.
+    if not finished() and not stage.paused:
         goal_x = 1720 - stage.camera[0]
         if -390 < goal_x < 390:
             canvas.circle((goal_x, -42), 3 + sin(stage.time * 4), color="#edc46e")

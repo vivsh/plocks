@@ -3,15 +3,17 @@
 from pathlib import Path
 
 from plocks import (
+    Anchor,
     Bounds,
-    Canvas,
     Click,
     Event,
     GamepadButton,
     GamepadPress,
     ImageGrid,
     Key,
+    Label,
     MouseButton,
+    Panel,
     Sprite,
     Stage,
     TileMap,
@@ -69,6 +71,16 @@ stage.follow(hero, bounds=Bounds(world.bounds.left, -225, world.bounds.right, 22
 selected = "G"
 
 
+hud = Panel(position=(0, 185), width=800, height=80, color="#19384a")
+hud.add(Label("SCROLLING WORLD", position=(-380, 18), anchor=Anchor.CENTER_LEFT, size=29))
+status = Label("Camera x: 0    Paint: G", position=(-380, -17), anchor=Anchor.CENTER_LEFT, size=22)
+hud.add(status)
+stage.add(hud)
+help_bar = Panel(position=(0, -205), width=800, height=40)
+help_bar.add(Label("Arrows: explore   1/2/3: tile   Click: paint   Right-click: erase", size=18))
+stage.add(help_bar)
+
+
 # These @ lines connect functions to keys. selected remembers our paint choice.
 @stage.on_button_down(GamepadButton.L, gamepad=player)
 def grass(event: Event[Stage, GamepadPress]) -> None:
@@ -94,6 +106,9 @@ def edit(event: Event[Stage, Click]) -> None:
     # The mouse gives a position in the window. Add the camera position
     # to find the same spot in our bigger world.
     position, button = event.data
+    # The screen panels are instructions, not paintable parts of our world.
+    if position[1] > 145 or position[1] < -185:
+        return
     cell = world.cell_at(x=position[0] + stage.camera[0], y=position[1] + stage.camera[1])
     if cell is not None:
         row, column = cell
@@ -111,20 +126,9 @@ def update(event: Event[Stage, float]) -> None:
     hero.x = max(-360, min(1780, hero.x + direction * 220 * dt))
 
 
-@stage.on_draw
-def draw(canvas: Canvas) -> None:
-    canvas.text("SCROLLING WORLD", (-380, 207), size=29, color="#19384a")
-    canvas.text(
-        f"Camera x: {stage.camera[0]:.0f}    Paint: {selected}",
-        (-380, 172),
-        size=22,
-        color="#19384a",
-    )
-    canvas.text(
-        "Arrows: explore   1/2/3: tile   Click: paint   Right-click: erase",
-        (-380, -198),
-        size=18,
-    )
+@stage.on_update
+def show_selection(event: Event[Stage, float]) -> None:
+    status.text = f"Camera x: {stage.camera[0]:.0f}    Paint: {selected}"
 
 
 if __name__ == "__main__":

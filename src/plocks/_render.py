@@ -16,7 +16,7 @@ from .puppets import Puppet
 from .rigging import _pivots
 from .sprites import Sprite
 from .tiling import TiledBackground, TileMap
-from .ui import Button, Label, ProgressBar
+from .ui import Button, Label, Panel, ProgressBar
 
 if TYPE_CHECKING:
     from .stage import Stage
@@ -79,7 +79,7 @@ def frame(stage: Stage) -> None:
     from ._ui import _draw as draw_ui
 
     for obj in members:
-        if isinstance(obj, (Button, Label, ProgressBar)) and obj.visible:
+        if isinstance(obj, (Button, Label, ProgressBar, Panel)) and obj.visible:
             draw_ui(stage, target, obj)
     for callback in tuple(stage._draws):
         canvas = Canvas(target, stage)
@@ -89,6 +89,9 @@ def frame(stage: Stage) -> None:
             _check_callback_result(callback(canvas), "draw")
         finally:
             canvas._surface = None
+    from ._alerts import _draw as draw_alert
+
+    draw_alert(stage, target)
     if stage._network is not None:
         from ._network import capture, overlay
 

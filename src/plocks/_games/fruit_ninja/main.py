@@ -4,14 +4,19 @@ from pathlib import Path
 from random import choice, uniform
 
 from plocks import (
+    Anchor,
+    Button,
     Canvas,
     Event,
     GamepadButton,
     GamepadPress,
     Image,
     Key,
+    Label,
     MouseButton,
+    Panel,
     Point,
+    ProgressBar,
     Sound,
     Sprite,
     Stage,
@@ -69,6 +74,32 @@ missed = 0
 over = False
 
 
+hud = Panel(position=(0, 192), width=800, height=66)
+status = Label("FRUIT SLICE    Score 0", position=(-380, 10), anchor=Anchor.CENTER_LEFT, size=27)
+lives = ProgressBar(
+    value=3,
+    maximum=3,
+    position=(220, -15),
+    width=160,
+    height=10,
+    anchor=Anchor.CENTER_LEFT,
+    color="#80dfaa",
+)
+hud.add(status)
+hud.add(lives)
+stage.add(hud)
+help_bar = Panel(position=(0, -205), width=800, height=40)
+help_bar.add(Label("Hold left mouse + swipe. Avoid bombs! R: restart", size=18))
+stage.add(help_bar)
+result = Panel(width=520, height=150, layer=10)
+result_title = Label("Round over!", position=(0, 40), size=28)
+again = Button("Play again", position=(0, -25), width=200)
+result.add(result_title)
+result.add(again)
+result.visible = False
+stage.add(result)
+
+
 def throw() -> None:
     """Toss one fruit upward; every fifth toss is a bomb."""
     global thrown
@@ -86,8 +117,7 @@ def throw() -> None:
     flying.append((fruit, speed_x, speed_y, spin, name))
 
 
-@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
-def restart(event: Event[Stage, GamepadPress]) -> None:
+def reset() -> None:
     global score, missed, over, thrown, next_throw, previous
     for item in flying:
         fruit = item[0]
@@ -100,6 +130,20 @@ def restart(event: Event[Stage, GamepadPress]) -> None:
     thrown = 0
     next_throw = stage.time
     previous = None
+    result.visible = False
+    lives.value = 3
+    status.text = "FRUIT SLICE    Score 0    Missed 0/3"
+
+
+@stage.on_button_down(GamepadButton.SELECT, gamepad=player)
+def restart(event: Event[Stage, GamepadPress]) -> None:
+    reset()
+
+
+@again.on_click
+def play_again(event: Event[Button, None]) -> None:
+    stage.focus(None)
+    reset()
 
 
 # @ asks Plocks to run update every game step. dt is that step's time in seconds.
@@ -167,15 +211,18 @@ def update(event: Event[Stage, float]) -> None:
         stage.play(pop, volume=0.25)
 
 
+@stage.on_update
+def show_score(event: Event[Stage, float]) -> None:
+    status.text = f"FRUIT SLICE    Score {score}    Missed {missed}/3"
+    lives.value = max(0, 3 - missed)
+    result.visible = over
+
+
 @stage.on_draw
 def draw(canvas: Canvas) -> None:
     # Connect neighbouring mouse positions to show a short glowing trail.
     for index in range(1, len(trail)):
         canvas.line(trail[index - 1], trail[index], color="#d2fcff", width=4)
-    canvas.text(f"FRUIT SLICE    Score {score}    Missed {missed}/3", (-380, 207), size=27)
-    canvas.text("Hold left mouse + swipe. Avoid bombs! R: restart", (-380, -198), size=20)
-    if over:
-        canvas.text("Round over! Press R to try again.", (-240, 20), size=30, color="#ffd07a")
 
 
 if __name__ == "__main__":

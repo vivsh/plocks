@@ -21,3 +21,7 @@ python main.py
 **Try this:** change one speed, picture or distance. Save, run, and see what changed!
 
 [More activities](../../../../docs/activities/index.md)
+
+## Screen controls
+
+The score and health bar share a Panel. P opens a Continue menu. Collect every coin for a success alert; click OK or press Space.

@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-import pygame
-
 from .events import Event
 from .geometry import Color, Point, _integer, _number, _point, _positive
+from .imaging import Anchor
+from .theme import _theme, _validate_color
 
 if TYPE_CHECKING:
     from .stage import Stage
@@ -27,25 +27,49 @@ def _blur(button: Button) -> None:
         button._stage._ui_focus = None
 
 
+def _check_focus(control: Button | Panel) -> None:
+    """A clipped descendant must not leave the menu pointing at an unavailable button."""
+    stage = control._stage
+    if stage is None or stage._ui_focus is None:
+        return
+    from ._ui_layout import _available
+
+    if not _available(stage, stage._ui_focus):
+        stage._ui_focus = None
+
+
 class Label:
     """Persistent screen text; add it with stage.add(label). Newlines are supported.
 
-    Position is its center. Labels use the bundled default font and do not capture
+    Position names its anchor (CENTER by default). Labels use the bundled font and do not capture
     input. Change text to update a score without a drawing callback.
     """
 
-    __slots__ = ("_color", "_layer", "_position", "_size", "_stage", "_text", "_visible")
+    __slots__ = (
+        "_anchor",
+        "_color",
+        "_layer",
+        "_panel",
+        "_position",
+        "_size",
+        "_stage",
+        "_text",
+        "_visible",
+    )
 
     def __init__(
         self,
         text: str,
         *,
         position: Point = (0, 0),
-        size: int = 24,
-        color: Color = "white",
+        size: int | None = None,
+        color: Color | None = None,
+        anchor: Anchor = Anchor.CENTER,
         layer: int = 0,
     ) -> None:
         self._stage: Stage | None = None
+        self._panel: Panel | None = None
+        self.anchor = anchor
         self.text = text
         self.position = position
         self.size = size
@@ -64,26 +88,38 @@ class Label:
 
     @property
     def size(self) -> int:
-        """Positive font size in logical screen pixels."""
-        return self._size
+        """Font size in logical pixels; assign None to inherit the current stage theme."""
+        return _theme(self._stage).text_size if self._size is None else self._size
 
     @size.setter
-    def size(self, value: int) -> None:
-        self._size = _integer(value, "size", minimum=1)
+    def size(self, value: int | None) -> None:
+        self._size = None if value is None else _integer(value, "size", minimum=1)
 
     @property
     def color(self) -> Color:
-        """Text/fill color as a name or RGB/RGBA tuple."""
-        return self._color
+        """Resolved color; assign a Color override or None to inherit the current theme."""
+        return _theme(self._stage).text_color if self._color is None else self._color
 
     @color.setter
-    def color(self, value: Color) -> None:
-        pygame.Color(value)
+    def color(self, value: Color | None) -> None:
+        if value is not None:
+            _validate_color(value)
         self._color = value
 
     @property
+    def anchor(self) -> Anchor:
+        """Point of the control placed at position; defaults to Anchor.CENTER."""
+        return self._anchor
+
+    @anchor.setter
+    def anchor(self, value: Anchor) -> None:
+        if not isinstance(value, Anchor):
+            raise TypeError("anchor must be an Anchor")
+        self._anchor = value
+
+    @property
     def position(self) -> Point:
-        """Visual center in screen coordinates; x right, y up; camera-independent."""
+        """Anchor position: screen coordinates, or local to a containing panel; x right, y up."""
         return self._position
 
     @position.setter
@@ -120,10 +156,12 @@ class Button:
     """
 
     __slots__ = (
+        "_anchor",
         "_clicks",
         "_enabled",
         "_height",
         "_layer",
+        "_panel",
         "_position",
         "_stage",
         "_text",
@@ -139,10 +177,13 @@ class Button:
         position: Point = (0, 0),
         width: float = 140,
         height: float = 44,
-        text_size: int = 24,
+        text_size: int | None = None,
+        anchor: Anchor = Anchor.CENTER,
         layer: int = 0,
     ) -> None:
         self._stage: Stage | None = None
+        self._panel: Panel | None = None
+        self.anchor = anchor
         self._clicks: list[Callable[[Event[Button, None]], None]] = []
         self.text = text
         self.position = position
@@ -197,6 +238,7 @@ class Button:
     @width.setter
     def width(self, value: float) -> None:
         self._width = _positive(value, "width")
+        _check_focus(self)
 
     @property
     def height(self) -> float:
@@ -206,24 +248,38 @@ class Button:
     @height.setter
     def height(self, value: float) -> None:
         self._height = _positive(value, "height")
+        _check_focus(self)
 
     @property
     def text_size(self) -> int:
-        """Positive font size in logical screen pixels."""
-        return self._text_size
+        """Font size in logical pixels; assign None to inherit the current stage theme."""
+        return _theme(self._stage).text_size if self._text_size is None else self._text_size
 
     @text_size.setter
-    def text_size(self, value: int) -> None:
-        self._text_size = _integer(value, "text_size", minimum=1)
+    def text_size(self, value: int | None) -> None:
+        self._text_size = None if value is None else _integer(value, "text_size", minimum=1)
+
+    @property
+    def anchor(self) -> Anchor:
+        """Point of the control placed at position; defaults to Anchor.CENTER."""
+        return self._anchor
+
+    @anchor.setter
+    def anchor(self, value: Anchor) -> None:
+        if not isinstance(value, Anchor):
+            raise TypeError("anchor must be an Anchor")
+        self._anchor = value
+        _check_focus(self)
 
     @property
     def position(self) -> Point:
-        """Visual center in screen coordinates; x right, y up; camera-independent."""
+        """Anchor position: screen coordinates, or local to a containing panel; x right, y up."""
         return self._position
 
     @position.setter
     def position(self, value: Point) -> None:
         self._position = _point(value)
+        _check_focus(self)
 
     @property
     def layer(self) -> int:
@@ -256,10 +312,12 @@ class ProgressBar:
     """
 
     __slots__ = (
+        "_anchor",
         "_color",
         "_height",
         "_layer",
         "_maximum",
+        "_panel",
         "_position",
         "_stage",
         "_value",
@@ -275,10 +333,13 @@ class ProgressBar:
         position: Point = (0, 0),
         width: float = 160,
         height: float = 18,
-        color: Color = "limegreen",
+        color: Color | None = None,
+        anchor: Anchor = Anchor.CENTER,
         layer: int = 0,
     ) -> None:
         self._stage: Stage | None = None
+        self._panel: Panel | None = None
+        self.anchor = anchor
         self._value = 0.0
         self.maximum = maximum
         self.value = value
@@ -333,17 +394,29 @@ class ProgressBar:
 
     @property
     def color(self) -> Color:
-        """Text/fill color as a name or RGB/RGBA tuple."""
-        return self._color
+        """Resolved color; assign a Color override or None to inherit the current theme."""
+        return _theme(self._stage).accent_color if self._color is None else self._color
 
     @color.setter
-    def color(self, value: Color) -> None:
-        pygame.Color(value)
+    def color(self, value: Color | None) -> None:
+        if value is not None:
+            _validate_color(value)
         self._color = value
 
     @property
+    def anchor(self) -> Anchor:
+        """Point of the control placed at position; defaults to Anchor.CENTER."""
+        return self._anchor
+
+    @anchor.setter
+    def anchor(self, value: Anchor) -> None:
+        if not isinstance(value, Anchor):
+            raise TypeError("anchor must be an Anchor")
+        self._anchor = value
+
+    @property
     def position(self) -> Point:
-        """Visual center in screen coordinates; x right, y up; camera-independent."""
+        """Anchor position: screen coordinates, or local to a containing panel; x right, y up."""
         return self._position
 
     @position.setter
@@ -369,3 +442,165 @@ class ProgressBar:
         if not isinstance(value, bool):
             raise TypeError("visible must be bool")
         self._visible = value
+
+
+class Panel:
+    """A colored screen overlay containing one level of ordinary UI controls.
+
+    Add controls with panel.add(), then add the panel with stage.add(panel).
+    Child positions are relative to the panel's center, x right and y up.
+    Moving/hiding the panel affects its children; drawing and clicks clip to its
+    rectangle. Panels cannot nest. RGBA color tuples provide translucency;
+    color=None inherits the stage theme. No automatic layout is performed.
+    """
+
+    __slots__ = (
+        "_anchor",
+        "_children",
+        "_color",
+        "_height",
+        "_layer",
+        "_position",
+        "_stage",
+        "_visible",
+        "_width",
+    )
+
+    def __init__(
+        self,
+        *,
+        position: Point = (0, 0),
+        width: float = 300,
+        height: float = 180,
+        color: Color | None = None,
+        anchor: Anchor = Anchor.CENTER,
+        layer: int = 0,
+    ) -> None:
+        self._stage: Stage | None = None
+        self._children: list[Label | Button | ProgressBar] = []
+        self.position = position
+        self.width = width
+        self.height = height
+        self.color = color
+        self.anchor = anchor
+        self.visible = True
+        self.layer = layer
+
+    @property
+    def children(self) -> tuple[Label | Button | ProgressBar, ...]:
+        """Read-only membership snapshot; use add/remove/clear to change children."""
+        return tuple(self._children)
+
+    def add(self, control: Label | Button | ProgressBar) -> None:
+        """Attach a detached control once; actors and nested panels are rejected.
+
+        A child belongs to one panel. Detach a root from its stage or remove a
+        child from its previous panel before adding it here. A staged panel also
+        attaches the new child to its stage for theme/focus/event use.
+        """
+        from .errors import StageError
+        from .stage import _open
+
+        if self._stage is not None:
+            _open(self._stage)
+        if not isinstance(control, (Label, Button, ProgressBar)):
+            raise TypeError("Panel children must be Label, Button or ProgressBar")
+        if control in self._children:
+            raise ValueError("This control is already in the panel")
+        if control._stage is not None or control._panel is not None:
+            raise StageError("Detach this control before adding it to a panel")
+        self._children.append(control)
+        control._panel = self
+        control._stage = self._stage
+
+    def remove(self, control: Label | Button | ProgressBar) -> None:
+        """Detach a child, clearing its stage/focus and retaining its own settings."""
+        if control not in self._children:
+            raise ValueError("This control is not in the panel")
+        if isinstance(control, Button):
+            _blur(control)
+        self._children.remove(control)
+        control._panel = None
+        control._stage = None
+
+    def clear(self) -> None:
+        """Remove all children; the panel remains attached and keeps its settings."""
+        for control in tuple(self._children):
+            self.remove(control)
+
+    @property
+    def position(self) -> Point:
+        """Anchor position in centered screen coordinates; independent of the camera."""
+        return self._position
+
+    @position.setter
+    def position(self, value: Point) -> None:
+        self._position = _point(value)
+        _check_focus(self)
+
+    @property
+    def width(self) -> float:
+        """Positive width in logical screen pixels; children are clipped to this width."""
+        return self._width
+
+    @width.setter
+    def width(self, value: float) -> None:
+        self._width = _positive(value, "width")
+        _check_focus(self)
+
+    @property
+    def height(self) -> float:
+        """Positive height in logical screen pixels; children are clipped to this height."""
+        return self._height
+
+    @height.setter
+    def height(self, value: float) -> None:
+        self._height = _positive(value, "height")
+        _check_focus(self)
+
+    @property
+    def color(self) -> Color:
+        """Background fill; assign None to inherit the theme, or RGBA for translucency."""
+        return _theme(self._stage).panel_color if self._color is None else self._color
+
+    @color.setter
+    def color(self, value: Color | None) -> None:
+        if value is not None:
+            _validate_color(value)
+        self._color = value
+
+    @property
+    def anchor(self) -> Anchor:
+        """Point of the panel placed at position; defaults to Anchor.CENTER."""
+        return self._anchor
+
+    @anchor.setter
+    def anchor(self, value: Anchor) -> None:
+        if not isinstance(value, Anchor):
+            raise TypeError("anchor must be an Anchor")
+        self._anchor = value
+        _check_focus(self)
+
+    @property
+    def visible(self) -> bool:
+        """Whether the panel and its children are drawn and available to input."""
+        return self._visible
+
+    @visible.setter
+    def visible(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError("visible must be bool")
+        self._visible = value
+        if not value:
+            for child in self._children:
+                if isinstance(child, Button):
+                    _blur(child)
+
+    @property
+    def layer(self) -> int:
+        """Root UI order; child layers are local to the panel."""
+        return self._layer
+
+    @layer.setter
+    def layer(self, value: int) -> None:
+        self._layer = _integer(value, "layer")

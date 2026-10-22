@@ -16,6 +16,7 @@ import pygame
 
 from plocks import Button, Canvas, Event, Hinge, Label, Motor, Rope, Sprite, Stage
 from plocks._connections import _anchors
+from plocks._ui_layout import _control_rect
 
 
 def exercise(name: str, output: Path) -> dict[str, object]:
@@ -83,7 +84,7 @@ def exercise(name: str, output: Path) -> dict[str, object]:
                 pygame.event.Event(
                     pygame.MOUSEBUTTONDOWN,
                     button=1,
-                    pos=stage.to_screen(button.position, world=False),
+                    pos=_control_rect(stage, button).center,
                 )
             )
         end = 2.0 if name == "maze_quest" else 0.8

@@ -257,3 +257,17 @@ Image.polygon(((0, "up"), (10, 0), (0, 10)))  # error
 Image.polygon(((0, 0), (10, 0), (0, 10)), anchor="middle")  # error
 Image.circle(12, color=(0.5, 0, 0))  # error
 Image.rectangle(12, 20, outline=(255, 255))  # error
+
+
+# UI anchors and ownership are explicit, and alert callbacks remain synchronous.
+from plocks import AlertLevel, Panel, UITheme
+panel = Panel()
+panel.add(hero)  # error
+panel.add(Panel())  # error
+button.anchor = "top left"  # error
+UITheme(text_size="large")  # error
+UITheme(accent_color=123)  # error
+stage.ui_theme = "dark"  # error
+stage.alert("Oops", level="warning")  # error
+stage.alert("Oops", on_close=async_button)  # error
+stage.alert("Oops", on_close=wrong_button_target)  # error

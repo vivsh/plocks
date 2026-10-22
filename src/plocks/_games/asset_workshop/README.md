@@ -25,3 +25,7 @@ platforms, use physics as in Sky Steps; these glides do not resolve collisions.
 
 Learn to [export your own artwork](https://github.com/vivsh/plocks/blob/main/docs/art/index.md) or
 [choose controller and keyboard controls](https://github.com/vivsh/plocks/blob/main/docs/activities/controls.md).
+
+## Screen controls
+
+A Panel keeps both players’ control hints together. Labels show the words without a drawing function.

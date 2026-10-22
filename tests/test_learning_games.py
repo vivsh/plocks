@@ -12,10 +12,15 @@ import pytest
 
 from plocks import (
     BodyType,
+    Button,
+    GamepadButton,
     GamepadPress,
     Image,
     Key,
+    Label,
     MouseButton,
+    Panel,
+    ProgressBar,
     Sprite,
     Stage,
     TiledBackground,
@@ -483,10 +488,14 @@ def test_importing_example_prepares_game_without_starting(
     try:
         start.assert_not_called()
         assert stage._state == "new"
-        if name != "fruit_ninja":
-            assert stage.objects
+        assert stage.objects
+        assert any(isinstance(obj, (Label, Panel)) for obj in stage.objects)
         if name not in ("maze_quest", "swing_lab"):
-            assert stage._updates and stage._draws
+            assert stage._updates
+            # Only custom geometry needs Canvas; screen words belong to controls.
+            assert bool(stage._draws) == (
+                name in ("alpine_racer", "fruit_ninja", "jungle_run", "robot_workshop")
+            )
         elif name == "maze_quest":
             assert stage._touches and stage._starts
         else:
@@ -621,3 +630,125 @@ def test_dash_following_camera_keeps_world_fixed_and_survives_restart(
     assert stage.world_bounds.right == ground.bounds.right
     press(stage, Key.R)
     assert stage.camera == (0, 0)
+
+
+@pytest.mark.parametrize(
+    "name",
+    (
+        "geometry_dash",
+        "mario",
+        "fruit_ninja",
+        "snake_run",
+        "temple_run",
+        "dino_run",
+        "jungle_run",
+        "alpine_racer",
+    ),
+)
+def test_result_button_restarts_game_without_recreating_controls(
+    name: str, load_game: Callable[[str], Stage]
+) -> None:
+    """Actual pointer dispatch resets each finished game and reuses its screen controls."""
+    from plocks._ui_layout import _control_rect
+
+    stage = load_game(name)
+    values = stage._updates[0][1].__globals__
+    controls = tuple(obj for obj in stage.objects if isinstance(obj, (Panel, Label)))
+    if name == "geometry_dash":
+        cast(Sprite, values["hero"]).x = 40
+    elif name == "mario":
+        cast(Sprite, values["hero"]).y = -400
+    elif name == "fruit_ninja":
+        values["over"] = True
+    elif name in ("snake_run", "temple_run"):
+        values["outcome"] = "Round over!"
+    elif name == "dino_run":
+        values["playing"] = False
+        stage.broadcast(values["crashed"])
+    elif name == "jungle_run":
+        values["health"] = 0
+    else:
+        values["started_at"] = stage.time - 300
+    ticks(stage, 3)
+    button = cast(Button, values.get("again", values.get("continue_button")))
+    assert button._panel is not None and button._panel.visible and button.visible
+    stage._target = pygame.display.set_mode((stage.width, stage.height))
+    frame(stage)
+    stage._pending.append(
+        (stage.from_screen(_control_rect(stage, button).center, world=False), MouseButton.LEFT)
+    )
+    ticks(stage, 3)
+    assert stage.focused_button is None and not stage.paused
+    assert tuple(obj for obj in stage.objects if isinstance(obj, (Panel, Label))) == controls
+    if name in ("geometry_dash", "mario", "snake_run", "temple_run"):
+        assert values["outcome"] == "playing"
+    elif name == "fruit_ninja":
+        assert not values["over"] and values["score"] == 0 and values["missed"] == 0
+    elif name == "dino_run":
+        assert values["playing"] and values["coins"] == 0
+    elif name == "jungle_run":
+        assert values["health"] == 3 and values["defeated"] == 0
+    else:
+        assert values["started_at"] is None and values["distance"] == 0
+
+
+@pytest.mark.parametrize("name", ("dino_run", "jungle_run", "alpine_racer"))
+def test_pause_button_returns_gamepad_control_to_game(
+    name: str, load_game: Callable[[str], Stage]
+) -> None:
+    """Continuing through the real mouse button clears menu focus and unfreezes time."""
+    from plocks._ui_layout import _control_rect
+
+    stage = load_game(name)
+    values = stage._updates[0][1].__globals__
+    if name == "alpine_racer":
+        press(stage, Key.UP)
+        ticks(stage, 10)
+    press(stage, Key.P)
+    assert stage.paused and cast(Panel, values["menu"]).visible
+    frozen = stage.time
+    ticks(stage, 10)
+    assert stage.time == frozen
+    button = cast(Button, values["continue_button"])
+    stage._pending.append(
+        (stage.from_screen(_control_rect(stage, button).center, world=False), MouseButton.LEFT)
+    )
+    ticks(stage, 4)
+    assert not stage.paused and not cast(Panel, values["menu"]).visible
+    assert stage.focused_button is None and stage.time > frozen
+
+
+def test_platformer_success_alert_replays_through_its_typed_callback(
+    load_game: Callable[[str], Stage],
+) -> None:
+    """Landing at the flag opens one modal and acknowledging it resets the same hero."""
+    from plocks import AlertLevel
+
+    stage = load_game("platformer")
+    values = stage._updates[0][1].__globals__
+    hero = cast(Sprite, values["hero"])
+    hero.position = (650, -125)
+    ticks(stage, 30)
+    assert stage._alert is not None and stage._alert.level is AlertLevel.SUCCESS
+    assert values["won"] and stage.paused
+    stage._pending.append(GamepadPress(stage.gamepads[0], GamepadButton.A))
+    ticks(stage, 3)
+    assert stage._alert is None and not stage.paused and not values["won"]
+    assert hero.x == -300 and values["falls"] == 0
+
+
+def test_dash_progress_and_jungle_health_bars_show_existing_game_facts(
+    load_game: Callable[[str], Stage],
+) -> None:
+    """Changing gameplay values updates the displayed bars without a parallel counter."""
+    stage = load_game("geometry_dash")
+    ticks(stage, 10)
+    values = state(stage)
+    hero = cast(Sprite, values["hero"])
+    bar = cast(ProgressBar, values["progress"])
+    assert bar.value == pytest.approx((hero.x + 240) / 2440 * 100)
+    stage = load_game("jungle_run")
+    values = stage._updates[0][1].__globals__
+    values["health"] = 2
+    ticks(stage, 1)
+    assert cast(ProgressBar, values["health_bar"]).value == 2

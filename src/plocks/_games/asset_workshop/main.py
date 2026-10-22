@@ -3,13 +3,15 @@
 from pathlib import Path
 
 from plocks import (
-    Canvas,
+    Anchor,
     Ease,
     Event,
     GamepadButton,
     GamepadLayout,
     GamepadPress,
     Key,
+    Label,
+    Panel,
     PixeloramaSheet,
     Sprite,
     Stage,
@@ -50,6 +52,27 @@ hero.on_button_down(GamepadButton.A, jump, gamepad=one)
 friend.on_button_down(GamepadButton.A, jump, gamepad=two)
 
 
+# One panel groups the instructions; no drawing callback is needed.
+help_panel = Panel(position=(0, 160), width=640, height=80)
+help_panel.add(
+    Label(
+        "1: A D / Space / F     2: arrows / Enter / R Shift",
+        position=(-300, 18),
+        anchor=Anchor.CENTER_LEFT,
+        size=18,
+    )
+)
+help_panel.add(
+    Label(
+        "Controllers: stick / A / B     E: change a tile",
+        position=(-300, -12),
+        anchor=Anchor.CENTER_LEFT,
+        size=18,
+    )
+)
+stage.add(help_panel)
+
+
 @hero.on_update
 @friend.on_update
 def move(event: Event[Sprite, float]) -> None:
@@ -75,12 +98,6 @@ def edit_ground(event: Event[Stage, GamepadPress]) -> None:
     ground = level.layers["Ground"]
     tile = None if ground.get_tile(row=4, column=5) else "1"
     ground.set_tile(row=4, column=5, tile=tile)
-
-
-@stage.on_draw
-def instructions(canvas: Canvas) -> None:
-    canvas.text("1: A D / Space / F     2: arrows / Enter / R Shift", (-300, 180), size=18)
-    canvas.text("Controllers: stick / A / B     E: change a tile", (-300, 152), size=18)
 
 
 if __name__ == "__main__":

@@ -7,12 +7,14 @@ from plocks import (
     BodyType,
     Bounds,
     Box,
-    Canvas,
+    Button,
     Event,
     GamepadButton,
     GamepadPress,
     Image,
     Key,
+    Label,
+    Panel,
     RotationStyle,
     Sound,
     Sprite,
@@ -62,10 +64,29 @@ score = 0
 outcome = "playing"
 
 
+hud = Panel(position=(0, 195), width=800, height=60, color="#183344")
+status = Label("COIN QUEST    Coins 0/9", size=28)
+hud.add(status)
+stage.add(hud)
+help_bar = Panel(position=(0, -205), width=800, height=40)
+help_bar.add(Label("Arrows: run   Space: jump   R: restart", size=18))
+stage.add(help_bar)
+menu = Panel(width=520, height=150, layer=10)
+result_title = Label("Round over!", position=(0, 40), size=28)
+again = Button("Play again", position=(0, -25), width=200)
+menu.add(result_title)
+menu.add(again)
+menu.visible = False
+stage.add(menu)
+
+
 def finish(result: str) -> None:
     global outcome
     outcome = result
     # Pause freezes physics too. The restart button still works while paused.
+    result_title.text = result
+    menu.visible = True
+    status.text = f"COIN QUEST    Coins {score}/9"
     stage.pause()
 
 
@@ -82,6 +103,8 @@ def reset() -> None:
     hero.body.velocity = (0, 0)
     score = 0
     outcome = "playing"
+    menu.visible = False
+    status.text = "COIN QUEST    Coins 0/9"
     stage.resume()
     for x, y in (
         (-160, -80),
@@ -158,14 +181,15 @@ def update(event: Event[Stage, float]) -> None:
         finish("You reached the flag!")
 
 
-@stage.on_draw
-def draw(canvas: Canvas) -> None:
-    canvas.text(f"COIN QUEST    Coins {score}/9", (-380, 207), color="#183344", size=28)
-    canvas.text("Arrows: run   Space: jump   R: restart", (-380, -198), size=20)
-    if outcome != "playing":
-        canvas.rectangle(Bounds(-260, -40, 260, 70), color="#183344")
-        canvas.text(outcome, (-220, 45), size=30)
-        canvas.text("Press R to try again", (-150, 0), size=24)
+@stage.on_update
+def show_score(event: Event[Stage, float]) -> None:
+    status.text = f"COIN QUEST    Coins {score}/9"
+
+
+@again.on_click
+def play_again(event: Event[Button, None]) -> None:
+    stage.focus(None)
+    reset()
 
 
 @stage.on_button_down(GamepadButton.SELECT, gamepad=player)

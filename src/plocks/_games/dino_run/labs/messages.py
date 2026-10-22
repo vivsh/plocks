@@ -4,13 +4,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from plocks import (
-    Canvas,
+    Anchor,
     Click,
     Event,
     GamepadButton,
     GamepadLayout,
     GamepadPress,
     Image,
+    Label,
     Message,
     Sprite,
     Stage,
@@ -32,6 +33,16 @@ stage.add(two)
 first, second = stage.gamepads[:2]
 second.layout = GamepadLayout.NINTENDO
 reward = Message[int]("reward")
+
+
+hint = Label(
+    "Click a dino; or hold Space / Enter for coins.",
+    position=(-300, 150),
+    anchor=Anchor.TOP_LEFT,
+    size=20,
+    color="#24384b",
+)
+stage.add(hint)
 
 
 @one.on_broadcast(reward)
@@ -59,13 +70,6 @@ def turbo(event: Event[Sprite[PlayerMemory], GamepadPress]) -> None:
 def move(event: Event[Sprite[PlayerMemory], float]) -> None:
     gamepad = first if event.target is one else second
     event.target.x += gamepad.left_stick[0] * 100 * event.data
-
-
-@stage.on_draw
-def draw(canvas: Canvas) -> None:
-    canvas.text(
-        "Click a dino; or hold Space / Enter for coins.", (-300, 150), size=20, color="#24384b"
-    )
 
 
 if __name__ == "__main__":

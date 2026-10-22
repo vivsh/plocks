@@ -8,25 +8,34 @@ from plocks import (
     BodyType,
     Bounds,
     Box,
-    Canvas,
+    Button,
     Click,
     Event,
     GamepadButton,
     GamepadPress,
     Image,
     Key,
+    Label,
     Message,
     MouseButton,
+    Panel,
     Sound,
     Sprite,
     Stage,
     TiledBackground,
     TileMap,
+    UITheme,
 )
 
 # Keep the pictures beside this file. No drawing program is needed in our code.
 assets = Path(__file__).resolve().parent / "assets"
-stage = Stage(width=800, height=450, physics=True, background="#fff0cc")
+stage = Stage(
+    width=800,
+    height=450,
+    physics=True,
+    background="#fff0cc",
+    ui_theme=UITheme(panel_color="#24384b", accent_color="#ffc95c"),
+)
 
 # Player one already has Space for jumping; map extra controls here.
 player = stage.gamepads[0]
@@ -76,6 +85,32 @@ best = 0
 spawn_obstacle = Message[None]("spawn obstacle")
 crashed = Message[None]("crashed")
 spawning = dino.repeat().wait(1.4).broadcast(spawn_obstacle)
+
+
+# Panels stay on the screen; the dinosaur and floor stay in the world.
+hud = Panel(position=(0, 185), width=800, height=80, color=(255, 240, 204, 235))
+hud.add(
+    Label("DINO DASH", position=(-375, 20), anchor=Anchor.CENTER_LEFT, size=30, color="#24384b")
+)
+status = Label(
+    "Score 0   Coins 0   Best 0",
+    position=(-375, -15),
+    anchor=Anchor.CENTER_LEFT,
+    size=21,
+    color="#24384b",
+)
+hud.add(status)
+stage.add(hud)
+help_bar = Panel(position=(0, -205), width=800, height=40)
+help_bar.add(Label("Space / Up: jump    Down / S / F: duck    P: pause    R: restart", size=18))
+stage.add(help_bar)
+menu = Panel(width=440, height=150, layer=10)
+menu_title = Label("PAUSED", position=(0, 40), color="#fff0cc", size=28)
+continue_button = Button("Continue", position=(0, -25), width=200)
+menu.add(menu_title)
+menu.add(continue_button)
+menu.visible = False
+stage.add(menu)
 
 
 def score() -> int:
@@ -140,6 +175,7 @@ def reset() -> None:
     extend_ground()
     stage.resume()
     dino.act(spawning)
+    refresh_ui()
 
 
 @stage.on_start
@@ -176,6 +212,7 @@ def pause(event: Event[Stage, GamepadPress]) -> None:
             stage.resume()
         else:
             stage.pause()
+        refresh_ui()
 
 
 @stage.on_broadcast(spawn_obstacle)
@@ -208,6 +245,7 @@ def game_over(event: Event[Stage, None]) -> None:
     global best
     best = max(best, score())
     stage.pause()
+    refresh_ui()
 
 
 @stage.on_update
@@ -255,23 +293,27 @@ def update(event: Event[Stage, float]) -> None:
                 stage.play(pop, volume=0.25)
 
 
-@stage.on_draw
-def draw(canvas: Canvas) -> None:
-    canvas.text("DINO DASH", (-375, 205), size=30, color="#24384b")
-    canvas.text(
-        f"Score {score()}   Coins {coins}   Best {best}", (-375, 167), size=21, color="#24384b"
-    )
-    canvas.rectangle(Bounds(-400, -225, 400, -180), color="#24384b")
-    canvas.text(
-        "Space / Up: jump    Down / S / F: duck    P: pause    R: restart",
-        (-375, -198),
-        size=18,
-        color="#fff0cc",
-    )
-    if stage.paused:
-        canvas.rectangle(Bounds(-215, -20, 215, 80), color="#24384b")
-        text = "PAUSED — P to play" if playing else "BUMP! R to try again"
-        canvas.text(text, (-185, 45), size=28, color="#fff0cc")
+def refresh_ui() -> None:
+    status.text = f"Score {score()}   Coins {coins}   Best {best}"
+    menu.visible = stage.paused
+    menu_title.text = "PAUSED" if playing else "BUMP! Try again?"
+    continue_button.text = "Continue" if playing else "Play again"
+
+
+@stage.on_update
+def show_score(event: Event[Stage, float]) -> None:
+    refresh_ui()
+
+
+@continue_button.on_click
+def continue_game(event: Event[Button, None]) -> None:
+    # Give game keys back after clicking a menu button.
+    stage.focus(None)
+    if playing:
+        stage.resume()
+        refresh_ui()
+    else:
+        reset()
 
 
 if __name__ == "__main__":

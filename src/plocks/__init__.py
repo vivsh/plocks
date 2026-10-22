@@ -78,11 +78,14 @@ from .rigging import Skeleton as Skeleton
 from .scripts import Script as Script
 from .sprites import Sprite as Sprite
 from .stage import Stage as Stage
+from .theme import AlertLevel as AlertLevel
+from .theme import UITheme as UITheme
 from .tiled import TiledMap as TiledMap
 from .tiling import TiledBackground as TiledBackground
 from .tiling import TileMap as TileMap
 from .ui import Button as Button
 from .ui import Label as Label
+from .ui import Panel as Panel
 from .ui import ProgressBar as ProgressBar
 
 if TYPE_CHECKING:
@@ -99,6 +102,7 @@ __all__ = (
     "Actor",
     "ActorCallback",
     "ActorUpdateCallback",
+    "AlertLevel",
     "Anchor",
     "AssetError",
     "AudioError",
@@ -143,6 +147,7 @@ __all__ = (
     "NavigationError",
     "NetworkError",
     "Not",
+    "Panel",
     "Physics",
     "PhysicsError",
     "PixeloramaSheet",
@@ -166,6 +171,7 @@ __all__ = (
     "TiledBackground",
     "TiledMap",
     "Touching",
+    "UITheme",
     "UpdateCallback",
     "Voice",
     "WhenBusy",

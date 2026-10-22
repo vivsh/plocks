@@ -37,7 +37,7 @@ python main.py
 - **Setup** loads ready-made pictures and makes the cars, trees and road strips.
 - **`update`** reads controls, changes speed and distance, and checks for bumps.
 - **`reset`** puts the racers back without adding more scenery.
-- **`draw`** shows the position and time. Those words stay on the screen.
+- **`refresh_ui`** changes the lap, position and time Labels. **`draw`** draws the little route map.
 - **`project`** is the trickier part: faraway things look smaller and nearer the horizon.
 
 This is a 2D game that looks 3D. A stack of thin picture strips makes the road.
@@ -56,3 +56,7 @@ The small **ROUTE** preview draws the same bends as the road, from START on the
 left to FINISH on the right. Orange is your car; blue dots are the rivals. Each
 lap repeats this route. The preview keeps the road's proportions rather than
 drawing a pretend oval circuit.
+
+## Screen controls
+
+The lap, place, timer and speed are Labels inside Panels. The pause panel has a Continue button; Canvas draws only the route lines and car dots.

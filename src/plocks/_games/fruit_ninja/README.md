@@ -32,3 +32,7 @@ Cutting several fruit in one step earns a bonus. Use a mouse, not a touchscreen.
 **Your own project?** Copy this whole folder, keep `assets/` beside `main.py`,
 and run `python main.py` with Plocks installed. From another folder, use
 `python path/to/the/game/main.py` or `plocks run path/to/the/game`.
+
+## Screen controls
+
+Labels show your score and misses. The green bar shows your remaining chances. Click Play again after a round; Canvas draws the swipe trail.

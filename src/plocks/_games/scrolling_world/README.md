@@ -34,3 +34,7 @@ The explorer is a guide for painting. There is no falling or tile collision in t
 **Your own project?** Copy this whole folder, keep `assets/` beside `main.py`,
 and run `python main.py` with Plocks installed. From another folder, use
 `python path/to/the/game/main.py` or `plocks run path/to/the/game`.
+
+## Screen controls
+
+Panels hold the title, camera readout and paint hints. Clicking those panels does not paint the world.
