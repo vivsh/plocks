@@ -15,7 +15,6 @@ Repository = "https://github.com/vivsh/plocks"
 
 [project.optional-dependencies]
 ipython = ["ipython>=9,<10"]
-network = ["websockets>=17.2,<18", "msgspec>=0.21.1,<0.22"]
 dev = ["pytest>=8,<10", "mypy>=1.15,<3", "pyright>=1.1.400,<2", "ruff>=0.11,<1", "build>=1.2,<2", "ipython>=9,<10", "pexpect>=4.9,<5", "types-pexpect>=4.9,<5"]
 
 [project.scripts]

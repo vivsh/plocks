@@ -76,34 +76,6 @@ def test_stop_from_callback_waits_for_safe_driver_cleanup(
     shell.showtraceback.assert_not_called()
 
 
-def test_interactive_multiplayer_uses_and_retires_the_outer_driver(
-    console: tuple[Stage, Mock, asyncio.AbstractEventLoop],
-) -> None:
-    """Networking adds no prompt task and cancellation closes its listener and selector."""
-    import socket
-
-    pytest.importorskip("msgspec")
-    pytest.importorskip("websockets")
-    from plocks import Multiplayer
-    from plocks._network import _Host
-
-    stage, shell, loop = console
-    with socket.socket() as reserve:
-        reserve.bind(("127.0.0.1", 0))
-        port = reserve.getsockname()[1]
-    stage.run(interactive=True, multiplayer=Multiplayer(slots=(1,), bind="127.0.0.1", port=port))
-    owner, task = stage._network, stage._task
-    assert isinstance(owner, _Host) and task is not None
-    loop.run_until_complete(asyncio.sleep(0.03))
-    assert asyncio.all_tasks(loop) == {task} and stage.time > 0
-    task.cancel()
-    loop.run_until_complete(asyncio.sleep(0))
-    assert stage._network is None and stage._task is None
-    assert owner.listener.fileno() == -1 and owner.selector.get_map() is None
-    assert not asyncio.all_tasks(loop)
-    shell.showtraceback.assert_not_called()
-
-
 def test_external_cancellation_retires_actions_actors_and_audio(
     console: tuple[Stage, Mock, asyncio.AbstractEventLoop],
 ) -> None:
@@ -180,7 +152,13 @@ def test_interactive_focus_policy_keeps_hide_and_user_pause_independent(
     loop.run_until_complete(asyncio.sleep(0.02))
     assert stage.paused and stage.time == frozen
     pygame.event.post(pygame.event.Event(pygame.WINDOWRESTORED))
-    loop.run_until_complete(asyncio.sleep(0.04))
+
+    async def wait_for_resume() -> None:
+        async with asyncio.timeout(1):
+            while stage.paused or stage.time <= frozen:
+                await asyncio.sleep(0.005)
+
+    loop.run_until_complete(wait_for_resume())
     assert not stage.paused and stage.time > frozen
 
 

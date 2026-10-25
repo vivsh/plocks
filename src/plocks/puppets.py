@@ -466,7 +466,7 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
     ) -> object:
         """React to a logical press; optional repeat uses simulation seconds.
 
-        Filter by a stage.gamepads slot for multiplayer. Event.data contains
+        Filter by a stage.gamepads slot for local multiplayer. Event.data contains
         gamepad and button. A script executes independently on this receiver.
         """
         from .stage import _attached, _gamepad_selection, _repeat_interval

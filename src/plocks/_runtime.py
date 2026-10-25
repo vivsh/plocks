@@ -17,10 +17,9 @@ from ._render import frame
 from ._scripts import _cancel, _deliver, _sample, _step, _trigger
 from .callbacks import ActorUpdateCallback, UpdateCallback
 from .errors import StageError
-from .events import Event, GamepadPress, RemoteChange
+from .events import Event, GamepadPress
 from .geometry import Point
 from .input import Key, MouseButton
-from .multiplayer import Multiplayer
 
 if TYPE_CHECKING:
     from ._commands import Actor
@@ -37,20 +36,10 @@ def _check_start(stage: Stage) -> None:
         raise StageError("Another Pygame audio session is already active")
 
 
-def _acquire(stage: Stage, multiplayer: Multiplayer | None = None) -> None:
+def _acquire(stage: Stage) -> None:
     """Acquire the same desktop resources for blocking and interactive execution."""
     _gamepads._check_devices()
     try:
-        if multiplayer is not None:
-            try:
-                from ._network import _host
-            except ImportError as error:
-                from .errors import NetworkError
-
-                raise NetworkError(
-                    "Multiplayer needs Plocks installed with its [network] extra"
-                ) from error
-            stage._network = _host(stage, multiplayer)
         pygame.display.init()
         with files("plocks").joinpath("assets/icon.png").open("rb") as source:
             pygame.display.set_icon(pygame.image.load(source, "icon.png"))
@@ -65,7 +54,7 @@ def _acquire(stage: Stage, multiplayer: Multiplayer | None = None) -> None:
         raise
 
 
-def start(stage: Stage, multiplayer: Multiplayer | None = None) -> None:
+def start(stage: Stage) -> None:
     """Acquire one desktop display and block until closure, releasing owned resources."""
     _check_start(stage)
     try:
@@ -74,7 +63,7 @@ def start(stage: Stage, multiplayer: Multiplayer | None = None) -> None:
         pass
     else:
         raise StageError("Desktop run() requires a script outside an existing asyncio loop")
-    _acquire(stage, multiplayer)
+    _acquire(stage)
     try:
         asyncio.run(drive(stage))
     except BaseException:
@@ -185,12 +174,6 @@ def dispatch(stage: Stage, *, simulation: bool = True) -> None:
     for event in pending:
         if not stage.running:
             break
-        if isinstance(event, RemoteChange):
-            from .stage import _check_callback_result
-
-            for callback in tuple(stage._remote_handlers):
-                _check_callback_result(callback(Event(stage, stage, event)), "remote change")
-            continue
         if isinstance(event, _CloneStart):
             clone_ready = clone_ready and not stage.paused
             if not clone_ready:
@@ -321,10 +304,6 @@ async def drive(stage: Stage) -> None:
             poll(stage)
             if not stage.running:
                 break
-            if stage._network is not None:
-                from ._network import pump
-
-                pump(stage, time.monotonic())
             advance(stage, started)
             stage._voices[:] = [voice for voice in stage._voices if not voice.finished]
             if stage.running:
@@ -341,17 +320,6 @@ def close(stage: Stage) -> None:
     stage._state = "closed"
     stage._alert = None
     stage._pause_reasons.discard("alert")
-    if stage._network is not None:
-        from ._network import close as close_network
-
-        try:
-            close_network(
-                stage,
-                failed=primary is not None and not isinstance(primary, asyncio.CancelledError),
-            )
-        except BaseException as error:  # noqa: BLE001 -- finish independent cleanup, retain primary error
-            errors.append(error)
-    stage._remote_handlers.clear()
     stage._bots.clear()
     task = stage._task
     stage._task = None

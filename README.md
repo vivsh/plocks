@@ -26,7 +26,7 @@ hints. Start with a bundled game, change one thing, and see what happens!
 | Collect coins and show progress | [Touch events](docs/activities/touch.md), [labels, health bars, buttons and colored panels](docs/activities/ui.md) |
 | Show a message or match your colors | [Alerts with levels](docs/activities/alerts.md), widget anchors and a shared [UI theme](docs/activities/panels.md#keep-a-matching-style) |
 | Make a machine | [Ropes, springs, hinges and motors](docs/activities/assemblies.md) joining ordinary characters |
-| Play together | Logical gamepads with mapped keys or controllers, plus optional [LAN shared-view play](docs/activities/multiplayer.md) |
+| Play together | Several players on one computer, using mapped keys or controllers |
 | Give the computer a turn | [Automated gamepads](docs/activities/computer-players.md) that use the human player's controls |
 
 Try changes live at an [IPython prompt](#-try-ideas-live-with-ipython), or write a

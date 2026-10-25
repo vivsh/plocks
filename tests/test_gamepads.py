@@ -464,3 +464,49 @@ def test_native_hotplug_keeps_slots_and_limits_devices(
     finally:
         close(stage)
     assert all(pad._device is None for pad in stage.gamepads)
+
+
+def test_two_local_players_resume_through_ui_and_move_independently() -> None:
+    """The actual desktop driver keeps both keyboard players and paused UI on one stage."""
+    from plocks import Button, Image
+
+    stage = Stage(gamepad_count=2)
+    first = Sprite(Image.rectangle(20, 20, color="gold"), x=-80)
+    second = Sprite(Image.rectangle(20, 20, color="skyblue"), x=80)
+    play = Button("Play")
+    for obj in (first, second, play):
+        stage.add(obj)
+    clicks: list[Button] = []
+
+    @play.on_click
+    def start_game(event: Event[Button, None]) -> None:
+        clicks.append(event.target)
+        event.target.visible = False
+        stage.focus(None)
+        stage.resume()
+
+    @stage.on_start
+    def instructions(event: Event[Stage, None]) -> None:
+        stage.pause()
+        stage.focus(play)
+        for key in (pygame.K_d, pygame.K_LEFT, pygame.K_SPACE):
+            pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=key))
+
+    @first.on_update
+    @second.on_update
+    def move(event: Event[Sprite, float]) -> None:
+        pad = stage.gamepads[0 if event.target is first else 1]
+        event.target.x += pad.left_stick[0] * 100 * event.data
+
+    @stage.on_update
+    def finish(event: Event[Stage, float]) -> None:
+        if stage.time >= 0.1:
+            assert clicks == [play] and first.x > -75 and second.x < 75
+            assert stage.focused_button is None and not stage.paused
+            stage.stop()
+
+    try:
+        stage.run()
+    finally:
+        stage.stop()
+    assert not stage.objects and stage._target is None and not stage._actions

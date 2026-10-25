@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from typing import TYPE_CHECKING
 
 import pygame
@@ -92,16 +91,7 @@ def frame(stage: Stage) -> None:
     from ._alerts import _draw as draw_alert
 
     draw_alert(stage, target)
-    if stage._network is not None:
-        from ._network import capture, overlay
-
-        capture(stage, time.monotonic())
-        overlay(stage)
     pygame.display.flip()
-    if stage._network is not None:
-        from ._network import capture
-
-        capture(stage, time.monotonic(), presented=True)
 
 
 def _puppet(stage: Stage, target: pygame.Surface, actor: Puppet) -> None:

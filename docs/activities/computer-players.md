@@ -34,7 +34,7 @@ Your ordinary update function reads `computer.left_stick`, and
 the attack listener has `repeat=...`, just like a human controller.
 
 Register the bot before `stage.run()`. It pauses with the game. The same slot
-cannot also belong to a remote player. Bots need no networking installation.
+is controlled by its bot instead of keyboard or controller input.
 
 A patrolling enemy does **not** need a gamepad. Keep its ordinary script:
 

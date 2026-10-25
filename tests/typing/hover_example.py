@@ -305,9 +305,9 @@ def one_way_platforms() -> None:
     assert_type(terrain.one_way, frozenset[str])
 
 
-def multiplayer_and_automated_players() -> None:
-    """All input sources preserve typed state, event payloads, and logical samples."""
-    from plocks import GamepadInput, Multiplayer, RemoteChange
+def automated_players() -> None:
+    """Local computer players preserve typed state, events and logical samples."""
+    from plocks import GamepadInput
 
     stage = Stage(gamepad_count=3, state=PlayerState)
 
@@ -316,13 +316,7 @@ def multiplayer_and_automated_players() -> None:
         assert_type(event.target.state.health, int)
         return GamepadInput(left_stick=(0.5, 0))
 
-    @stage.on_remote_change
-    def connected(event: Event[Stage[PlayerState], RemoteChange]) -> None:
-        assert_type(event.data.slot, int)
-        assert_type(event.target.state.health, int)
-
-    assert_type(stage.gamepads[1].remote_connected, bool)
-    stage.run(multiplayer=Multiplayer(slots=(1,)))
+    stage.run()
 
 
 def gameplay_foundations() -> None:

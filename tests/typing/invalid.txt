@@ -183,12 +183,11 @@ TileMap(["P"], {"P": "platform.png"}, tile_size=(32, 16), one_way=1)  # error
 hero.one_way = True  # error
 TileMap(["P"], {"P": "platform.png"}, tile_size=(32, 16)).one_way = frozenset({"P"})  # error
 
-from plocks import GamepadInput, Multiplayer, RemoteChange
+from plocks import GamepadInput
 
 stage.keyboard  # error
 hero.on_key_down  # error
 stage.on_gamepad_button_down  # error
-Multiplayer(slots=("two",))  # error
 GamepadInput(buttons={GamepadButton.A})  # error
 GamepadInput(left_stick="left")  # error
 
@@ -199,10 +198,6 @@ def wrong_bot(event: Event[Stage, float]) -> None:
 @stage.on_bot(gamepad=stage.gamepads[0])  # error
 async def async_bot(event: Event[Stage, float]) -> GamepadInput:
     return GamepadInput()
-
-@stage.on_remote_change  # error
-def wrong_status(event: Event[Stage, RemoteChange]) -> Action:
-    return hero.wait(1)
 
 # Gameplay foundations keep actor, payload, coordinate and UI contracts distinct.
 from plocks import Button, Hinge, Label, ProgressBar
@@ -271,3 +266,7 @@ stage.ui_theme = "dark"  # error
 stage.alert("Oops", level="warning")  # error
 stage.alert("Oops", on_close=async_button)  # error
 stage.alert("Oops", on_close=wrong_button_target)  # error
+
+# Network hosting/joining is no longer a Stage operation.
+stage.run(multiplayer=object())  # error
+stage.on_remote_change  # error

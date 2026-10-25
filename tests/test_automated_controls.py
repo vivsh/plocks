@@ -10,7 +10,6 @@ from plocks import (
     GamepadInput,
     GamepadPress,
     Key,
-    Multiplayer,
     Stage,
     StageError,
 )
@@ -56,7 +55,7 @@ def test_bot_controls_precede_gameplay_and_pause_with_simulation() -> None:
 
 
 def test_bot_registration_is_exclusive_and_before_run() -> None:
-    """A slot cannot secretly mix local, automated, and remote source ownership."""
+    """A slot cannot secretly mix keyboard/hardware and automated source ownership."""
     stage = Stage(gamepad_count=2)
 
     def driver(event: Event[Stage, float]) -> GamepadInput:
@@ -67,8 +66,6 @@ def test_bot_registration_is_exclusive_and_before_run() -> None:
         stage.on_bot(gamepad=stage.gamepads[1])(driver)
     with pytest.raises(StageError, match="belonging"):
         stage.on_bot(gamepad=Stage().gamepads[0])(driver)
-    with pytest.raises(StageError, match="both remote and automated"):
-        stage.run(multiplayer=Multiplayer(slots=(1,)))
     assert stage._state == "new" and stage._target is None
     stage._state = "running"
     with pytest.raises(StageError, match="before run"):
@@ -126,5 +123,38 @@ def test_computer_opponent_uses_the_human_movement_and_attack_path() -> None:
         for tick in range(121, 181):
             advance(stage, tick / 60)
         assert human.x > 70 and opponent.x > 50
+    finally:
+        close(stage)
+
+
+def test_input_rejects_invalid_values() -> None:
+    """An invalid automated sample cannot corrupt held-input state."""
+    assert GamepadInput(buttons=frozenset({GamepadButton.A})).left_stick == (0, 0)
+    for stick in ((float("nan"), 0), (1, 1), (float("inf"), 0)):
+        with pytest.raises(ValueError):
+            GamepadInput(left_stick=stick)
+    with pytest.raises(ValueError):
+        GamepadInput(left_trigger=1.1)
+
+
+def test_network_api_is_removed_without_removing_local_control_sources() -> None:
+    """The public install exposes local controls and bots without a dormant hosting API."""
+    import importlib.util
+    import inspect
+
+    import plocks
+
+    stage = Stage(gamepad_count=2)
+    try:
+        assert set(inspect.signature(Stage.run).parameters) == {"self", "interactive"}
+        assert not any(
+            hasattr(plocks, name) for name in ("Multiplayer", "RemoteChange", "NetworkError")
+        )
+        assert not hasattr(stage, "on_remote_change")
+        assert not hasattr(stage.gamepads[0], "remote_connected")
+        assert "_network" not in Stage.__slots__ and "_remote_handlers" not in Stage.__slots__
+        for name in ("multiplayer", "_network", "_network_protocol", "_join"):
+            assert importlib.util.find_spec(f"plocks.{name}") is None
+        assert len(stage.gamepads) == 2 and callable(stage.on_bot)
     finally:
         close(stage)

@@ -47,7 +47,7 @@ class GamepadButton(Enum):
 
 @dataclass(frozen=True, slots=True)
 class GamepadInput:
-    """An immutable logical input sample for automated and remote players.
+    """An immutable logical input sample for automated players.
 
     Sticks use x right/y up with length at most one; triggers are in 0..1.
     Invalid values raise before any existing held controls are changed.
@@ -126,24 +126,6 @@ class Gamepad:
         return bool(self._device.attached())
 
     @property
-    def remote_connected(self) -> bool:
-        """Whether this slot has an active remote player with a live game view."""
-        if self._stage._network is None:
-            return False
-        from ._network import remote_connected
-
-        return remote_connected(self)
-
-    def _nonlocal(self) -> bool:
-        if self in self._stage._bots:
-            return True
-        if self._stage._network is None:
-            return False
-        from ._network import nonlocal_slot
-
-        return nonlocal_slot(self)
-
-    @property
     def name(self) -> str | None:
         """The hardware's diagnostic name, or None without an attached device."""
         if self._device is None:
@@ -179,12 +161,14 @@ class Gamepad:
     @property
     def left_stick(self) -> Point:
         """Combined left stick: x right/y up, with vector magnitude at most one."""
-        return self._left if self._nonlocal() else self._stick(self._left, self._left_keys)
+        return self._left if self in self._stage._bots else self._stick(self._left, self._left_keys)
 
     @property
     def right_stick(self) -> Point:
         """Combined right stick; keyboard mapping and dead zone match left_stick."""
-        return self._right if self._nonlocal() else self._stick(self._right, self._right_keys)
+        return (
+            self._right if self in self._stage._bots else self._stick(self._right, self._right_keys)
+        )
 
     @property
     def left_trigger(self) -> float:
@@ -201,7 +185,7 @@ class Gamepad:
         if not isinstance(button, GamepadButton):
             raise TypeError("Use a GamepadButton enum value")
         return _button_index(button, self.layout) in self._buttons or (
-            not self._nonlocal()
+            self not in self._stage._bots
             and any(
                 mapped is button and key in self._stage._held_keys
                 for key, mapped in self._key_buttons.items()
@@ -261,8 +245,8 @@ class Gamepad:
     def _open(self) -> None:
         if self._stage._state == "closed":
             raise StageError("This gamepad's stage is closed")
-        if self._stage._state == "running" and self._nonlocal():
-            raise StageError("Remote/automated slot settings cannot change during play")
+        if self._stage._state == "running" and self in self._stage._bots:
+            raise StageError("Automated slot settings cannot change during play")
 
     def _rebaseline(self) -> None:
         from ._gamepads import _rebaseline

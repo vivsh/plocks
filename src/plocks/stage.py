@@ -19,12 +19,11 @@ from .audio import Sound, Voice, _play, _volume
 from .callbacks import ActorUpdateCallback, UpdateCallback
 from .canvas import Canvas
 from .errors import StageError
-from .events import Click, Event, GamepadPress, RemoteChange
+from .events import Click, Event, GamepadPress
 from .gamepads import Gamepad, GamepadButton, GamepadInput, GamepadLayout, _new_gamepad
 from .geometry import Bounds, Color, Point, _integer, _number, _point
 from .input import Key, Mouse, MouseButton
 from .messages import Message
-from .multiplayer import Multiplayer
 from .physics import Physics
 from .puppets import Puppet
 from .scripts import Script, _message_arguments, _snapshot
@@ -39,10 +38,9 @@ _D = TypeVar("_D")
 _R = TypeVar("_R", bound=_Result)
 type _Draw = Callable[[Canvas], None]
 if TYPE_CHECKING:
-    from ._network import _Client, _Host
     from ._touches import _TouchWatch
 
-type _InputEvent = tuple[Point, MouseButton] | GamepadPress | _CloneStart | RemoteChange
+type _InputEvent = tuple[Point, MouseButton] | GamepadPress | _CloneStart
 type _StageObject = (
     Sprite | Puppet | TileMap | TiledBackground | Button | Label | ProgressBar | Panel
 )
@@ -77,11 +75,9 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         "_message_handlers",
         "_messages",
         "_mouse",
-        "_network",
         "_pause_reasons",
         "_pending",
         "_physics",
-        "_remote_handlers",
         "_starts",
         "_state",
         "_target",
@@ -172,9 +168,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
             raise TypeError("Use a GamepadLayout")
         self._gamepads = tuple(_new_gamepad(self, gamepad_layout, index) for index in range(count))
         self._held_keys: set[Key] = set()
-        self._network: _Host | _Client | None = None
         self._bots: dict[Gamepad, Callable[[Event[Self, float]], GamepadInput]] = {}
-        self._remote_handlers: list[Callable[[Event[Self, RemoteChange]], None]] = []
         self._mouse = Mouse()
         self._pending: list[_InputEvent] = []
         self._state: Literal["new", "running", "closed"] = "new"
@@ -193,19 +187,6 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
     def gamepads(self) -> tuple[Gamepad, ...]:
         """Stable player slots (four by default); keyboard mapping needs no hardware."""
         return self._gamepads
-
-    def on_remote_change(
-        self, callback: Callable[[Event[Self, RemoteChange]], None]
-    ) -> Callable[[Event[Self, RemoteChange]], None]:
-        """Observe a remote player's live-view activation or disconnection.
-
-        The slot is zero-based. Basic connection status is visible even without
-        a handler. This callback is synchronous and must return None.
-        """
-        _open(self)
-        _sync(callback, "remote change")
-        self._remote_handlers.append(callback)
-        return callback
 
     def on_bot(
         self, *, gamepad: Gamepad
@@ -497,8 +478,8 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
     def focus(self, button: Button | None) -> None:
         """Focus an attached visible/enabled button, or release focus with None.
 
-        Directional gamepad buttons cycle the menu; A activates. Mapped keyboard
-        and remote controls work identically. Menu edges suppress gameplay turbo.
+        Directional gamepad buttons cycle the menu; A activates. Keyboard mappings
+        and controllers work identically. Menu edges suppress gameplay turbo.
         """
         _open(self)
         if button is not None:
@@ -904,7 +885,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
 
             _stop(self)
 
-    def run(self, *, interactive: bool = False, multiplayer: Multiplayer | None = None) -> None:
+    def run(self, *, interactive: bool = False) -> None:
         """Open a desktop window once; optionally keep a terminal IPython prompt usable.
 
         With interactive=False (default), return after the window closes and
@@ -918,29 +899,17 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         block the shared main thread. Raises StageError for unsupported contexts,
         reuse, conflicting event loops, or already-active native resources.
 
-        multiplayer=Multiplayer(slots=(1,)) reserves player two for a remote
-        controller and shares this game's rendered view. Requires the network
-        extra and a trusted LAN or independently configured encrypted tunnel.
-        Joining players share the host's scores and camera; audio is host-only.
-        Connection failures raise NetworkError and release acquired resources.
         """
         if not isinstance(interactive, bool):
             raise TypeError("interactive must be bool")
-        if multiplayer is not None:
-            if not isinstance(multiplayer, Multiplayer):
-                raise TypeError("multiplayer must be a Multiplayer configuration")
-            if max(multiplayer.slots) >= len(self.gamepads):
-                raise ValueError("Remote slot does not exist; increase gamepad_count")
-            if any(self.gamepads[index] in self._bots for index in multiplayer.slots):
-                raise StageError("A gamepad cannot be both remote and automated")
         if interactive:
             from ._ipython import _start
 
-            _start(self, multiplayer)
+            _start(self)
         else:
             from ._runtime import start
 
-            start(self, multiplayer)
+            start(self)
 
 
 def _open(stage: Stage) -> None:

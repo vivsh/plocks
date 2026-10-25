@@ -21,7 +21,6 @@ For the code activities, use the [Dino Dash download](../dino-run/assets.md).
 | Jump and land on platforms | [Give your dinosaur a bigger jump](physics.md) |
 | Remember coins or health | [Give a character a memory](memory.md) |
 | Play with a friend | [Two players, keys or controllers](controls.md) |
-| Play from another computer | [LAN multiplayer](multiplayer.md) |
 | Let the computer be a player | [Computer players and ordinary enemies](computer-players.md) |
 | Change images or make a Puppet wave | [Try the art lab](../dino-run/06-more-plocks.md#make-a-puppet-wave) |
 | Send a message to another character | [Try the messages lab](../dino-run/06-more-plocks.md#give-coins-to-two-players) |

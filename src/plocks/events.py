@@ -43,15 +43,6 @@ type Click = tuple[Point, MouseButton]
 
 
 @dataclass(frozen=True, slots=True)
-class RemoteChange:
-    """A zero-based remote slot became ready or disconnected, with a safe reason."""
-
-    slot: int
-    connected: bool
-    reason: str | None
-
-
-@dataclass(frozen=True, slots=True)
 class GamepadPress:
     """A logical button press (or turbo repeat), identifying its stable player slot.
 

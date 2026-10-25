@@ -45,20 +45,6 @@ def _transitions(
     for button in before - after:
         for binding in slot._stage._gamepad_handlers.get((slot, button), ()):
             binding.next_repeat = None
-    if before != after and slot._stage._network is not None:
-        from ._network import source_transition
-
-        source_transition(slot)
-
-
-def _sample(slot: Gamepad) -> GamepadInput:
-    return GamepadInput(
-        frozenset(button for button in GamepadButton if slot.is_down(button)),
-        slot.left_stick,
-        slot.right_stick,
-        slot.left_trigger,
-        slot.right_trigger,
-    )
 
 
 def _apply(slot: Gamepad, sample: GamepadInput, *, baseline: bool = False) -> None:
@@ -141,7 +127,7 @@ def _native_refresh(stage: Stage) -> None:
     if not controller.get_init():
         return
     for index in range(controller.get_count()):
-        if not any(slot._device is None and not slot._nonlocal() for slot in stage.gamepads):
+        if not any(slot._device is None and slot not in stage._bots for slot in stage.gamepads):
             break
         if not controller.is_controller(index):
             continue
@@ -149,7 +135,7 @@ def _native_refresh(stage: Stage) -> None:
         if any(slot._device is device for slot in stage.gamepads):
             continue
         slot = next(
-            slot for slot in stage.gamepads if slot._device is None and not slot._nonlocal()
+            slot for slot in stage.gamepads if slot._device is None and slot not in stage._bots
         )
         slot._device = device
         _sample_native(slot)
@@ -172,7 +158,7 @@ def _poll_devices(stage: Stage, *, baseline: bool = False, refresh: bool = False
         if slot._device is not None:
             _sample_native(slot)
     for slot, held in zip(stage.gamepads, before):
-        if slot._nonlocal():
+        if slot in stage._bots:
             continue
         _transitions(slot, held, baseline=baseline or slot in new_slots)
 
