@@ -41,7 +41,16 @@ The complete game takes the next step: the dinosaur runs forwards and
 `stage.follow(...)` moves the camera. World tiles and obstacles stay in place;
 you do not need to move them yourself. `extend_ground()` adds fixed floor sections
 ahead and removes old ones behind. The decorative background scrolls more slowly
-for depth.
+for depth:
+
+```python
+scenery = TiledBackground(desert, parallax=(0.08, 0), layer=-20)
+stage.add(scenery)
+```
+
+`0.08` makes the distant desert scroll slowly as the camera moves right.
+The `0` keeps it level during jumps. The picture repeats, so it never runs out.
+No background update function is needed in the complete game.
 
 **Make it yours:** change gravity with `stage.physics.gravity = (0, -700)` after
 creating the stage. Lower gravity gives floatier jumps.

@@ -12,7 +12,18 @@ import pygame
 import pytest
 from PIL import Image as PillowImage
 
-from plocks import BodyType, Box, GamepadButton, GamepadPress, Key, Panel, Sprite, Stage, TileMap
+from plocks import (
+    BodyType,
+    Box,
+    GamepadButton,
+    GamepadPress,
+    Key,
+    Panel,
+    Sprite,
+    Stage,
+    TiledBackground,
+    TileMap,
+)
 from plocks._render import frame
 from plocks._runtime import advance, close
 from plocks._scripts import _step, _trigger
@@ -296,3 +307,14 @@ def test_jump_clears_a_stationary_obstacle(game: dict[str, object], kind: str) -
     assert game["playing"] and dino.body.grounded
     assert dino.x > obstacle.x + 50
     assert obstacle.position == fixed_position
+
+
+def test_desert_parallax_is_automatic(game: dict[str, object]) -> None:
+    """The following camera scrolls Dino's desert without mutating its authored offset."""
+    stage = cast(Stage, game["stage"])
+    scenery = cast(TiledBackground, game["scenery"])
+    assert scenery.parallax == (0.08, 0)
+    assert scenery.offset == (0, 0)
+    ticks(stage, 100)
+    assert stage.camera[0] > 0
+    assert scenery.offset == (0, 0)

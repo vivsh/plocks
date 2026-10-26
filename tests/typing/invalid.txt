@@ -270,3 +270,7 @@ stage.alert("Oops", on_close=wrong_button_target)  # error
 # Network hosting/joining is no longer a Stage operation.
 stage.run(multiplayer=object())  # error
 stage.on_remote_change  # error
+
+from plocks import TiledBackground
+TiledBackground("mountains.png", parallax=0.2)  # error
+TiledBackground("mountains.png").parallax = ("slow", 0)  # error

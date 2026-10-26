@@ -22,12 +22,17 @@ from plocks import (
     Script,
     Sprite,
     Stage,
+    TiledBackground,
     TileMap,
 )
 
 
 def main() -> None:
     stage = Stage(physics=True)
+    scenery = TiledBackground("mountains.png", parallax=(0.2, 0))
+    assert_type(scenery.parallax, tuple[float, float])
+    scenery.parallax = (0.3, 0)
+    stage.add(scenery)
     stage.gamepads[0].map_key(Key.F, GamepadButton.B)
     stage.gamepads[0].map_key(Key.H, GamepadButton.Y)
     stage.gamepads[0].map_key(Key.LEFT, GamepadButton.LEFT)

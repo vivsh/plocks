@@ -334,13 +334,18 @@ class TileMap:
 
 
 class TiledBackground:
-    """Repeat an image in stage coordinates, independent of the world camera.
+    """Repeat an image endlessly, with optional camera-relative scrolling.
 
-    area=None fills the viewport. Offset shifts the pattern in logical pixels,
-    with positive y upward. Derive offset from camera yourself for parallax.
+    area=None fills the viewport; an explicit area stays in stage coordinates.
+    parallax=(0, 0) stays fixed on screen (default); (1, 1) scrolls with the
+    world. Smaller positive factors suggest distant scenery. Offset adds a
+    logical-pixel shift, with positive y upward. Factors must be finite and
+    nonnegative; invalid values raise ValueError before changing the pattern.
+
+    Example: TiledBackground("mountains.png", parallax=(0.2, 0)).
     """
 
-    __slots__ = ("_area", "_image", "_layer", "_offset", "_visible")
+    __slots__ = ("_area", "_image", "_layer", "_offset", "_parallax", "_visible")
 
     def __init__(
         self,
@@ -348,12 +353,14 @@ class TiledBackground:
         *,
         area: Bounds | None = None,
         offset: Point = (0, 0),
+        parallax: Point = (0, 0),
         visible: bool = True,
         layer: int = -100,
     ) -> None:
         self._image = _image(source)
         self._area = area
         self._offset = _point(offset, "offset")
+        self.parallax = parallax
         self._visible = visible
         self._layer = _integer(layer, "layer")
 
@@ -394,6 +401,22 @@ class TiledBackground:
     @offset.setter
     def offset(self, value: Point) -> None:
         self._offset = _point(value, "offset")
+
+    @property
+    def parallax(self) -> Point:
+        """Nonnegative camera factors: 0 stays on screen; 1 scrolls with the world.
+
+        Each axis is independent. Offset remains an additional pattern shift.
+        Assignment validates both finite factors before changing this setting.
+        """
+        return self._parallax
+
+    @parallax.setter
+    def parallax(self, value: Point) -> None:
+        x, y = _point(value, "parallax")
+        if x < 0 or y < 0:
+            raise ValueError("Parallax must be nonnegative")
+        self._parallax = (x, y)
 
     @property
     def visible(self) -> bool:

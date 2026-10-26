@@ -46,7 +46,8 @@ player.map_key(Key.UP, GamepadButton.A)
 GROUND = -130
 
 desert = Image(assets / "desert.png").resized(width=800, height=450)
-scenery = TiledBackground(desert, layer=-20)
+# Distant scenery scrolls automatically, more slowly than the world.
+scenery = TiledBackground(desert, parallax=(0.08, 0), layer=-20)
 stage.add(scenery)
 sand = desert.cropped(x=0, y=418, width=32, height=32)
 ground: list[TileMap] = []
@@ -257,8 +258,6 @@ def update(event: Event[Stage, float]) -> None:
     speed = min(480, 240 + distance / 60)
     dino.body.velocity = (speed, dino.body.velocity[1])
     extend_ground()
-    # This decorative background uses screen coordinates, unlike our world tiles.
-    scenery.offset = (-stage.camera[0] * 0.08, 0)
     for cloud in clouds:
         if cloud.bounds.right < stage.world_bounds.left:
             cloud.x = stage.world_bounds.right + cloud.image.width

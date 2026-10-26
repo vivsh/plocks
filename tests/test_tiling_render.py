@@ -8,6 +8,8 @@ from PIL import Image as PillowImage
 
 from plocks import (
     Bounds,
+    Canvas,
+    Event,
     Image,
     Joint,
     Puppet,
@@ -202,3 +204,104 @@ def test_puppet_part_order_and_mirrored_pivot_pixels() -> None:
     frame(stage)
     assert stage._target.get_at((13, 22))[:3] == (0, 0, 255)
     assert stage._target.get_at((27, 22))[:3] == (255, 0, 0)
+
+
+def test_background_parallax_follows_camera_in_running_stage() -> None:
+    """A real follow step shifts repeating scenery while independent actor updates continue."""
+    stage = Stage(16, 12)
+    image = PillowImage.new("RGBA", (4, 4))
+    image.putdata([(x * 60, y * 60, 100, 255) for y in range(4) for x in range(4)])
+    scenery = TiledBackground(image, parallax=(0.5, 0))
+    hero = Sprite(Image.rectangle(1, 1, color="white"), visible=False)
+    friend = Sprite(Image.rectangle(1, 1, color="blue"), visible=False)
+    stage.add(scenery)
+    stage.add(hero)
+    stage.add(friend)
+    stage.follow(hero)
+    pixels: list[tuple[int, int, int]] = []
+
+    @hero.on_update
+    def walk(event: Event[Sprite, float]) -> None:
+        event.target.x += 2
+
+    @friend.on_update
+    def independent(event: Event[Sprite, float]) -> None:
+        event.target.y += 1
+
+    @stage.on_draw
+    def inspect(canvas: Canvas) -> None:
+        assert stage._target is not None
+        color = stage._target.get_at((0, 0))
+        pixels.append((color.r, color.g, color.b))
+        if len(pixels) == 4:
+            assert stage.camera[0] >= 6 and friend.y >= 3
+            assert len(set(pixels)) > 1
+            assert scenery.offset == (0, 0)
+            stage.stop()
+
+    stage.run()
+    assert stage._target is None and not stage.objects
+
+
+@pytest.mark.parametrize("factor", [(0, 0), (0.25, 0.5), (1, 1), (1.5, 2)])
+@pytest.mark.parametrize("camera", [(0, 0), (7, -5), (-101, 131), (1000001, -100003)])
+def test_background_parallax_matches_offset_scrolling(
+    factor: tuple[float, float], camera: tuple[float, float]
+) -> None:
+    """Automatic scrolling matches explicit shifts on both axes, including repeated wraps and clipping."""
+    stage = Stage(16, 12, background="magenta")
+    stage._target = pygame.display.set_mode((16, 12))
+    pixels = PillowImage.new("RGBA", (4, 4))
+    pixels.putdata([(x * 60, y * 60, 100, 255) for y in range(4) for x in range(4)])
+    area = Bounds(-6, -4, 6, 4)
+    background = TiledBackground(pixels, area=area, offset=(1.25, -2.75), parallax=factor)
+    stage.add(background)
+    stage.camera = camera
+    frame(stage)
+    automatic = pygame.image.tobytes(stage._target, "RGBA")
+    assert stage._target.get_at((0, 0))[:3] == (255, 0, 255)
+    assert stage._target.get_clip() == pygame.Rect(0, 0, 16, 12)
+    assert background.offset == (1.25, -2.75)
+    background.parallax = (0, 0)
+    background.offset = (1.25 - camera[0] * factor[0], -2.75 - camera[1] * factor[1])
+    frame(stage)
+    assert pygame.image.tobytes(stage._target, "RGBA") == automatic
+
+
+def test_background_parallax_pixels_and_live_configuration() -> None:
+    """Camera-right/up scrolling shifts pixels left/down; defaults and explicit drift stay independent."""
+    stage = Stage(16, 12)
+    stage._target = pygame.display.set_mode((16, 12))
+    pixels = PillowImage.new("RGBA", (4, 4))
+    pixels.putdata([(x * 60, y * 60, 100, 255) for y in range(4) for x in range(4)])
+    background = TiledBackground(pixels)
+    stage.add(background)
+    stage.camera = (2, 2)
+    frame(stage)
+    assert background.parallax == (0, 0)
+    assert stage._target.get_at((0, 0))[:3] == (0, 0, 100)
+    background.parallax = (0.5, 0.5)
+    frame(stage)
+    assert stage._target.get_at((0, 0))[:3] == (60, 180, 100)
+    background.offset = (1, 1)
+    frame(stage)
+    assert stage._target.get_at((0, 0))[:3] == (0, 0, 100)
+    background.visible = False
+    frame(stage)
+    assert stage._target.get_at((0, 0))[:3] == (0, 0, 0)
+
+
+@pytest.mark.parametrize(
+    "value", [(-1, 0), (0, -0.1), (float("nan"), 0), (0, float("inf")), (-float("inf"), 1)]
+)
+def test_background_parallax_rejects_invalid_factors_before_mutation(
+    value: tuple[float, float],
+) -> None:
+    """Constructor and property reject negative/nonfinite factors without changing accepted state."""
+    image = Image.rectangle(2, 2, color="blue")
+    with pytest.raises(ValueError):
+        TiledBackground(image, parallax=value)
+    background = TiledBackground(image, parallax=(0.2, 0.4))
+    with pytest.raises(ValueError):
+        background.parallax = value
+    assert background.parallax == (0.2, 0.4)

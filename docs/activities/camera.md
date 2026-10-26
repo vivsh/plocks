@@ -52,6 +52,20 @@ leaves the view exactly where it is. Pausing freezes automatic following too.
 - **Temple Trail and Snake Run:** perspective code shrinks faraway pictures to
   look 3D. Their 2D camera stays fixed.
 
+## Scenery that never runs out
+
+`TiledBackground` repeats one picture endlessly. Let it follow the camera slowly:
+
+```python
+scenery = TiledBackground("assets/mountains.png", parallax=(0.2, 0))
+stage.add(scenery)
+```
+
+Import `TiledBackground` from `plocks` beside `Stage`. With `stage.follow(hero)`,
+the mountains scroll automatically. `0.2` moves slowly; `0` keeps that axis fixed.
+`(1, 1)` moves with the world. The default `(0, 0)` stays on the screen.
+You can still change `scenery.offset` to add drifting clouds or wind.
+
 Tile maps can use `parallax=(0.3, 1)` to make distant scenery scroll more slowly.
 Solid tiles use the normal `(1, 1)` so their pictures match their physical ground.
 

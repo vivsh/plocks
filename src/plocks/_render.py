@@ -158,7 +158,8 @@ def _background(stage: Stage, target: pygame.Surface, background: TiledBackgroun
         return
     target.set_clip(clip)
     image = background.image
-    dx, dy = background.offset
+    dx = background.offset[0] - stage.camera[0] * background.parallax[0]
+    dy = background.offset[1] - stage.camera[1] * background.parallax[1]
     phase_x = (x % image.width + dx % image.width) % image.width
     phase_y = (y % image.height - dy % image.height) % image.height
     start_x = clip.left - (clip.left - round(phase_x)) % image.width
