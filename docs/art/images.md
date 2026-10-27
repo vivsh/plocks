@@ -24,6 +24,28 @@ small = hero.image.resized(16, 24)
 hero.image = left
 ```
 
+### Remove extra space
+
+```python
+picture = Image("assets/hero.png").trimmed()
+picture = Image("assets/hero-on-white.png").trimmed(color="white")
+```
+
+`trimmed()` cuts away transparent padding around the outside. Choose a color to
+also cut away matching border pixels. Names, RGB and RGBA tuples work; the match
+is exact. It keeps inside pixels, including holes and shadows, unchanged.
+The original picture stays unchanged too.
+
+The anchor moves with the crop, so your artwork stays in place. To put the feet
+at the bottom of the newly cropped picture, use:
+
+```python
+picture = picture.with_anchor(Anchor.BOTTOM_CENTER)
+```
+
+If nothing needs cutting, or the whole picture is empty/background, you get the
+same image back. Trimming does not turn an interior white background transparent.
+
 ## 2. Pick from a grid
 
 Use `ImageGrid` when every frame has the same size:

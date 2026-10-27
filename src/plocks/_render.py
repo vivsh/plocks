@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from math import floor
 from typing import TYPE_CHECKING
 
 import pygame
@@ -40,7 +41,10 @@ def _image(
     local_x = asset.width / 2 - ax
     dx, dy = _rotate((-local_x if mirrored else local_x, ay - asset.height / 2), direction, scale)
     center = stage.to_screen((position[0] + dx, position[1] + dy))
-    target.blit(image, image.get_rect(center=(round(center[0]), round(center[1]))))
+    target.blit(
+        image,
+        (floor(center[0] - image.width / 2 + 0.5), floor(center[1] - image.height / 2 + 0.5)),
+    )
 
 
 def _sprite(stage: Stage, target: pygame.Surface, sprite: Sprite) -> None:

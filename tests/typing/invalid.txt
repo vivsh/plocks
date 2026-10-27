@@ -274,3 +274,6 @@ stage.on_remote_change  # error
 from plocks import TiledBackground
 TiledBackground("mountains.png", parallax=0.2)  # error
 TiledBackground("mountains.png").parallax = ("slow", 0)  # error
+
+Image("hero.png").trimmed(color=3)  # error
+Image("hero.png").trimmed("white")  # error

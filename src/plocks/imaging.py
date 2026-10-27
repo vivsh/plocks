@@ -11,6 +11,7 @@ from warnings import warn
 
 import pygame
 from PIL import Image as PillowImage
+from PIL import ImageChops, ImageEnhance
 
 from . import _shapes
 from .errors import AssetError
@@ -243,6 +244,36 @@ class Image:
             raise ValueError("The crop must fit inside the image")
         image = self.to_pillow().crop((x, y, x + width, y + height))
         return Image(image, anchor=(self.anchor[0] - x, self.anchor[1] - y))
+
+    def trimmed(self, *, color: Color | None = None) -> Image:
+        """Remove transparent outer padding and, optionally, an exact border color.
+
+        Keep the smallest rectangle containing pixels with nonzero alpha that
+        differ from color. Names/RGB tuples mean opaque colors; RGBA tuples
+        match all four channels exactly. Interior pixels are never recolored.
+        With color=None, even faint outlines and shadows remain.
+
+        The anchor shifts by the removed left/top padding, preserving artwork
+        placement. An unchanged or entirely empty result returns this image.
+        The original is immutable. Invalid colors raise TypeError or ValueError.
+        Example: hero = Image("hero.png").trimmed(color="white").
+        """
+        rgba = _shapes._rgba(color)
+        image = self.to_pillow()
+        alpha = image.getchannel("A")
+        if rgba is not None:
+            difference = ImageChops.difference(image, PillowImage.new("RGBA", image.size, rgba))
+            mask = difference.getchannel("R")
+            for channel in ("G", "B", "A"):
+                mask = ImageChops.lighter(mask, difference.getchannel(channel))
+            # Saturate nonzero differences so even alpha-one outlines survive.
+            mask = ImageEnhance.Brightness(mask).enhance(255)
+            alpha = ImageChops.multiply(alpha, mask)
+        bounds = alpha.getbbox()
+        if bounds is None or bounds == (0, 0, self.width, self.height):
+            return self
+        left, top, right, bottom = bounds
+        return self.cropped(left, top, right - left, bottom - top)
 
     @overload
     def with_anchor(self, anchor: Anchor | Point, /) -> Image: ...

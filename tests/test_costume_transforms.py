@@ -2,10 +2,13 @@
 
 import math
 
+import pygame
 import pytest
 from PIL import Image as PillowImage
 
-from plocks import Image, Joint, Puppet, Skeleton, Sprite
+from plocks import Anchor, Color, Image, Joint, Puppet, Skeleton, Sprite, Stage
+from plocks._render import frame
+from plocks._runtime import close
 
 
 def sample() -> Image:
@@ -138,3 +141,107 @@ def test_invalid_sizes_and_boolean_numbers() -> None:
         sample().rotated(True)
     with pytest.raises(ValueError):
         sample().with_anchor(x=1e308, y=0).resized(300, 2)
+
+
+@pytest.mark.parametrize("anchor", [(4, 6), (3.5, 5.5), (-1, 8)])
+@pytest.mark.parametrize("scale", [1, 2])
+def test_trimmed_sprite_keeps_visible_pixels_in_place(
+    anchor: tuple[float, float], scale: float
+) -> None:
+    """Trimming a ready-made asset tightens bounds without shifting rendered artwork."""
+    pixels = PillowImage.new("RGBA", (8, 6), (200, 100, 50, 0))
+    pixels.paste((220, 20, 50, 255), (2, 1, 6, 4))
+    image = Image(pixels, anchor=anchor)
+    stage = Stage(24, 24)
+    hero = Sprite(image, x=2, y=3, scale=scale)
+    stage.add(hero)
+    stage._target = pygame.display.set_mode((24, 24))
+    try:
+        frame(stage)
+        before = pygame.image.tobytes(stage._target, "RGBA")
+        hero.image = image.trimmed()
+        frame(stage)
+        assert pygame.image.tobytes(stage._target, "RGBA") == before
+        assert (hero.image.width, hero.image.height) == (4, 3)
+        assert hero.image.anchor == (anchor[0] - 2, anchor[1] - 1)
+        assert hero.position == (2, 3) and image.anchor == anchor
+        assert (image.width, image.height) == (8, 6)
+    finally:
+        close(stage)
+
+
+@pytest.mark.parametrize("color", ["white", "#ffffff", (255, 255, 255), (255, 255, 255, 255)])
+def test_trimmed_chosen_color_removes_only_outer_padding(color: Color) -> None:
+    """Equivalent color spellings trim opaque padding without deleting an interior white hole."""
+    pixels = PillowImage.new("RGBA", (9, 7), "white")
+    pixels.paste("red", (2, 1, 7, 6))
+    pixels.putpixel((4, 3), (255, 255, 255, 255))
+    source = Image(pixels, anchor=(4.5, 7))
+    result = source.trimmed(color=color)
+    assert (result.width, result.height, result.anchor) == (5, 5, (2.5, 6))
+    assert result.to_pillow().getpixel((2, 2)) == (255, 255, 255, 255)
+    assert result.to_pillow().getpixel((0, 0)) == (255, 0, 0, 255)
+    assert source.to_pillow().tobytes() == pixels.tobytes()
+    assert result._pixels is not source._pixels
+    exported = result.to_pillow()
+    exported.paste("blue", (0, 0, 5, 5))
+    assert result.to_pillow().getpixel((0, 0)) == (255, 0, 0, 255)
+    assert result.trimmed(color=color) is result
+
+
+def test_trimmed_preserves_faint_pixels_and_ignores_hidden_rgb() -> None:
+    """All nonzero alpha counts, even one; hidden RGB and transparent interior gaps survive the crop."""
+    pixels = PillowImage.new("RGBA", (7, 5), (255, 10, 70, 0))
+    pixels.putpixel((1, 1), (5, 10, 15, 1))
+    pixels.putpixel((5, 3), (30, 40, 50, 255))
+    result = Image(pixels).trimmed()
+    assert (result.width, result.height) == (5, 3)
+    assert result.to_pillow().getpixel((0, 0)) == (5, 10, 15, 1)
+    assert result.to_pillow().getpixel((1, 1)) == (255, 10, 70, 0)
+
+
+def test_trimmed_color_matches_rgba_exactly_with_no_tolerance() -> None:
+    """A one-channel or alpha difference stays visible, even at alpha one."""
+    pixels = PillowImage.new("RGBA", (7, 5), (255, 255, 255, 255))
+    pixels.putpixel((1, 1), (255, 255, 255, 1))
+    pixels.putpixel((5, 3), (254, 255, 255, 255))
+    result = Image(pixels).trimmed(color="white")
+    assert (result.width, result.height) == (5, 3)
+    assert result.to_pillow().getpixel((0, 0)) == (255, 255, 255, 1)
+    assert result.to_pillow().getpixel((4, 2)) == (254, 255, 255, 255)
+    pixels.paste((20, 40, 60, 128), (0, 0, 7, 5))
+    pixels.putpixel((3, 2), (20, 40, 60, 127))
+    result = Image(pixels).trimmed(color=(20, 40, 60, 128))
+    assert (result.width, result.height) == (1, 1)
+    assert result.to_pillow().getpixel((0, 0)) == (20, 40, 60, 127)
+
+
+def test_trimmed_combines_color_with_transparency_and_anchor_choices() -> None:
+    """A mixed border trims both transparent and matching-color pixels; reanchoring is explicit."""
+    pixels = PillowImage.new("RGBA", (8, 8), (70, 30, 10, 0))
+    pixels.paste("white", (1, 1, 7, 7))
+    pixels.paste("blue", (3, 2, 5, 6))
+    result = Image(pixels, anchor=Anchor.BOTTOM_CENTER).trimmed(color="white")
+    assert (result.width, result.height, result.anchor) == (2, 4, (1, 6))
+    assert result.with_anchor(Anchor.BOTTOM_CENTER).anchor == (1, 4)
+    assert result.resized(4, 8).anchor == (2, 12)
+    flipped = result.flipped(horizontal=True)
+    assert flipped.trimmed() is flipped and flipped.anchor == (1, 6)
+
+
+@pytest.mark.parametrize("color", [None, "white"])
+def test_trimmed_empty_or_unchanged_images_reuse_the_asset(color: Color | None) -> None:
+    """No-content and no-crop cases retain valid dimensions, anchor and identity instead of a zero-size image."""
+    for fill in ((255, 255, 255, 0), "white", "red"):
+        source = Image(PillowImage.new("RGBA", (3, 2), fill), anchor=(-2, 5))
+        assert source.trimmed(color=color) is source
+
+
+@pytest.mark.parametrize("color", ["not a color", (-1, 0, 0), (256, 0, 0)])
+def test_trimmed_invalid_colors_fail_without_mutation(color: Color) -> None:
+    """Invalid names/channels fail even if there is nothing to crop, leaving the original intact."""
+    source = sample()
+    before = source.to_pillow().tobytes()
+    with pytest.raises(ValueError):
+        source.trimmed(color=color)
+    assert source.to_pillow().tobytes() == before and source.anchor == (0.5, 1.5)

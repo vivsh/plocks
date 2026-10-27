@@ -51,7 +51,8 @@ def main() -> None:
     hero.act(common)
     person.act(common)
     hero.image = (
-        hero.image.flipped(horizontal=True)
+        hero.image.trimmed(color="white")
+        .flipped(horizontal=True)
         .cropped(x=0, y=0, width=8, height=8)
         .with_anchor(x=4, y=8)
         .rotated(90)
