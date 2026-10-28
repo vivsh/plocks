@@ -42,6 +42,7 @@ from .errors import (
 from .events import Click as Click
 from .events import Event as Event
 from .events import GamepadPress as GamepadPress
+from .events import GamepadRelease as GamepadRelease
 from .gamepads import Gamepad as Gamepad
 from .gamepads import GamepadButton as GamepadButton
 from .gamepads import GamepadInput as GamepadInput
@@ -126,6 +127,7 @@ __all__ = (
     "GamepadInput",
     "GamepadLayout",
     "GamepadPress",
+    "GamepadRelease",
     "Grounded",
     "Hinge",
     "HumanJoint",

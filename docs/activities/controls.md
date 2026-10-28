@@ -30,7 +30,26 @@ A button handler fires once on a fresh press. Adding `repeat=0.25` makes it repe
 while held, like the lab's coin button. Leave repeat off for a normal jump.
 
 The lab's `turbo` function receives an Event. `event.target` is the dinosaur;
-`event.data.gamepad` tells you which player's controls were used.
+`event.data.gamepad` tells you which player's controls were used. You can check
+another button on that same controller without a global variable:
+
+```python
+@hero.on_button_down(GamepadButton.X)
+def shoot(event: Event[Sprite, GamepadPress]) -> None:
+    if event.data.gamepad.is_down(GamepadButton.UP):
+        print("Shoot upwards!")
+```
+
+To do something once when the player lets go, use `on_button_up`:
+
+```python
+@hero.on_button_up(GamepadButton.X)
+def stop_shooting(event: Event[Sprite, GamepadRelease]) -> None:
+    print("Stopped!")
+```
+
+Import `Event`, `Sprite`, `GamepadPress` and `GamepadRelease` from `plocks`.
+If two keys control the same button, it is released after both keys are up.
 
 ## Make it yours
 

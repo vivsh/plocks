@@ -277,3 +277,9 @@ TiledBackground("mountains.png").parallax = ("slow", 0)  # error
 
 Image("hero.png").trimmed(color=3)  # error
 Image("hero.png").trimmed("white")  # error
+
+from plocks import GamepadRelease
+hero.body.drag = "fast"  # error
+@hero.on_button_up(GamepadButton.A)  # error
+def bad_release(event: Event[Sprite, GamepadPress]) -> None:
+    pass

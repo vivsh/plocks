@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import pygame
 
-from .events import Event, GamepadPress
+from .events import Event, GamepadPress, GamepadRelease
 from .gamepads import GamepadButton
 from .input import MouseButton
 from .theme import AlertLevel, _level_color
@@ -30,7 +30,9 @@ def _reset_input(stage: Stage) -> None:
 
     _clear_repeats(stage)
     stage._pending[:] = [
-        event for event in stage._pending if not isinstance(event, (GamepadPress, tuple))
+        event
+        for event in stage._pending
+        if not isinstance(event, (GamepadPress, GamepadRelease, tuple))
     ]
 
 

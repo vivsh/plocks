@@ -17,7 +17,7 @@ from ._render import frame
 from ._scripts import _cancel, _deliver, _sample, _step, _trigger
 from .callbacks import ActorUpdateCallback, UpdateCallback
 from .errors import StageError
-from .events import Event, GamepadPress
+from .events import Event, GamepadPress, GamepadRelease
 from .geometry import Point
 from .input import Key, MouseButton
 
@@ -200,6 +200,14 @@ def dispatch(stage: Stage, *, simulation: bool = True) -> None:
                     held = event.gamepad.is_down(event.button)
                     _gamepads._arm(stage, binding, held)
                     _trigger(stage, binding.handler, event)
+        if isinstance(event, GamepadRelease):
+            from ._ui import _menu_key
+
+            if _menu_key(stage, event.button):
+                continue
+            for handler in tuple(stage._gamepad_up_handlers.get((event.gamepad, event.button), ())):
+                if stage.running and stage._alert is None:
+                    _trigger(stage, handler, event)
         if isinstance(event, tuple):
             from ._ui import _click as ui_click
             from ._ui import _hit as ui_hit
@@ -347,6 +355,7 @@ def close(stage: Stage) -> None:
     stage._messages.clear()
     stage._message_handlers.clear()
     stage._gamepad_handlers.clear()
+    stage._gamepad_up_handlers.clear()
     stage._starts.clear()
     stage._clone_handlers.clear()
     stage._touches.clear()

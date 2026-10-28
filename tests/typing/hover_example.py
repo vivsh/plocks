@@ -15,6 +15,7 @@ from plocks import (
     GamepadButton,
     GamepadDown,
     GamepadPress,
+    GamepadRelease,
     Key,
     Message,
     Not,
@@ -64,6 +65,13 @@ def main() -> None:
         actor = event.target
         up = actor.glide_by(y=100, seconds=0.3, easing=Ease.OUT)
         return actor.glide_by(y=-100, seconds=0.3, easing=Ease.IN, after=up)
+
+    @hero.on_button_up(GamepadButton.A)
+    def released(event: Event[Sprite, GamepadRelease]) -> None:
+        assert_type(event.data.gamepad.is_down(GamepadButton.A), bool)
+
+    assert_type(hero.body.drag, tuple[float, float])
+    hero.body.drag = (600, 0)
 
     key_command = Message[GamepadPress]("button command")
     hero.on_broadcast(key_command)(jump)

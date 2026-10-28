@@ -223,7 +223,8 @@ def test_actual_field_inventory_has_no_parallel_lifecycle(game: tuple[Stage, Spr
         "destination",
         "receivers",
     }
-    assert set(Body.__slots__) == {"_actor", "_world", "_native", "_shape"}
+    assert set(Body.__slots__) == {"_actor", "_world", "_native", "_shape", "_drag"}
+    assert isinstance(stage._gamepad_up_handlers, dict)
     assert set(Physics.__slots__) == {"_stage", "_space", "_bodies", "_terrain", "_connections"}
     assert not hasattr(hero, "_x") and not hasattr(stage, "_runs")
 

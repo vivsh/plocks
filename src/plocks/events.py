@@ -52,3 +52,11 @@ class GamepadPress:
 
     gamepad: Gamepad
     button: GamepadButton
+
+
+@dataclass(frozen=True, slots=True)
+class GamepadRelease:
+    """A logical button release; gamepad identifies the player and button the control."""
+
+    gamepad: Gamepad
+    button: GamepadButton

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pygame
 
 from .errors import StageError
-from .events import GamepadPress
+from .events import GamepadPress, GamepadRelease
 from .gamepads import Gamepad, GamepadButton, GamepadInput, _button_index
 from .geometry import _number
 
@@ -22,7 +22,7 @@ def _rebaseline(slot: Gamepad) -> None:
     stage._pending[:] = [
         event
         for event in stage._pending
-        if not isinstance(event, GamepadPress) or event.gamepad is not slot
+        if not isinstance(event, (GamepadPress, GamepadRelease)) or event.gamepad is not slot
     ]
     for (owner, _), bindings in stage._gamepad_handlers.items():
         if owner is slot:
@@ -43,6 +43,8 @@ def _transitions(
             if button in after and button not in before:
                 slot._stage._pending.append(GamepadPress(slot, button))
     for button in before - after:
+        if not baseline:
+            slot._stage._pending.append(GamepadRelease(slot, button))
         for binding in slot._stage._gamepad_handlers.get((slot, button), ()):
             binding.next_repeat = None
 

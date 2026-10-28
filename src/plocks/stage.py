@@ -19,7 +19,7 @@ from .audio import Sound, Voice, _play, _volume
 from .callbacks import ActorUpdateCallback, UpdateCallback
 from .canvas import Canvas
 from .errors import StageError
-from .events import Click, Event, GamepadPress
+from .events import Click, Event, GamepadPress, GamepadRelease
 from .gamepads import Gamepad, GamepadButton, GamepadInput, GamepadLayout, _new_gamepad
 from .geometry import Bounds, Color, Point, _integer, _number, _point
 from .input import Key, Mouse, MouseButton
@@ -40,7 +40,7 @@ type _Draw = Callable[[Canvas], None]
 if TYPE_CHECKING:
     from ._touches import _TouchWatch
 
-type _InputEvent = tuple[Point, MouseButton] | GamepadPress | _CloneStart
+type _InputEvent = tuple[Point, MouseButton] | GamepadPress | GamepadRelease | _CloneStart
 type _StageObject = (
     Sprite | Puppet | TileMap | TiledBackground | Button | Label | ProgressBar | Panel
 )
@@ -67,6 +67,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         "_draws",
         "_game_state",
         "_gamepad_handlers",
+        "_gamepad_up_handlers",
         "_gamepads",
         "_height",
         "_held_keys",
@@ -151,6 +152,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         self._members: list[_StageObject] = []
         self._updates: list[tuple[Actor | None, UpdateCallback | ActorUpdateCallback[Actor]]] = []
         self._gamepad_handlers: dict[tuple[Gamepad, GamepadButton], list[_InputBinding]] = {}
+        self._gamepad_up_handlers: dict[tuple[Gamepad, GamepadButton], list[_Handler]] = {}
         self._actions: list[Action] = []
         self._starts: list[_Handler] = []
         self._clone_handlers: list[_Handler] = []
@@ -625,6 +627,79 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
             _gamepad_selection(self, button, gamepad)
             handler = _callback_handler(callback, actor, when_busy)
             self._register_gamepad(button, gamepad, handler, repeat)
+            return callback
+
+        return register
+
+    @overload
+    def on_button_up(
+        self,
+        button: GamepadButton,
+        *,
+        gamepad: Gamepad | None = None,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> Callable[
+        [Callable[[Event[Self, GamepadRelease]], _R]], Callable[[Event[Self, GamepadRelease]], _R]
+    ]: ...
+    @overload
+    def on_button_up(
+        self,
+        button: GamepadButton,
+        actor: Sprite,
+        script: Script[Actor] | Script[Sprite],
+        *,
+        gamepad: Gamepad | None = None,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> None: ...
+    @overload
+    def on_button_up(
+        self,
+        button: GamepadButton,
+        actor: Puppet,
+        script: Script[Actor] | Script[Puppet],
+        *,
+        gamepad: Gamepad | None = None,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> None: ...
+    def on_button_up(
+        self,
+        button: GamepadButton,
+        actor: object = None,
+        script: object = None,
+        *,
+        gamepad: Gamepad | None = None,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> object:
+        """React once when a logical button is released; event.data identifies its player."""
+        _open(self)
+        _gamepad_selection(self, button, gamepad)
+        if actor is not None:
+            self._register_gamepad_up(button, gamepad, _binding(self, actor, script, when_busy))
+            return None
+        return self._gamepad_up_decorator(button, None, gamepad, when_busy)
+
+    def _register_gamepad_up(
+        self,
+        button: GamepadButton,
+        gamepad: Gamepad | None,
+        handler: _Handler,
+    ) -> None:
+        for slot in self.gamepads if gamepad is None else (gamepad,):
+            self._gamepad_up_handlers.setdefault((slot, button), []).append(handler)
+
+    def _gamepad_up_decorator(
+        self,
+        button: GamepadButton,
+        actor: Actor | None,
+        gamepad: Gamepad | None,
+        when_busy: WhenBusy,
+    ) -> Callable[[object], object]:
+        def register(callback: object) -> object:
+            _open(self)
+            _gamepad_selection(self, button, gamepad)
+            self._register_gamepad_up(
+                button, gamepad, _callback_handler(callback, actor, when_busy)
+            )
             return callback
 
         return register

@@ -184,11 +184,12 @@ class Body:
     Dynamic movement uses velocity, impulses and forces. Kinematic movement may glide.
     """
 
-    __slots__ = ("_actor", "_native", "_shape", "_world")
+    __slots__ = ("_actor", "_drag", "_native", "_shape", "_world")
     _actor: Sprite | Puppet
     _world: Physics
     _native: pymunk.Body | None
     _shape: Box | Circle
+    _drag: Point
 
     def __new__(cls) -> Self:
         """Bodies are created by stage membership; use actor.body."""
@@ -199,6 +200,24 @@ class Body:
         """Attachment role; change actor.body_type only while detached."""
         native = _native(self)
         return {0: BodyType.DYNAMIC, 1: BodyType.KINEMATIC, 2: BodyType.STATIC}[native.body_type]
+
+    @property
+    def drag(self) -> Point:
+        """Per-axis deceleration in pixels/second²; defaults to (0, 0).
+
+        Drag continuously slows dynamic bodies, including in the air. Values must
+        be finite and nonnegative. Removing the actor invalidates this body.
+        """
+        _native(self)
+        return self._drag
+
+    @drag.setter
+    def drag(self, value: Point) -> None:
+        x, y = _point(value, "drag")
+        if x < 0 or y < 0:
+            raise ValueError("Drag must be nonnegative")
+        _native(self)
+        self._drag = (x, y)
 
     @property
     def velocity(self) -> Point:

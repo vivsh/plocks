@@ -79,6 +79,7 @@ def _copy_physics(source: Actor, target: Actor) -> None:
     before, after = source.body, target.body
     after.shape = before.shape
     after.friction = before.friction
+    after.drag = before.drag
     after.bounce = before.bounce
     after.sensor = before.sensor
     if source.body_type is BodyType.DYNAMIC:
@@ -107,6 +108,10 @@ def _inherit(stage: Stage, source: Actor, target: Actor) -> None:
 
     inherit_touches(stage, source, target, inherited)
     inherit_inputs(stage._gamepad_handlers)
+    for callbacks in tuple(stage._gamepad_up_handlers.values()):
+        callbacks.extend(
+            inherited(handler) for handler in tuple(callbacks) if handler.actor is source
+        )
     clicks = stage._clicks.get(source, ())
     if clicks:
         stage._clicks[target] = [inherited(handler) for handler in tuple(clicks)]
@@ -172,6 +177,7 @@ def _prune[K, V](registry: dict[K, list[V]], keep: Callable[[V], bool]) -> None:
 def _forget(stage: Stage, actor: Actor) -> None:
     """Retire all clone registrations and queued starts; ordinary actors keep theirs."""
     _prune(stage._gamepad_handlers, lambda binding: binding.handler.actor is not actor)
+    _prune(stage._gamepad_up_handlers, lambda handler: handler.actor is not actor)
     _prune(stage._clicks, lambda handler: handler.actor is not actor)
     _prune(stage._message_handlers, lambda handler: handler.actor is not actor)
     stage._starts[:] = [handler for handler in stage._starts if handler.actor is not actor]

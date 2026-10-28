@@ -68,3 +68,19 @@ automatic landing. One-way platforms stay horizontal; moving lifts use
 
 If a tiny hit box moves too fast, Plocks may ask for more physics steps than it
 can safely run. Slow the object down or give it a larger hit box.
+
+
+## Slowing down
+
+After adding a dynamic sprite to a physics-enabled stage, give it horizontal drag:
+
+```python
+stage.add(hero)
+hero.body.drag = (600, 0)
+```
+
+Drag slows velocity toward zero. Each number is in pixels per second squared;
+the second zero leaves jumping and falling to gravity. It also works in the air.
+Drag is active while moving, so keep applying your movement while a key is held.
+When the key is released, the player coasts to a stop. A larger number stops
+sooner. Contact `friction` is separate: it controls grip against another surface.

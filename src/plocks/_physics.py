@@ -130,6 +130,7 @@ def _attach(world: Physics, actor: Actor) -> None:
     _space(world).add(native, shape)
     body = object.__new__(Body)
     body._actor, body._world, body._native, body._shape = actor, world, native, definition
+    body._drag = (0, 0)
     world._bodies.append(body)
     actor._transform = body
 
@@ -460,6 +461,16 @@ def _integrate(stage: Stage, dt: float) -> None:
                 )
             else:
                 native.torque -= request.amount * weight
+        for body in world._bodies:
+            if body._drag == (0, 0) or body.body_type is not BodyType.DYNAMIC:
+                continue
+            native = _native(body)
+            vx, vy = native.velocity
+            dx, dy = body._drag
+            native.velocity = (
+                max(0, vx - dx * substep) if vx > 0 else min(0, vx + dx * substep),
+                max(0, vy - dy * substep) if vy > 0 else min(0, vy + dy * substep),
+            )
         _space(world).step(substep)
         if world._connections:
             for body in world._bodies:

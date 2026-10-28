@@ -11,7 +11,7 @@ from ._operations import _ImageRun, _sample_image
 from ._scripts import WhenBusy, _conflicts
 from .actions import Action
 from .audio import Sound
-from .events import Click, Event, GamepadPress
+from .events import Click, Event, GamepadPress, GamepadRelease
 from .gamepads import Gamepad, GamepadButton
 from .geometry import Bounds, Point, _integer, _number, _Placement, _point, _positive, _rotate
 from .imaging import Image, ImageSource, _image
@@ -511,6 +511,42 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
                 button, self, script, gamepad=gamepad, repeat=repeat, when_busy=when_busy
             )
         return stage._gamepad_decorator(button, self, gamepad, repeat, when_busy)
+
+    @overload
+    def on_button_up(
+        self,
+        button: GamepadButton,
+        *,
+        gamepad: Gamepad | None = None,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> Callable[
+        [Callable[[Event[Self, GamepadRelease]], _R]], Callable[[Event[Self, GamepadRelease]], _R]
+    ]: ...
+    @overload
+    def on_button_up(
+        self,
+        button: GamepadButton,
+        script: Script[Sprite] | Script[Actor],
+        *,
+        gamepad: Gamepad | None = None,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> None: ...
+    def on_button_up(
+        self,
+        button: GamepadButton,
+        script: Script[Sprite] | Script[Actor] | None = None,
+        *,
+        gamepad: Gamepad | None = None,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> object:
+        """React once when a logical button is released; event.data identifies its player."""
+        from .stage import _attached, _gamepad_selection
+
+        stage = _attached(self)
+        _gamepad_selection(stage, button, gamepad)
+        if script is not None:
+            return stage.on_button_up(button, self, script, gamepad=gamepad, when_busy=when_busy)
+        return stage._gamepad_up_decorator(button, self, gamepad, when_busy)
 
     @overload
     def on_broadcast(
