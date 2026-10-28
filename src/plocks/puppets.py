@@ -58,6 +58,13 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
     Positions use logical pixels and the image anchor. Commands schedule Actions;
     property assignments apply immediately. Direction 90 faces right.
+
+    Args:
+        skeleton: The joints that connect the puppet's parts.
+        parts: Images attached to joints, keyed by joint name.
+        pose: Starting joint positions; omit to use the skeleton's rest pose.
+        body_type: How the puppet behaves when stage physics is enabled.
+        state: A dataclass type for this puppet's state, if needed.
     """
 
     __slots__ = (
@@ -468,6 +475,13 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
         Filter by a stage.gamepads slot for local multiplayer. Event.data contains
         gamepad and button. A script executes independently on this receiver.
+
+        Args:
+            button: The button to listen for.
+            script: A script to run; omit it to decorate a function.
+            gamepad: Listen to one player; omit to listen to all players.
+            repeat: Seconds between repeated presses while held; omit for one press.
+            when_busy: What to do if the previous script is still running.
         """
         from .stage import _attached, _gamepad_selection, _repeat_interval
 
@@ -507,7 +521,14 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         gamepad: Gamepad | None = None,
         when_busy: WhenBusy = WhenBusy.IGNORE,
     ) -> object:
-        """React once when a logical button is released; event.data identifies its player."""
+        """React once when a logical button is released; event.data identifies its player.
+
+        Args:
+            button: The button to listen for.
+            script: A script to run; omit it to decorate a function.
+            gamepad: Listen to one player; omit to listen to all players.
+            when_busy: What to do if the previous script is still running.
+        """
         from .stage import _attached, _gamepad_selection
 
         stage = _attached(self)
@@ -551,6 +572,10 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         """Move along direction in logical pixels when reached.
 
         Returns immediately. Use after to sequence; inspect the returned Action for completion.
+
+        Args:
+            steps: How far to move in the current direction, in pixels.
+            after: Wait for this Action before moving.
         """
         from ._commands import _Move, _schedule
 
@@ -562,6 +587,11 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         """Set supplied world coordinates when reached; omitted axes stay unchanged.
 
         Returns immediately. Use after to sequence; inspect the returned Action for completion.
+
+        Args:
+            x: The new world x coordinate; omit to leave x unchanged.
+            y: The new world y coordinate; omit to leave y unchanged.
+            after: Wait for this Action before moving.
         """
         from ._commands import _MoveTo, _schedule
 
@@ -576,9 +606,16 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         easing: Ease = Ease.LINEAR,
         after: Action | None = None,
     ) -> Action:
-        """Glide to world coordinates over simulated seconds; omitted axes stay free.
+        """Glide to a place in your world while the game keeps running.
 
-        Returns immediately. Use after to sequence; inspect the returned Action for completion.
+        Args:
+            x: Destination x in world pixels; leave out to keep x free.
+            y: Destination y in world pixels; leave out to keep y free.
+            seconds: How long the glide takes in game time.
+            easing: How the glide speeds up or slows down; default is steady.
+            after: Wait for this Action before starting the glide.
+
+        Use a nonphysical or kinematic actor; dynamic bodies move using physics.
         """
         from ._commands import _GlideTo, _schedule
 
@@ -606,9 +643,17 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         easing: Ease = Ease.LINEAR,
         after: Action | None = None,
     ) -> Action:
-        """Glide by logical pixels, capturing the starting position when execution begins.
+        """Glide by a distance while the rest of the game keeps running.
 
-        Returns immediately. Use after to sequence; inspect the returned Action for completion.
+        Args:
+            x: Pixels to move right; use a negative number to move left.
+            y: Pixels to move up; use a negative number to move down.
+            seconds: How long the glide takes in game time.
+            easing: How the glide speeds up or slows down; default is steady.
+            after: Wait for this Action before starting the glide.
+
+        Leave out an axis to keep it free. Use a nonphysical or kinematic actor;
+        dynamic bodies move using physics. The starting place is taken at start.
         """
         from ._commands import _GlideBy, _schedule
 
@@ -676,6 +721,11 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         """Show speech captured now; omit seconds to persist, or wait then clear this occurrence.
 
         Returns immediately. Use after to sequence; inspect the returned Action for completion.
+
+        Args:
+            text: The words to show, captured when this method is called.
+            seconds: How long to show the bubble; omit to keep it visible.
+            after: Wait for this Action before showing the bubble.
         """
         from ._commands import _Say, _schedule
 
@@ -687,6 +737,11 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         """Show thought captured now; timed dialogue waits using the simulation clock.
 
         Returns immediately. Use after to sequence; inspect the returned Action for completion.
+
+        Args:
+            text: The words to show, captured when this method is called.
+            seconds: How long to show the bubble; omit to keep it visible.
+            after: Wait for this Action before showing the bubble.
         """
         from ._commands import _schedule, _Think
 
@@ -773,6 +828,10 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
         Requires stage membership. Effects start in the next eligible phase.
         Shared definitions have independent progress; later edits do not alter it.
+
+        Args:
+            script: The script to start on this actor.
+            after: Wait for this Action before starting the script.
         """
         from ._commands import _schedule
         from .scripts import _snapshot

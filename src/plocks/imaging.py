@@ -56,6 +56,10 @@ class Image:
     Files support PNG, JPEG, and WebP. Missing or invalid images raise AssetError.
     Named anchors resolve to pixels once. Image inputs share immutable pixels and
     keep their anchor unless an explicit replacement is supplied.
+
+    Args:
+        source: An image, image file path, or Pillow image.
+        anchor: The image point used for placement and rotation; default is center.
     """
 
     _pixels: pygame.Surface
@@ -354,10 +358,9 @@ def _image(source: ImageSource) -> Image:
 
 @dataclass(frozen=True, init=False, eq=False)
 class ImageGrid:
-    """A complete rectangular grid of images, addressed by row and column.
+    """Pick pictures from rows and columns in one image.
 
-    Margins surround all four sides; spacing separates frames. Dimensions must
-    fit a complete grid. Extracting a frame copies its pixels; no cache is kept.
+    Each picture must have the same size, like frames in a walking animation.
     """
 
     _source: Image
@@ -373,6 +376,18 @@ class ImageGrid:
         margin: tuple[int, int] = (0, 0),
         spacing: tuple[int, int] = (0, 0),
     ) -> None:
+        """Pick pictures from rows and columns in one image.
+
+        Args:
+            source: The image or filename holding your pictures.
+            frame_size: Width and height of each picture, in pixels.
+            margin: Pixels to skip at each outer edge, as (x, y). Default: (0, 0).
+            spacing: Pixels to skip between pictures, as (x, y). Default: (0, 0).
+
+        Raises:
+            ValueError: The pictures do not fit in a complete grid.
+            TypeError: The sizes are not integers.
+        """
         frame = tuple(_integer(value, "frame_size", minimum=1) for value in frame_size)
         border = tuple(_integer(value, "margin", minimum=0) for value in margin)
         gap = tuple(_integer(value, "spacing", minimum=0) for value in spacing)
@@ -408,7 +423,17 @@ class ImageGrid:
         )
 
     def frame(self, *, row: int, column: int, anchor: Anchor | Point | None = None) -> Image:
-        """Copy one frame. Row/column start at zero; invalid indexes raise IndexError."""
+        """Pick one picture from the grid.
+
+        Args:
+            row: Which row to use, counting from zero at the top.
+            column: Which column to use, counting from zero on the left.
+            anchor: Where the picture is held. The default is its center.
+
+        Raises:
+            IndexError: The row or column is outside the grid.
+            TypeError: The row or column is not an integer.
+        """
         _integer(row, "row")
         _integer(column, "column")
         if not 0 <= row < self.rows or not 0 <= column < self.columns:
@@ -422,7 +447,15 @@ class ImageGrid:
     def frames(
         self, *, row: int | None = None, anchor: Anchor | Point | None = None
     ) -> tuple[Image, ...]:
-        """Return a row, or all frames in row-major order. Slice the returned tuple."""
+        """Pick all pictures in a row, or every picture in the grid.
+
+        Args:
+            row: A row number starting at zero. Omit it for the whole grid.
+            anchor: Where each picture is held. The default is its center.
+
+        Pictures are returned left to right, then top to bottom. You can slice
+        the tuple to choose fewer pictures. Invalid row numbers raise IndexError.
+        """
         if row is not None:
             _integer(row, "row")
             if not 0 <= row < self.rows:

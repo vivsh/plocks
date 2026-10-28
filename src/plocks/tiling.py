@@ -28,6 +28,21 @@ class TileMap:
     one_way keys support landing from above, allowing jumps through from below.
     Solid and one-way keys must be disjoint. Nonphysical movement is never resolved
     automatically. Empty cells return None.
+
+    Args:
+        rows: Equal-length rows of tile keys; empty cells use the empty key.
+        palette: Pictures for each tile key.
+        tile_size: Width and height of each tile in pixels.
+        solid: Keys for tiles that block physical actors.
+        one_way: Keys for platforms that physical actors can jump through from below.
+        empty: The empty-cell character for text rows; default is ".".
+        x: World x coordinate of the map's top-left corner.
+        y: World y coordinate of the map's top-left corner.
+        visible: Whether to draw the map.
+        layer: Drawing order; larger numbers appear in front.
+        opacity: How visible the map is, from 0 to 1.
+        parallax: How quickly the map moves with the camera on each axis.
+        parallax_origin: The camera position where the map is at its original position.
     """
 
     __slots__ = (
@@ -448,6 +463,17 @@ class TiledBackground:
         visible: bool = True,
         layer: int = -100,
     ) -> None:
+        """Repeat a picture to make scenery that never runs out.
+
+        Args:
+            source: The picture or filename to repeat.
+            area: The screen area to fill; leave out to fill the window.
+            offset: Extra pattern movement in (x, y) pixels; y goes up.
+            parallax: How much to follow the camera on each axis. 0 stays
+                still on screen; 1 moves with the world. Default: (0, 0).
+            visible: Whether to draw the background; default is True.
+            layer: Drawing order; smaller numbers are behind. Default: -100.
+        """
         self._image = _image(source)
         self._area = area
         self._offset = _point(offset, "offset")

@@ -51,6 +51,18 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
 
     Construction opens no window. One stage may run at once, and each stage
     runs only once. Width/height are logical pixels; tick_rate defaults to 60.
+
+    Args:
+        width: The game window's width in pixels; default 480.
+        height: The game window's height in pixels; default 360.
+        tick_rate: Game updates per simulated second; default 60.
+        background: Background color, such as "skyblue".
+        bubble_text_size: Speech and thought text size in pixels.
+        ui_theme: Colors and styles for UI controls; omit for the default.
+        physics: Turn on gravity and physical bodies when True.
+        gamepad_count: Number of player controller slots; default 4.
+        gamepad_layout: Controller button naming style.
+        state: A dataclass type for your game's state, if needed.
     """
 
     __slots__ = (
@@ -316,11 +328,16 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         bounds: Bounds | None = None,
         smoothing: float = 0.0,
     ) -> None:
-        """Follow an attached actor; optional bounds keep the viewport inside a level.
+        """Move the camera to follow a sprite or Puppet around your world.
 
-        Offset is world pixels. smoothing=0 tracks immediately; a positive number
-        is an exponential response time in simulated seconds. Manual camera
-        assignment, actor removal or stop_following() ends following.
+        Args:
+            actor: The character to follow; add it to this stage first.
+            offset: Camera distance from the character, in (x, y) pixels.
+            bounds: Keep the camera inside this world rectangle, if provided.
+            smoothing: Follow gently over this many seconds; 0 follows immediately.
+
+        Setting stage.camera yourself, removing the actor, or calling
+        stop_following() stops the camera following.
         """
         _open(self)
         _actor(self, actor)
@@ -592,6 +609,14 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         Omit gamepad to listen to all player slots. repeat is an optional positive
         simulation-second interval; otherwise only the initial press fires.
         Event.data contains gamepad and button; Event.source is this Stage.
+
+        Args:
+            button: The button to listen for.
+            actor: The actor that should run the script, if using a script.
+            script: A script to run; omit it to decorate a function.
+            gamepad: Listen to one player; omit to listen to all players.
+            repeat: Seconds between repeated presses while held; omit for one press.
+            when_busy: What to do if the previous script is still running.
         """
         _open(self)
         repeat = _repeat_interval(repeat)
@@ -670,7 +695,15 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         gamepad: Gamepad | None = None,
         when_busy: WhenBusy = WhenBusy.IGNORE,
     ) -> object:
-        """React once when a logical button is released; event.data identifies its player."""
+        """React once when a logical button is released; event.data identifies its player.
+
+        Args:
+            button: The button to listen for.
+            actor: The actor that should run the script, if using a script.
+            script: A script to run; omit it to decorate a function.
+            gamepad: Listen to one player; omit to listen to all players.
+            when_busy: What to do if the previous script is still running.
+        """
         _open(self)
         _gamepad_selection(self, button, gamepad)
         if actor is not None:
