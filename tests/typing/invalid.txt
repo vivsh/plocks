@@ -283,3 +283,8 @@ hero.body.drag = "fast"  # error
 @hero.on_button_up(GamepadButton.A)  # error
 def bad_release(event: Event[Sprite, GamepadPress]) -> None:
     pass
+
+TileMap(["#"], {"#": "ground.png"}, tile_size=(32, 32)).join("other", direction="right")  # error
+TileMap(["#"], {"#": "ground.png"}, tile_size=(32, 32)).join(TileMap(["#"], {"#": "ground.png"}, tile_size=(32, 32)), direction="left")  # error
+
+TileMap(["#"], {"#": "ground.png"}, tile_size=(32, 32)).extend(["#"], direction="up")  # error

@@ -41,9 +41,9 @@ for picture, layer, factor in (("clouds", -30, 0.1), ("mountains", -20, 0.3), ("
         parallax=(factor, 0),
     )
     stage.add(background)
-# Each letter paints one tile. Dots leave empty space above the ground.
-rows = ["." * 70] * 10 + ["G" * 70, "D" * 70, "S" * 70]
-world = TileMap(
+# Start with empty rows, then add ground using the same tile pictures.
+rows = ["." * 35] * 10
+section = TileMap(
     rows,
     {"G": assets / "grass.png", "D": assets / "dirt.png", "S": assets / "stone.png"},
     tile_size=(32, 32),
@@ -51,6 +51,9 @@ world = TileMap(
     y=224,
     layer=0,
 )
+section = section.extend(["G" * 35, "D" * 35, "S" * 35])
+# Join a second copy to make the world longer.
+world = section.join(section, direction="right")
 stage.add(world)
 # A second tilemap puts plants in front of the hero, like scenery on a stage.
 leaves = TileMap(

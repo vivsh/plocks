@@ -52,6 +52,26 @@ leaves the view exactly where it is. Pausing freezes automatic following too.
 - **Temple Trail and Snake Run:** perspective code shrinks faraway pictures to
   look 3D. Their 2D camera stays fixed.
 
+## Make a longer world
+
+In Scrolling World, we add three ground rows to a short section, then use it twice:
+
+```python
+section = section.extend(["G" * 35, "D" * 35, "S" * 35])
+world = section.join(section, direction="right")
+stage.add(world)
+```
+
+You can make a different `next_section` and join that instead. To build downward,
+use `top.join(bottom, direction="down")`. Both sections need the same tile size:
+for right they need the same number of rows; for down, the same number of columns.
+Matching tile keys need the same picture and collision settings. The result is a
+new map, so painting it does not change the original sections.
+
+`extend(rows)` adds rows below and reuses the map's tile pictures and collision
+settings. Use `extend(rows, direction="right")` to add columns on the right;
+provide one fragment for each existing row. Both return a new map.
+
 ## Scenery that never runs out
 
 `TiledBackground` repeats one picture endlessly. Let it follow the camera slowly:

@@ -30,6 +30,10 @@ from plocks import (
 
 def main() -> None:
     stage = Stage(physics=True)
+    section = TileMap(["#"], {"#": "ground.png"}, tile_size=(32, 32))
+    assert_type(section.join(section, direction="right"), TileMap)
+    assert_type(section.extend(["#"]), TileMap)
+    assert_type(section.extend(["#"], direction="right"), TileMap)
     scenery = TiledBackground("mountains.png", parallax=(0.2, 0))
     assert_type(scenery.parallax, tuple[float, float])
     scenery.parallax = (0.3, 0)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 if TYPE_CHECKING:
     from ._commands import Actor
@@ -283,6 +283,97 @@ class TileMap:
         from ._navigation import _find
 
         return _find(self, start, goal, actor, max_nodes)
+
+    def join(self, other: TileMap, *, direction: Literal["right", "down"]) -> TileMap:
+        """Make a new map by joining another section to the right or below.
+
+        Right requires equal row counts; down requires equal column counts.
+        Tile sizes must match. Shared palette keys must have identical RGBA
+        pixels and matching solid/one-way behavior. Disjoint keys are combined.
+        The new map takes its position, visibility, layer, opacity and parallax
+        from this map; other.position and drawing settings do not affect it.
+        Both originals stay unchanged and the result is not added to a stage.
+        Invalid directions, sizes or conflicting keys raise ValueError.
+        Example: level = start.join(middle, direction="right").
+        """
+        if not isinstance(other, TileMap):
+            raise TypeError("Join another TileMap")
+        if direction not in ("right", "down"):
+            raise ValueError("direction must be 'right' or 'down'")
+        if self.tile_size != other.tile_size:
+            raise ValueError("Joined maps must use the same tile size")
+        if direction == "right" and self.rows != other.rows:
+            raise ValueError("Maps joined to the right must have the same number of rows")
+        if direction == "down" and self.columns != other.columns:
+            raise ValueError("Maps joined down must have the same number of columns")
+        palette = dict(self.palette)
+        for key, image in other.palette.items():
+            if key in palette:
+                original = palette[key]
+                if (original.width, original.height) != (image.width, image.height) or (
+                    original is not image
+                    and original.to_pillow().tobytes() != image.to_pillow().tobytes()
+                ):
+                    raise ValueError(f"Conflicting images for tile key {key!r}")
+                if (key in self.solid) != (key in other.solid) or (
+                    (key in self.one_way) != (key in other.one_way)
+                ):
+                    raise ValueError(f"Conflicting collision settings for tile key {key!r}")
+            else:
+                palette[key] = image
+        rows = (
+            [first + second for first, second in zip(self._cells, other._cells)]
+            if direction == "right"
+            else [*self._cells, *other._cells]
+        )
+        return TileMap(
+            rows,
+            palette,
+            tile_size=self.tile_size,
+            solid=self.solid | other.solid,
+            one_way=self.one_way | other.one_way,
+            x=self.x,
+            y=self.y,
+            visible=self.visible,
+            layer=self.layer,
+            opacity=self.opacity,
+            parallax=self.parallax,
+            parallax_origin=self.parallax_origin,
+        )
+
+    def extend(
+        self,
+        rows: TileRows,
+        *,
+        direction: Literal["right", "down"] = "down",
+        empty: str = ".",
+    ) -> TileMap:
+        """Return a new map by adding rows below or to the right.
+
+        Down requires equal column counts; right requires equal row counts.
+        Use strings with '.' for empty cells, or explicit tile-key rows with
+        None. The optional empty character changes the marker for string rows.
+        Unknown keys raise KeyError; empty, uneven or mismatched rows and
+        invalid directions raise ValueError. Position, drawing settings, palette
+        and collision rules are preserved. The original remains unchanged.
+        Example: taller = level.extend(["...", "###"]).
+        """
+        if rows and all(isinstance(row, str) for row in rows):
+            if not isinstance(empty, str) or len(empty) != 1:
+                raise ValueError("empty must be one character")
+            rows = [
+                [None if key == empty else key for key in row] for row in cast(Sequence[str], rows)
+            ]
+            empty = "."
+        section = TileMap(
+            rows,
+            self.palette,
+            tile_size=self.tile_size,
+            solid=self.solid,
+            one_way=self.one_way,
+            empty=empty,
+        )
+        return self.join(section, direction=direction)
 
     def get_tile(self, *, row: int, column: int) -> str | None:
         """Read a palette key or None. Negative/outside indices raise IndexError."""

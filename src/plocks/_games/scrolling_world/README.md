@@ -18,7 +18,7 @@ Open that new folder and run `python main.py` there. Keep the `assets` folder.
 
 ## What you'll learn
 
-- **Tilemaps and layers:** A grid builds the ground; another puts plants in front.
+- **Tilemaps and layers:** Extend one section, then join a copy to make the ground.
 - **Camera:** `stage.follow` follows the explorer and stops at the world's edges.
 - **Parallax:** Each background tile map has a scrolling factor. Clouds move
   less than nearby hills; Plocks does the scrolling for us.
@@ -29,7 +29,7 @@ The explorer is a guide for painting. There is no falling or tile collision in t
 
 1. Change the mountains' movement factor from 0.3 to 0.5.
 2. Set `leaves.layer` to -1 to put plants behind the explorer.
-3. Edit `rows` to build a new landscape.
+3. Edit `rows` to change a section, or join one more section to make the world longer.
 
 **Your own project?** Copy this whole folder, keep `assets/` beside `main.py`,
 and run `python main.py` with Plocks installed. From another folder, use
