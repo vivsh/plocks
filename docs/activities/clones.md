@@ -84,3 +84,13 @@ For a list named `items`, give a clone its own list with
 Use `event.target` in inherited functions. Writing `original.x` still changes the
 original. Remove unwanted copies with `stage.remove(copy)`; that also clears their
 inherited controls and running actions. A stage allows up to 300 attached clones.
+
+## Remove a copy
+
+Use `copy.remove()` when you no longer need a character. It also works for Puppets.
+In an inherited handler, use `event.target.remove()` to remove the copy receiving
+that event. Removing it stops its scripts and releases its physics body.
+Calling `remove()` again is harmless.
+
+Add a character to the stage **before** registering its handlers. Currently,
+Plocks stores those registrations on the stage.

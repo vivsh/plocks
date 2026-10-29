@@ -142,6 +142,17 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         self._is_clone = False
         self._bubble: _Say | _Think | _BubbleRun | None = None
 
+    def remove(self) -> None:
+        """Remove this actor from its stage; already detached actors do nothing.
+
+        Cancels actions, clears bubbles and retires the physical body/connections.
+        Clone registrations are removed too. Ordinary actor registrations retain
+        the existing Stage.remove behavior. This works inside inherited handlers:
+        use event.target.remove() to remove the receiving clone.
+        """
+        if self._stage is not None:
+            self._stage.remove(self)
+
     @property
     def is_clone(self) -> bool:
         """Whether this actor was created by clone(); removal does not change it."""
