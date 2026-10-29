@@ -226,6 +226,7 @@ def test_failed_physics_configuration_rolls_back_the_created_body(physics: Stage
     physics.add(source)
     source.on_clone(Script(Sprite).wait(1))
     native = source.body._native
+    source.body.shape = source.body.shape  # Clone explicit fixed geometry.
     error = ArithmeticError("configuration failed")
     with (
         patch("plocks._physics._replace_shape", side_effect=error),

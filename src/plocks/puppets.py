@@ -325,7 +325,15 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         if value.skeleton is not self.skeleton:
             raise ValueError("Pose belongs to another skeleton")
         _conflicts(self, False, False, visual=True)
+        previous = self._pose
         self._pose = value
+        try:
+            from ._physics import _sync_shape
+
+            _sync_shape(self)
+        except BaseException:
+            self._pose = previous
+            raise
 
     @property
     def bounds(self) -> Bounds:

@@ -332,7 +332,15 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
     def image(self, value: ImageSource) -> None:
         image = _image(value)
         _conflicts(self, False, False, visual=True)
+        previous = self._visual
         self._visual = image
+        try:
+            from ._physics import _sync_shape
+
+            _sync_shape(self)
+        except BaseException:
+            self._visual = previous
+            raise
 
     @property
     @deprecated("costume is deprecated; use image")

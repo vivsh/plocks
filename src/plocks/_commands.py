@@ -488,7 +488,15 @@ class _SetPartImage(_Command[Puppet]):
         await _context()
         if self.joint not in actor._parts:
             raise KeyError(self.joint)
+        previous = actor._parts[self.joint]
         actor._parts[self.joint] = self.image
+        try:
+            from ._physics import _sync_shape
+
+            _sync_shape(actor)
+        except BaseException:
+            actor._parts[self.joint] = previous
+            raise
 
 
 @dataclass(frozen=True, slots=True)

@@ -130,6 +130,7 @@ def test_shape_snapshot_scale_material_and_teleport_contacts() -> None:
         hero.body.friction = 0.4
         hero.body.bounce = 0.2
         shape = hero.body.shape
+        hero.body.shape = shape  # Explicitly select stable animation geometry.
         hero.image = PillowImage.new("RGBA", (60, 60))
         assert hero.body.shape is shape
         hero.scale = 2

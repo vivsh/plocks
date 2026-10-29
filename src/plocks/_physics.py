@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
     from ._commands import Actor
     from ._operations import _Request
+    from .imaging import Image
+    from .rigging import Pose
     from .stage import Stage
     from .tiling import TileMap
 
@@ -82,18 +84,77 @@ def _shape(
     return pymunk.Poly(native, [(x - w, y - h), (x + w, y - h), (x + w, y + h), (x - w, y + h)])
 
 
-def _default_shape(actor: Actor) -> Box:
+def _image_shape(image: Image) -> Box:
+    """Derive local image geometry without altering the actor or asset."""
+    ax, ay = image.anchor
+    return Box(image.width, image.height, (image.width / 2 - ax, ay - image.height / 2))
+
+
+def _sync_shape(actor: Actor) -> None:
+    """Update an automatic attachment only when its local geometry actually changes."""
+    body = actor._transform
+    if isinstance(body, Body) and body._auto_shape:
+        definition = _default_shape(actor)
+        if definition != body._shape:
+            _replace_shape(body, definition, actor.scale)
+
+
+def _sync_shapes(stage: Stage) -> None:
+    """Synchronize current simulation visuals with attached automatic colliders."""
+    if stage._physics is not None:
+        for body in tuple(stage._physics._bodies):
+            _sync_shape(body._actor)
+
+
+def _can_fit(body: Body, definition: Box | Circle) -> bool:
+    """Query temporary native geometry; never attach it to the live world."""
+    import pymunk
+
+    native = _native(body)
+    probe = pymunk.Body(body_type=pymunk.Body.KINEMATIC)
+    probe.position, probe.angle = native.position, native.angle
+    candidate = _shape(probe, definition, body._actor.scale)
+    candidate.cache_bb()
+    current_bottom = min(shape.cache_bb().bottom for shape in native.shapes)
+    try:
+        for hit in _space(body._world).shape_query(candidate):
+            other = hit.shape
+            if other is None or other.body is native or other.sensor:
+                continue
+            if other.collision_type == _ONE_WAY:
+                top = other.cache_bb().top
+                if current_bottom < top - 1e-6:
+                    continue
+                if candidate.bb.bottom < top - 1e-6 < candidate.bb.top:
+                    return False
+            elif any(point.distance < -1e-6 for point in hit.contact_point_set.points):
+                # Resting solver contacts may retain a tiny penetration. A new
+                # shape with the same supporting edge must still fit there.
+                depth = min(point.distance for point in hit.contact_point_set.points)
+                existing = [shape.shapes_collide(other) for shape in native.shapes]
+                supported = any(
+                    contact.normal.y < -0.5
+                    and hit.contact_point_set.normal.y < -0.5
+                    and any(point.distance <= depth + 1e-6 for point in contact.points)
+                    for contact in existing
+                )
+                if not supported:
+                    return False
+        return True
+    finally:
+        candidate.body = None
+
+
+def _default_shape(actor: Actor, *, pose: Pose | None = None) -> Box:
     from .geometry import _rotate
     from .rigging import _pivots
     from .sprites import Sprite
 
     points: list[Point] = []
     if isinstance(actor, Sprite):
-        image = actor.image
-        ax, ay = image.anchor
-        points = [(x - ax, ay - y) for x in (0, image.width) for y in (0, image.height)]
+        return _image_shape(actor.image)
     else:
-        pivots = _pivots(actor.pose)
+        pivots = _pivots(actor.pose if pose is None else pose)
         for name, image in actor.parts.items():
             (px, py), angle = pivots[name]
             ax, ay = image.anchor
@@ -130,6 +191,7 @@ def _attach(world: Physics, actor: Actor) -> None:
     _space(world).add(native, shape)
     body = object.__new__(Body)
     body._actor, body._world, body._native, body._shape = actor, world, native, definition
+    body._auto_shape = True
     body._drag = (0, 0)
     world._bodies.append(body)
     actor._transform = body
@@ -412,6 +474,7 @@ def _integrate(stage: Stage, dt: float) -> None:
     world = stage._physics
     if world is None:
         return
+    _sync_shapes(stage)
     requests = tuple(f.waiting for root in tuple(stage._actions) for f in _fibers(root))
     for request in requests:
         if not isinstance(request, _Glide) or not isinstance(request.actor._transform, Body):

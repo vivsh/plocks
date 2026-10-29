@@ -77,7 +77,8 @@ def _copy_physics(source: Actor, target: Actor) -> None:
     if not isinstance(source._transform, Body):
         return
     before, after = source.body, target.body
-    after.shape = before.shape
+    if not before.auto_shape:
+        after.shape = before.shape
     after.friction = before.friction
     after.drag = before.drag
     after.bounce = before.bounce

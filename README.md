@@ -133,7 +133,8 @@ Python command occupies the same thread as the game. Ordinary game files still u
 world positions. Arena games keep a fixed view. Temple Trail and Snake Run use
 perspective to look 3D. Scores and buttons stay on the screen in every view.
 Physics is **off by default**; use `Stage(physics=True)` when you want gravity and
-physical collisions.
+physical collisions. Bodies follow image and Puppet pose changes automatically;
+set `body.shape` for a fixed collider. Try [ducking under a ceiling](docs/activities/crouching.md).
 
 Each `main.py` has short comments and uses Plocks for timed moves, physical
 jumps and camera following. Simple balls and blocks use shape Images; characters

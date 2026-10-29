@@ -335,6 +335,10 @@ def _sample(stage: Stage) -> None:
             if isinstance(fiber.waiting, _Glide):
                 _sample_glide(fiber.waiting, stage.time)
 
+    from ._physics import _sync_shapes
+
+    _sync_shapes(stage)
+
 
 def _deliver(stage: Stage) -> None:
     pending = tuple(stage._messages)
@@ -398,6 +402,10 @@ def _step(stage: Stage) -> None:
             except BaseException as cleanup:  # noqa: BLE001 -- preserve the primary action failure
                 error.add_note(f"Action cleanup also failed: {cleanup!r}")
             raise
+
+    from ._physics import _sync_shapes
+
+    _sync_shapes(stage)
 
 
 def _ready(stage: Stage, root: Action, request: _Request, at: float) -> float | None:

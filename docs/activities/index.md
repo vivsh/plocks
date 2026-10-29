@@ -18,6 +18,7 @@ For the code activities, use the [Dino Dash download](../dino-run/assets.md).
 | Swing a ball and cut its rope | [Ropes and springs](connections.md) |
 | Build arms, wheels and chains | [Moving machines](assemblies.md) |
 | Make copies of a character | [Launch some clones](clones.md) |
+| Duck under low ceilings | [Crouch and stand](crouching.md) |
 | Jump and land on platforms | [Give your dinosaur a bigger jump](physics.md) |
 | Remember coins or health | [Give a character a memory](memory.md) |
 | Play with a friend | [Two players, keys or controllers](controls.md) |

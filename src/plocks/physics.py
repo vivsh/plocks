@@ -17,7 +17,9 @@ if TYPE_CHECKING:
     from ._commands import Actor
     from ._physics import _TileBody
     from .connections import Connection, Hinge, Rope, Spring
+    from .imaging import ImageSource
     from .puppets import Puppet
+    from .rigging import Pose
     from .sprites import Sprite
     from .stage import Stage
     from .tiling import TileMap
@@ -184,11 +186,12 @@ class Body:
     Dynamic movement uses velocity, impulses and forces. Kinematic movement may glide.
     """
 
-    __slots__ = ("_actor", "_drag", "_native", "_shape", "_world")
+    __slots__ = ("_actor", "_auto_shape", "_drag", "_native", "_shape", "_world")
     _actor: Sprite | Puppet
     _world: Physics
     _native: pymunk.Body | None
     _shape: Box | Circle
+    _auto_shape: bool
     _drag: Point
 
     def __new__(cls) -> Self:
@@ -338,7 +341,7 @@ class Body:
 
     @property
     def shape(self) -> Box | Circle:
-        """Unscaled collider definition; appearance changes do not resize it.
+        """Currently applied unscaled collider. Assigning selects a fixed shape.
 
         One-way platforms require Box and collide along its top edge only.
         """
@@ -352,6 +355,55 @@ class Body:
         from ._physics import _replace_shape
 
         _replace_shape(self, value, self._actor.scale)
+        self._auto_shape = False
+
+    @property
+    def auto_shape(self) -> bool:
+        """Whether this body follows its actor's current image or assembled pose."""
+        _native(self)
+        return self._auto_shape
+
+    def use_actor_shape(self) -> None:
+        """Immediately fit the actor and resume automatic sizing; preserve physics settings."""
+        from ._physics import _default_shape, _replace_shape
+
+        _replace_shape(self, _default_shape(self._actor), self._actor.scale)
+        self._auto_shape = True
+
+    def can_fit_shape(self, shape: Box | Circle) -> bool:
+        """Test a local shape here without mutation; sensors/self and edge contact are ignored.
+
+        Uses current position, physical direction and scale. This is a snapshot,
+        not a reservation. Detached bodies raise PhysicsError.
+        """
+        from ._physics import _can_fit
+
+        if not isinstance(shape, (Box, Circle)):
+            raise TypeError("Use a Box or Circle")
+        return _can_fit(self, shape)
+
+    def can_fit_image(self, image: ImageSource) -> bool:
+        """Check room for a Sprite image, including padding and anchor; do not display it."""
+        from ._physics import _image_shape
+        from .imaging import _image
+        from .sprites import Sprite
+
+        _native(self)
+        if not isinstance(self._actor, Sprite):
+            raise PhysicsError("can_fit_image requires a Sprite body; use can_fit_pose")
+        return self.can_fit_shape(_image_shape(_image(image)))
+
+    def can_fit_pose(self, pose: Pose) -> bool:
+        """Check room for a Puppet pose using its current parts and exact skeleton."""
+        from ._physics import _default_shape
+        from .puppets import Puppet
+
+        _native(self)
+        if not isinstance(self._actor, Puppet):
+            raise PhysicsError("can_fit_pose requires a Puppet body; use can_fit_image")
+        if pose.skeleton is not self._actor.skeleton:
+            raise ValueError("Pose belongs to another skeleton")
+        return self.can_fit_shape(_default_shape(self._actor, pose=pose))
 
     @property
     def grounded(self) -> bool:
