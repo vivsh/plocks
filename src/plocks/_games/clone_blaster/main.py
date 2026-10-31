@@ -23,9 +23,9 @@ player = stage.gamepads[0]
 player.map_left_stick(left=Key.LEFT, right=Key.RIGHT)
 player.map_key(Key.X, GamepadButton.B)
 
-# The last column makes a wall. The last row makes the floor.
+# The outside columns make walls. The last row makes the floor.
 world = TileMap(
-    ["." * 24 + "#"] * 10 + ["#" * 25],
+    ["#" + "." * 23 + "#"] * 10 + ["#" * 25],
     {"#": assets / "ground.png"},
     tile_size=(32, 32),
     solid={"#"},
@@ -34,9 +34,7 @@ world = TileMap(
     layer=-1,
 )
 stage.add(world)
-hero = Sprite(
-    Image(assets / "hero.png").resized(40, 56).with_anchor(Anchor.BOTTOM_CENTER), x=-260, y=-144
-)
+hero = Sprite(Image(assets / "hero.png").resized(40, 56), x=-260, y=-116)
 stage.add(hero)
 hero.body.rotation_locked = True
 hero.rotation_style = RotationStyle.LEFT_RIGHT
@@ -82,7 +80,7 @@ def fire(event: Event[Sprite, GamepadPress]) -> None:
     bullet_clone = bullet.clone()
     bullet_clone.visible = True
     speed = 520 if event.target.direction == 90 else -520
-    bullet_clone.position = (event.target.x + (30 if speed > 0 else -30), event.target.y + 30)
+    bullet_clone.position = (event.target.x + (30 if speed > 0 else -30), event.target.y + 4)
     bullet_clone.body.travel_along(speed=520, direction=event.target.direction)
     shots += 1
     show_score()
@@ -96,10 +94,14 @@ def jump(event: Event[Sprite, GamepadPress]) -> None:
 
 @hero.on_update
 def walk(event: Event[Sprite, float]) -> None:
+    actor = event.target
     speed = player.left_stick[0] * 170
-    event.target.body.velocity = (speed, event.target.body.velocity[1])
     if speed:
-        event.target.direction = 90 if speed > 0 else 270
+        actor.direction = 90 if speed > 0 else 270
+        # Check this tick's horizontal step before walking into a wall.
+        if not actor.body.can_travel(distance=abs(speed) * event.data):
+            speed = 0
+    actor.body.velocity = (speed, actor.body.velocity[1])
 
 
 @bullet.on_touch(world)

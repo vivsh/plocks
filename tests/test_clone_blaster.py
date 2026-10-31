@@ -7,7 +7,7 @@ from typing import cast
 
 import pytest
 
-from plocks import GamepadButton, GamepadInput, Sprite, Stage
+from plocks import GamepadButton, GamepadInput, Sprite, Stage, TileMap
 from plocks._gamepads import _apply
 from plocks._runtime import advance, close
 
@@ -73,7 +73,7 @@ def test_holding_b_continues_after_many_impacts(game: Stage) -> None:
 
 def test_wall_and_offscreen_remove_only_their_bullet(game: Stage) -> None:
     template = cast(Sprite, state(game)["bullet"])
-    for position, velocity in (((350, 0), (520, 0)), ((-390, 0), (-520, 0))):
+    for position, velocity in (((350, 0), (520, 0)), ((-390, 200), (-520, 0))):
         bullet_clone = template.clone()
         bullet_clone.visible = True
         bullet_clone.position = position
@@ -82,3 +82,28 @@ def test_wall_and_offscreen_remove_only_their_bullet(game: Stage) -> None:
         assert bullet_clone._stage is None
         assert template._stage is game
     assert state(game)["hits"] == 0
+
+
+def test_turning_left_keeps_hero_grounded_and_shots_go_left(game: Stage) -> None:
+    """A centered physical anchor keeps the mirrored hero aligned with its collider."""
+    hero = cast(Sprite, state(game)["hero"])
+    bottom = hero.bounds.bottom
+    _apply(game.gamepads[0], GamepadInput(left_stick=(-1, 0)))
+    tick(game, 10)
+    assert hero.direction == 270
+    assert hero.bounds.bottom == pytest.approx(bottom, abs=0.3)
+    assert hero.body.grounded
+    _apply(game.gamepads[0], GamepadInput(buttons=frozenset({GamepadButton.B})))
+    tick(game, 1)
+    bullet_clone = copies(game)[0]
+    assert bullet_clone.body.velocity == (-520, 0)
+    _apply(game.gamepads[0], GamepadInput())
+    tick(game, 100)
+    assert bullet_clone._stage is None
+    assert cast(Sprite, state(game)["bullet"])._stage is game
+
+    _apply(game.gamepads[0], GamepadInput(left_stick=(-1, 0)))
+    tick(game, 180)
+    world = cast(TileMap, state(game)["world"])
+    assert hero.bounds.left >= world.bounds.left + world.tile_size[0] - 0.3
+    assert hero.body.grounded
