@@ -9,6 +9,8 @@ from plocks import (
     Actor,
     BodyType,
     Box,
+    CastHit,
+    CastTarget,
     Click,
     Ease,
     Event,
@@ -25,6 +27,7 @@ from plocks import (
     Stage,
     TiledBackground,
     TileMap,
+    distance,
 )
 
 
@@ -46,6 +49,18 @@ def main() -> None:
     person = Puppet.stick_figure()
     stage.add(hero)
     stage.add(person)
+    assert_type(distance((0, 0), (3, 4)), float)
+    assert_type(hero.distance_to(person), float)
+    assert_type(hero.bounds.distance_to(person.bounds), float)
+    hero.body.travel_along(speed=120, direction=90)
+    assert_type(hero.body.can_travel(distance=10, ignore=(person,)), bool)
+    hit = stage.physics.raycast(hero.position, person.position, ignore=(hero,))
+    assert_type(hit, CastHit | None)
+    if hit is not None:
+        assert_type(hit.target, CastTarget)
+        assert_type(hit.point, tuple[float, float])
+        assert_type(hit.cell, tuple[int, int] | None)
+
     patrol = Script(Sprite).repeat(10).glide_by(x=10, seconds=0.2).images((hero.image,), fps=5)
     hero.on_start(patrol)
     hero.sequence().set_image(hero.image)

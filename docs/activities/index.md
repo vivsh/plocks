@@ -10,6 +10,7 @@ For the code activities, use the [Dino Dash download](../dino-run/assets.md).
 | Move, wait, then move again | [Make a movement script](movement.md) |
 | Make characters talk or think | [Say hello](dialogue.md) |
 | Collect coins without a timer | [React when characters touch](touch.md) |
+| Check for walls or spot a player | [Look ahead](look_ahead.md) |
 | Walk around maze walls | [Find a route](navigation.md) |
 | Keep a character in view | [Follow with the camera](camera.md) |
 | Add a score, health meter or menu | [Screen controls](ui.md) |

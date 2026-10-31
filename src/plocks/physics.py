@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Self
 from .actions import Action
 from .errors import PhysicsError
 from .geometry import Point, _number, _point, _positive
+from .queries import CastHit, CastIgnore
 
 if TYPE_CHECKING:
     import pymunk
@@ -87,6 +88,40 @@ class Physics:
         from ._physics import _ONE_WAY, _begin_one_way
 
         self._space.add_collision_handler(_ONE_WAY, 0).begin = _begin_one_way
+
+    def raycast(self, start: Point, end: Point, *, ignore: CastIgnore = None) -> CastHit | None:
+        """Nearest thin-line hit in world coordinates, or None; sensors are skipped.
+
+        ignore accepts objects or a pure predicate (True skips). Filters affect
+        this query only. A ray starting inside hits at distance zero. Ties follow
+        stage insertion/cell order. No physics step or game mutation is performed.
+        """
+        from ._casts import _cast
+
+        return _cast(self, None, start, end, 90, 1, ignore)
+
+    def shape_cast(
+        self,
+        shape: Box | Circle,
+        *,
+        start: Point,
+        end: Point,
+        direction: float = 90,
+        scale: float = 1,
+        ignore: CastIgnore = None,
+    ) -> CastHit | None:
+        """Sweep a local Box/Circle at fixed orientation over the entire world path.
+
+        direction rotates the shape, not the path; scale is positive. Returns
+        the first blocking hit or None. Sensors are skipped; one-way surfaces
+        block downward crossing from above. Ignore predicates must not mutate
+        the world. Geometry and results are query-local; nothing is moved.
+        """
+        from ._casts import _cast
+
+        if not isinstance(shape, (Box, Circle)):
+            raise TypeError("Use a Box or Circle")
+        return _cast(self, shape, start, end, direction, scale, ignore)
 
     def rope(
         self,
@@ -239,6 +274,52 @@ class Body:
         _conflicts(self._actor, True, True)
         native.velocity = value
         native.activate()
+
+    def travel_along(self, *, speed: float, direction: float | None = None) -> None:
+        """Set world velocity from pixels/second and clockwise degrees from up.
+
+        Defaults to the actor's current direction. Speed is finite/nonnegative;
+        zero stops linear motion. Sets both velocity components once; later turns
+        do not steer it. Static/detached bodies reject the change. Use velocity
+        directly when a platformer must preserve its vertical falling speed.
+        """
+        from .geometry import _rotate
+
+        _native(self)
+        speed = _number(speed, "speed", minimum=0)
+        heading = self._actor.direction if direction is None else _number(direction, "direction")
+        self.velocity = _rotate((speed, 0), heading)
+
+    def shape_cast(
+        self,
+        *,
+        distance: float,
+        direction: float | None = None,
+        ignore: CastIgnore = None,
+    ) -> CastHit | None:
+        """Sweep this body's current shape ahead without moving; self is ignored.
+
+        Distance is nonnegative world pixels. Direction defaults to actor facing,
+        independently of velocity. The collider keeps its current orientation.
+        Returns the nearest hit or None. Sensors are skipped; filtering is query-only.
+        """
+        from ._casts import _body_cast
+
+        return _body_cast(self, distance, direction, ignore)
+
+    def can_travel(
+        self,
+        *,
+        distance: float,
+        direction: float | None = None,
+        ignore: CastIgnore = None,
+    ) -> bool:
+        """Whether a full forward shape sweep is clear; does not check ground ahead.
+
+        Uses shape_cast's rules. This is a snapshot, not a movement reservation.
+        Existing velocity/collision rules remain unchanged by the check.
+        """
+        return self.shape_cast(distance=distance, direction=direction, ignore=ignore) is None
 
     @property
     def angular_velocity(self) -> float:

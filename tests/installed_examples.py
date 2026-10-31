@@ -58,7 +58,7 @@ def main() -> None:
             return result.stdout
 
         names = command("examples").splitlines()
-        assert len(names) == 14
+        assert len(names) == 15
         assert "dojo_duel" not in names and "sunset_sprint" not in names
         for index, name in enumerate(names):
             spelling = name if index % 2 else f"examples/{name}"

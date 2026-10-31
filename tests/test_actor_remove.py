@@ -44,5 +44,32 @@ def test_clone_handler_can_remove_receiver_without_stage() -> None:
         _step(stage)
         assert clone not in stage.objects and actor in stage.objects
         assert all(handler.actor is not clone for handler in stage._clone_handlers)
+        replacement = actor.clone()
+        dispatch(stage)
+        assert replacement._stage is None and actor._stage is stage
+        assert actor in stage.objects
+    finally:
+        close(stage)
+
+
+@pytest.mark.parametrize("physics", [False, True])
+@pytest.mark.parametrize("puppet", [False, True])
+@pytest.mark.parametrize("running", [False, True])
+def test_source_can_clone_again_after_repeated_clone_removal(
+    physics: bool, puppet: bool, running: bool
+) -> None:
+    """Removing a copy never clears the source association needed for later clones."""
+    stage = Stage(physics=physics)
+    original = Puppet.stick_figure() if puppet else Sprite(Image.rectangle(10, 20))
+    stage.add(original)
+    if running:
+        stage._state = "running"
+    try:
+        for _ in range(20):
+            clone = original.clone()
+            clone.remove()
+            assert original._stage is stage and original in stage.objects
+        replacement = original.clone()
+        assert replacement is not original and replacement._stage is stage
     finally:
         close(stage)

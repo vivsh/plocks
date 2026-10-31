@@ -41,7 +41,15 @@ GAMES = (
     "temple_run",
     "scrolling_world",
 )
-TUTORIALS = (*GAMES, "asset_workshop", "dino_run", "maze_quest", "swing_lab", "robot_workshop")
+TUTORIALS = (
+    *GAMES,
+    "asset_workshop",
+    "dino_run",
+    "maze_quest",
+    "swing_lab",
+    "robot_workshop",
+    "clone_blaster",
+)
 ROOT = Path(__file__).parents[1]
 
 

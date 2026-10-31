@@ -54,3 +54,26 @@ hero.glide_by(y=-80, seconds=0.3, after=up)
 
 **Make it yours:** change `repeat(3)` to `repeat()` for a never-ending patrol.
 For jumping onto real ground, try [jumping and landing](physics.md).
+
+
+## Distance and directional speed
+
+`hero.distance_to(enemy)` measures the straight-line distance between their positions.
+You can also use `hero.distance_to((100, 50))` or import `distance` from `plocks`
+and call `distance((0, 0), (30, 40))` to get 50 pixels.
+
+`hero.bounds.distance_to(enemy.bounds)` measures the gap between their rectangles.
+It returns zero when they touch or overlap. To compare centers, use
+`distance(hero.bounds.center, enemy.bounds.center)`.
+
+With physics enabled, set speed along a direction:
+
+```python
+hero.body.travel_along(speed=120, direction=90)  # Right, at 120 pixels/second.
+hero.body.travel_along(speed=120)               # Use the current facing direction.
+hero.body.travel_along(speed=0)                 # Stop moving.
+```
+
+Directions are clockwise from up: 0 up, 90 right, 180 down, 270 left.
+Turning later does not steer existing velocity. This sets both speed components;
+for a platformer, keep the vertical speed when setting sideways `body.velocity`.

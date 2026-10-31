@@ -24,6 +24,7 @@ plocks run platformer
 | [Temple Trail](temple_run) | Jump, slide and turn | Sequences, image changes, perspective |
 | [Snake Run](snake_run) | Eat apples and grow | Position history, loops, perspective |
 | [Fruit Slice](fruit_ninja) | Swipe fruit, avoid bombs | Random choices, mouse input, geometry |
+| [Clone Blaster](clone_blaster) | Fire bullet copies with gamepad B | Clones, sensors, hit handlers and safe removal |
 | [Jungle Run](jungle_run) | Run, jump and shoot | Health, bullets, several actions at once |
 
 ## Choose your view

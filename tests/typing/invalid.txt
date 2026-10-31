@@ -288,3 +288,17 @@ TileMap(["#"], {"#": "ground.png"}, tile_size=(32, 32)).join("other", direction=
 TileMap(["#"], {"#": "ground.png"}, tile_size=(32, 32)).join(TileMap(["#"], {"#": "ground.png"}, tile_size=(32, 32)), direction="left")  # error
 
 TileMap(["#"], {"#": "ground.png"}, tile_size=(32, 32)).extend(["#"], direction="up")  # error
+
+
+from plocks import distance
+hero.distance_to("enemy")  # error
+hero.bounds.distance_to((0, 0))  # error
+distance((0, 0), "point")  # error
+hero.body.travel_along(speed="fast")  # error
+hero.body.can_travel(distance=10, direction="left")  # error
+hero.body.can_travel(distance=10, ignore=(42,))  # error
+stage.physics.raycast((0, 0), (100, 0), ignore=lambda target: "yes")  # error
+stage.physics.shape_cast(hero.image, start=(0, 0), end=(10, 0))  # error
+cast_hit = stage.physics.raycast((0, 0), (100, 0))
+if cast_hit is not None:
+    cast_hit.distance = 1  # error

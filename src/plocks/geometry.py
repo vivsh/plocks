@@ -8,12 +8,23 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .physics import BodyType
 
-from math import cos, isfinite, radians, sin
+from math import cos, hypot, isfinite, radians, sin
 
 type Point = tuple[float, float]
 """An (x, y) pair, measured in logical pixels unless an API says otherwise."""
 type Color = str | tuple[int, int, int] | tuple[int, int, int, int]
 """A named color, RGB tuple, or RGBA tuple; each channel ranges from 0 to 255."""
+
+
+def distance(first: Point, second: Point) -> float:
+    """Straight-line distance between two world points, in logical pixels.
+
+    Both coordinates and the resulting distance must be finite. Actors expose
+    distance_to() for the same calculation between anchor positions.
+    """
+    ax, ay = _point(first, "first")
+    bx, by = _point(second, "second")
+    return _number(hypot(bx - ax, by - ay), "distance")
 
 
 def _number(value: float, name: str, *, minimum: float | None = None) -> float:
@@ -92,6 +103,18 @@ class Bounds:
     def center(self) -> Point:
         """The midpoint of these bounds."""
         return ((self.left + self.right) / 2, (self.bottom + self.top) / 2)
+
+    def distance_to(self, other: Bounds) -> float:
+        """Shortest gap between rectangles; zero for overlap or edge contact.
+
+        For center-to-center distance, use distance(self.center, other.center).
+        Neither rectangle is changed.
+        """
+        if not isinstance(other, Bounds):
+            raise TypeError("Use Bounds")
+        dx = max(other.left - self.right, self.left - other.right, 0.0)
+        dy = max(other.bottom - self.top, self.bottom - other.top, 0.0)
+        return _number(hypot(dx, dy), "distance")
 
     def intersects(self, other: Bounds) -> bool:
         """Return whether both axes have positive overlap; edges alone are false."""

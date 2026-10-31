@@ -351,6 +351,20 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         """World AABB of all image corners, including transparent padding."""
         return _bounds(self, self.direction)
 
+    def distance_to(self, other: Point | Sprite | Puppet) -> float:
+        """Straight-line distance to a point or another actor's anchor, in pixels.
+
+        This measures positions, not image-edge or physical-collider distance.
+        It works without stage membership and does not move either actor.
+        """
+        from .geometry import distance
+        from .puppets import Puppet
+        from .sprites import Sprite
+
+        return distance(
+            self.position, other.position if isinstance(other, (Sprite, Puppet)) else other
+        )
+
     def touching(self, other: Sprite | Puppet | TileMap) -> bool:
         """Test AABB overlap, or solid tile overlap. Visibility does not affect it."""
         from .tiling import TileMap

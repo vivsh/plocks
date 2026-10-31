@@ -126,6 +126,7 @@ Python command occupies the same thread as the game. Ordinary game files still u
 | [Temple Trail](src/plocks/_games/temple_run) | Jump, slide and turn corners | Movement scripts, images, perspective |
 | [Snake Run](src/plocks/_games/snake_run) | Eat apples and grow a tail | Remembering positions, size and distance |
 | [Fruit Slice](src/plocks/_games/fruit_ninja) | Swipe fruit, dodge bombs | Mouse input, randomness, swipe maths |
+| [Clone Blaster](src/plocks/_games/clone_blaster) | Fire cloned bullets with gamepad B | Clones, impact handlers, cleanup and repeated firing |
 | [Jungle Run](src/plocks/_games/jungle_run) | Run, jump and shoot robots | Bullets, a health bar, pause menus and several things moving together |
 
 **The camera is your view of the world.** Scrolling games use
@@ -133,7 +134,9 @@ Python command occupies the same thread as the game. Ordinary game files still u
 world positions. Arena games keep a fixed view. Temple Trail and Snake Run use
 perspective to look 3D. Scores and buttons stay on the screen in every view.
 Physics is **off by default**; use `Stage(physics=True)` when you want gravity and
-physical collisions. Bodies follow image and Puppet pose changes automatically;
+physical collisions. [Look ahead](docs/activities/look_ahead.md) with ray/shape casts,
+check `body.can_travel(...)`, or set directional speed with `body.travel_along(...)`.
+Bodies follow image and Puppet pose changes automatically;
 set `body.shape` for a fixed collider. Try [ducking under a ceiling](docs/activities/crouching.md).
 
 Each `main.py` has short comments and uses Plocks for timed moves, physical

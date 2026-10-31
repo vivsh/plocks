@@ -50,6 +50,7 @@ from .gamepads import GamepadLayout as GamepadLayout
 from .geometry import Bounds as Bounds
 from .geometry import Color as Color
 from .geometry import Point as Point
+from .geometry import distance as distance
 from .image_map import ImageMap as ImageMap
 from .imaging import Anchor as Anchor
 from .imaging import CostumeSource as CostumeSource
@@ -69,6 +70,9 @@ from .physics import Circle as Circle
 from .physics import Physics as Physics
 from .pixelorama import PixeloramaSheet as PixeloramaSheet
 from .puppets import Puppet as Puppet
+from .queries import CastHit as CastHit
+from .queries import CastIgnore as CastIgnore
+from .queries import CastTarget as CastTarget
 from .rigging import HumanJoint as HumanJoint
 from .rigging import Joint as Joint
 from .rigging import Pose as Pose
@@ -111,6 +115,9 @@ __all__ = (
     "Button",
     "Callback",
     "Canvas",
+    "CastHit",
+    "CastIgnore",
+    "CastTarget",
     "Circle",
     "Click",
     "Color",
@@ -171,4 +178,5 @@ __all__ = (
     "UpdateCallback",
     "Voice",
     "WhenBusy",
+    "distance",
 )
