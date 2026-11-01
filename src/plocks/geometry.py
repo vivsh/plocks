@@ -141,6 +141,29 @@ class Bounds:
         x, y = _point(point)
         return self.left <= x <= self.right and self.bottom <= y <= self.top
 
+    def edges_at(self, point: Point) -> frozenset[Edge]:
+        """Return the rectangle sides this world point reaches or crosses.
+
+        Strictly interior points return an empty frozenset; equality counts, and
+        an outside corner reports two sides. A boundary point may also satisfy
+        contains(). Valid zero-width/height bounds can report opposite sides.
+        Coordinates must be finite numbers, as for contains(). Changes nothing
+        and needs no stage. For a whole actor, use touching_edge() or on_edge().
+
+        Example: Bounds(-10, -5, 10, 5).edges_at((10, 8)) returns RIGHT and TOP.
+        """
+        x, y = _point(point)
+        return frozenset(
+            edge
+            for edge, reached in (
+                (Edge.LEFT, x <= self.left),
+                (Edge.RIGHT, x >= self.right),
+                (Edge.TOP, y >= self.top),
+                (Edge.BOTTOM, y <= self.bottom),
+            )
+            if reached
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class _Placement:

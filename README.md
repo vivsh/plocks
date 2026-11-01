@@ -25,7 +25,7 @@ hints. Start with a bundled game, change one thing, and see what happens!
 | Jump and land | Simple walking and grounded jumping, moving platforms, and platforms you can jump through from below |
 | Build a tank battle | [Grid steps, friendly-fire rules, fast bullets and enemy timers](docs/activities/battle_games.md) |
 | Solve a maze | [Find a route around walls](docs/activities/navigation.md), then follow it at your chosen speed |
-| Reach a screen or level boundary | [Typed edge events and immediate checks](docs/activities/edges.md), including corners |
+| Reach a screen or level boundary | [Typed edge events, actor and point checks](docs/activities/edges.md), including corners |
 | React to bumps and blasts | [Physical hits and visual overlaps](docs/activities/hits.md), fast projectiles and railgun rays |
 | Collect coins and show progress | [Touch events](docs/activities/touch.md), [labels, health bars, buttons and colored panels](docs/activities/ui.md) |
 | Show a message or match your colors | [Alerts with levels](docs/activities/alerts.md), widget anchors and a shared [UI theme](docs/activities/panels.md#keep-a-matching-style) |

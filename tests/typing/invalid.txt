@@ -367,3 +367,8 @@ def wrong_edge_data(event: Event[Sprite, Edge]) -> None:
 @person.on_edge()  # error
 def wrong_edge_receiver(event: Event[Sprite, frozenset[Edge]]) -> None:
     pass
+
+world.bounds.edges_at("center")  # error
+world.bounds.edges_at((1, "up"))  # error
+world.bounds.edges_at((1, 2, 3))  # error
+world.bounds.edges_at((1, 2)).add(Edge.LEFT)  # error

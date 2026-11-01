@@ -52,6 +52,8 @@ def main() -> None:
     person = Puppet.stick_figure()
     stage.add(hero)
     stage.add(person)
+    assert_type(section.bounds.edges_at((0, 0)), frozenset[Edge])
+    assert_type(section.bounds.edges_at(hero.position), frozenset[Edge])
     assert_type(hero.touching_edge(), bool)
     assert_type(person.touching_edge(section.bounds), bool)
 

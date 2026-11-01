@@ -64,6 +64,29 @@ if hero.touching_edge(arena):
 These queries return `True` or `False` immediately. The default needs an attached
 actor; an explicit `Bounds` also works before adding it.
 
+## Which sides does one point reach?
+
+`contains()` answers **inside or outside**. `edges_at()` tells you the sides:
+
+```python
+arena = Bounds(left=-100, bottom=-50, right=100, top=50)
+sides = arena.edges_at((120, 70))
+
+if Edge.RIGHT in sides:
+    print("At or past the right side")
+if Edge.TOP in sides:
+    print("At or past the top side")
+```
+
+A strictly inside point returns an empty `frozenset`. An edge point reports one
+side; a corner can report two. Outside points report the sides they have crossed.
+A point exactly on the boundary can satisfy `contains()` **and** report an edge.
+
+Use `world.bounds.edges_at((x, y))` for a TileMap or
+`stage.world_bounds.edges_at((x, y))` for the current viewport.
+`arena.edges_at(hero.position)` checks only the hero's anchor point. Keep using
+`hero.touching_edge(arena)` or `on_edge(arena)` for the whole character.
+
 You can bind a script too:
 
 ```python
