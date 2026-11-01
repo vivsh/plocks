@@ -3,7 +3,7 @@
 from plocks import (
     Action,
     BodyType,
-    CastHit,
+    Collision,
     Event,
     GamepadButton,
     GamepadPress,
@@ -82,7 +82,7 @@ def launch(event: Event[Sprite, None]) -> None:
 
 
 @bullet.on_hit
-def hit(event: Event[Sprite, CastHit]) -> None:
+def hit(event: Event[Sprite, Collision]) -> None:
     # Tile hits name the exact row and column. None makes that cell empty.
     cell = event.data.cell
     if cell is not None:

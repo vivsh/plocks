@@ -23,8 +23,7 @@ from .input import Key, MouseButton
 
 if TYPE_CHECKING:
     from ._commands import Actor
-    from .physics import Body
-    from .queries import CastHit
+    from .events import Collision
     from .stage import Stage
 
 
@@ -283,22 +282,23 @@ def advance(stage: Stage, now: float) -> None:
                     "update",
                 )
         if stage.running and not stage.paused:
-            impacts: tuple[tuple[Body, CastHit], ...] = ()
+            impacts: tuple[tuple[Actor, Collision], ...] = ()
             if stage._physics is not None:
                 from ._physics import _integrate
 
                 impacts = _integrate(stage, dt)
             stage._tick += 1
             _sample(stage)
-            from ._projectiles import _dispatch as dispatch_hits
+            from ._collisions import _dispatch as dispatch_hits
 
             dispatch_hits(stage, impacts)
             from ._touches import _sample as sample_touches
 
-            sample_touches(stage)
-            from ._camera import _sample as sample_camera
+            if stage.running and not stage.paused:
+                sample_touches(stage)
+                from ._camera import _sample as sample_camera
 
-            sample_camera(stage, dt)
+                sample_camera(stage, dt)
     if stage._accumulator >= dt:
         stage._accumulator %= dt
     stage._accumulator = max(0, stage._accumulator)
@@ -366,6 +366,7 @@ def close(stage: Stage) -> None:
     stage._clone_handlers.clear()
     stage._clone_end_handlers.clear()
     stage._hit_handlers.clear()
+    stage._hit_contacts.clear()
     stage._touches.clear()
     stage._camera_follow = None
     stage._ui_focus = None

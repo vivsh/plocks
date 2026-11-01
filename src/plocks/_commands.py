@@ -21,6 +21,8 @@ from ._scripts import _conflicts, _Fiber
 from .actions import Action
 from .audio import Sound, _volume
 from .conditions import Condition, _test
+from .effects import Effect
+from .effects import _validate as _validate_effect
 from .errors import StageError
 from .geometry import Bounds, Point, _number, _point, _positive
 from .imaging import Image, ImageSource, _image
@@ -711,3 +713,58 @@ class _MoveCell(_Command[Actor]):
         from ._cell_motion import _move_cell
 
         await _move_cell(actor, self)
+
+
+@dataclass(frozen=True, slots=True)
+class _SetEffect(_Command[Actor]):
+    effect: Effect
+    value: float
+
+    def __post_init__(self) -> None:
+        _validate_effect(self.effect, self.value)
+
+    async def run(self, actor: Actor) -> None:
+        from ._effects import _write
+
+        await _write(actor, self.effect, self.value, change=False)
+
+
+@dataclass(frozen=True, slots=True)
+class _ChangeEffect(_Command[Actor]):
+    effect: Effect
+    by: float
+
+    def __post_init__(self) -> None:
+        _validate_effect(self.effect, self.by)
+
+    async def run(self, actor: Actor) -> None:
+        from ._effects import _write
+
+        await _write(actor, self.effect, self.by, change=True)
+
+
+@dataclass(frozen=True, slots=True)
+class _ClearEffects(_Command[Actor]):
+    async def run(self, actor: Actor) -> None:
+        from ._effects import _clear
+
+        await _clear(actor)
+
+
+@dataclass(frozen=True, slots=True)
+class _AnimateEffect(_Command[Actor]):
+    effect: Effect
+    to: float
+    seconds: float
+    easing: Ease
+
+    def __post_init__(self) -> None:
+        _validate_effect(self.effect, self.to)
+        _number(self.seconds, "seconds", minimum=0)
+        if not isinstance(self.easing, Ease):
+            raise TypeError("Use an Ease value")
+
+    async def run(self, actor: Actor) -> None:
+        from ._effects import _animate
+
+        await _animate(actor, self.effect, self.to, self.seconds, self.easing)

@@ -8,8 +8,10 @@ For the code activities, use the [Dino Dash download](../dino-run/assets.md).
 | Your idea | Start here |
 | --- | --- |
 | Move, wait, then move again | [Make a movement script](movement.md) |
+| Flash, fade or twist a character | [Animate graphic effects](effects.md) |
 | Make characters talk or think | [Say hello](dialogue.md) |
 | Collect coins without a timer | [React when characters touch](touch.md) |
+| Bump walls or fire a railgun | [Physical hits and bright beams](hits.md) |
 | Check for walls or spot a player | [Look ahead](look_ahead.md) |
 | Drive tanks, shoot and spawn enemies | [Battle-game helpers](battle_games.md) |
 | Walk around maze walls | [Find a route](navigation.md) |

@@ -3,19 +3,13 @@
 from __future__ import annotations
 
 from math import hypot
-from typing import TYPE_CHECKING
 
+from .events import Collision
 from .geometry import Point, _point
 from .physics import Body, Physics, _native
-from .queries import CastHit
-
-if TYPE_CHECKING:
-    from ._commands import Actor
-    from ._scripts import WhenBusy
-    from .stage import Stage
 
 
-def _hits(world: Physics, starts: dict[Body, Point]) -> tuple[tuple[Body, CastHit], ...]:
+def _hits(world: Physics, starts: dict[Body, Point]) -> tuple[tuple[Body, Collision], ...]:
     """Sweep translating projectiles relative to the other bodies' translation."""
     from ._casts import _candidates
     from ._combat import _pair
@@ -27,7 +21,7 @@ def _hits(world: Physics, starts: dict[Body, Point]) -> tuple[tuple[Body, CastHi
         for body, point in starts.items()
     }
     reach = max((hypot(*shift) for shift in shifts.values()), default=0.0)
-    impacts: list[tuple[Body, CastHit]] = []
+    impacts: list[tuple[Body, Collision]] = []
     for body, start in starts.items():
         if not body._projectile:
             continue
@@ -38,8 +32,11 @@ def _hits(world: Physics, starts: dict[Body, Point]) -> tuple[tuple[Body, CastHi
         source = _native(body)
         core, radius = _core(next(iter(source.shapes)))
         offsets = tuple((x - end[0], y - end[1]) for x, y in core)
-        best: tuple[float, CastHit] | None = None
-        for target, shape, cell in _candidates(world, start, end, offsets, radius + reach):
+        best: tuple[float, Collision] | None = None
+        sensors: list[tuple[float, Collision]] = []
+        for target, shape, cell in _candidates(
+            world, start, end, offsets, radius + reach, include_sensors=True
+        ):
             native = shape.body
             if native is None or native is source or not _pair(world, source, native):
                 continue
@@ -64,9 +61,16 @@ def _hits(world: Physics, starts: dict[Body, Point]) -> tuple[tuple[Body, CastHi
             if hit is not None:
                 fraction, point, normal = hit
                 point = (point[0] - dx * (1 - fraction), point[1] - dy * (1 - fraction))
-                result = CastHit(target, point, normal, fraction * length, cell)
-                if best is None or fraction < best[0] - 1e-8:
+                result = Collision(target, point, normal, cell)
+                if shape.sensor:
+                    sensors.append((fraction, result))
+                elif best is None or fraction < best[0] - 1e-8:
                     best = fraction, result
+        impacts.extend(
+            (body, result)
+            for fraction, result in sensors
+            if best is None or fraction <= best[0] + 1e-8
+        )
         if best is not None:
             fraction, result = best
             # Sensor bullets impart no solver forces; position is clamped only after
@@ -79,35 +83,3 @@ def _hits(world: Physics, starts: dict[Body, Point]) -> tuple[tuple[Body, CastHi
             _space(world).reindex_shapes_for_body(source)
             impacts.append((body, result))
     return tuple(impacts)
-
-
-def _dispatch(stage: Stage, impacts: tuple[tuple[Body, CastHit], ...]) -> None:
-    """Deliver immutable impacts outside native stepping, using normal busy rules."""
-    from ._scripts import _trigger
-
-    handlers = tuple(stage._hit_handlers)
-    for body, hit in impacts:
-        for handler in handlers:
-            if not stage.running:
-                return
-            if handler.actor is body._actor and body._actor._stage is stage:
-                _trigger(stage, handler, hit)
-
-
-def _bind(actor: Actor, work: object, busy: WhenBusy) -> object:
-    from .scripts import Script
-    from .stage import _attached, _work_handler
-
-    stage = _attached(actor)
-    if work is not None:
-        if len(stage._hit_handlers) >= 1024:
-            from .errors import StageError
-
-            raise StageError("A stage supports at most 1024 hit handlers")
-        stage._hit_handlers.append(_work_handler(stage, actor, work, busy))
-        return None if isinstance(work, Script) else work
-
-    def decorate(callback: object) -> object:
-        return _bind(actor, callback, busy)
-
-    return decorate

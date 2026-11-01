@@ -9,8 +9,11 @@ from typing_extensions import deprecated
 
 from ._commands import (
     Actor,
+    _AnimateEffect,
     _BounceOnEdge,
+    _ChangeEffect,
     _ClearBubble,
+    _ClearEffects,
     _Command,
     _DuringPlan,
     _FollowPath,
@@ -29,6 +32,7 @@ from ._commands import (
     _Remove,
     _Say,
     _Send,
+    _SetEffect,
     _SetImage,
     _SetPartImage,
     _SetPose,
@@ -41,6 +45,7 @@ from ._commands import (
 )
 from .audio import Sound
 from .conditions import Condition, _validate
+from .effects import Effect
 from .geometry import Bounds, Point, _integer
 from .imaging import ImageSource
 from .messages import Message
@@ -249,6 +254,42 @@ class Script(Generic[_T]):  # noqa: UP046 -- explicit invariance protects editab
     def clear_bubble(self) -> Self:
         """Clear speech or thought when reached, interrupting any timed bubble writer. Records a command; schedules nothing."""
         self._commands.append(_ClearBubble())
+        return self
+
+    def set_effect(self, effect: Effect, value: float) -> Self:
+        """Set a finite graphic amount when reached; records a command, schedules nothing.
+
+        GHOST is 0..100, BRIGHTNESS -100..100 and COLOR cycles every 200.
+        Replaces an active same-effect writer, cancelling its enclosing Action.
+        """
+        self._commands.append(_SetEffect(effect, value))
+        return self
+
+    def change_effect(self, effect: Effect, by: float) -> Self:
+        """Add to the sampled amount when reached; not when the Script is built."""
+        self._commands.append(_ChangeEffect(effect, by))
+        return self
+
+    def clear_effects(self) -> Self:
+        """Reset all effects when reached; cancels active effect writers, keeps images/poses."""
+        self._commands.append(_ClearEffects())
+        return self
+
+    def animate_effect(
+        self,
+        effect: Effect,
+        *,
+        to: float,
+        seconds: float,
+        easing: Ease = Ease.LINEAR,
+    ) -> Self:
+        """Animate from the value sampled on arrival; wait simulated seconds, retain the result.
+
+        Pause freezes progress; cancellation freezes the current amount. Zero sets
+        then yields one tick. COLOR 0 to 200 makes a full hue cycle. Different effects
+        may run together; During branches cannot claim the same effect.
+        """
+        self._commands.append(_AnimateEffect(effect, to, seconds, easing))
         return self
 
     def play_sound(self, sound: Sound, *, volume: float = 1, wait: bool = True) -> Self:

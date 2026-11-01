@@ -18,6 +18,7 @@ from ._operations import (
     _Delay,
     _Delivery,
     _During,
+    _EffectRun,
     _ForceRun,
     _freeze,
     _Glide,
@@ -30,6 +31,7 @@ from ._operations import (
     _TorqueRun,
 )
 from .actions import Action, _Completion, _Outcome, _Queued
+from .effects import Effect
 from .errors import ActionCancelled, StageError
 from .events import Event
 
@@ -261,6 +263,8 @@ def _conflicts(
     *,
     visual: bool = False,
     bubble: bool = False,
+    effect: Effect | None = None,
+    all_effects: bool = False,
 ) -> None:
     stage = actor._stage
     if stage is None:
@@ -269,7 +273,9 @@ def _conflicts(
         for fiber in tuple(_fibers(root)):
             request = fiber.waiting
             if (
-                not isinstance(request, (_Glide, _CellMove, _ImageRun, _PoseRun, _BubbleRun))
+                not isinstance(
+                    request, (_Glide, _CellMove, _ImageRun, _PoseRun, _BubbleRun, _EffectRun)
+                )
                 or request.actor is not actor
             ):
                 continue
@@ -278,6 +284,7 @@ def _conflicts(
                 continue
             overlap = (
                 (isinstance(request, _CellMove) and (x or y))
+                or (isinstance(request, _EffectRun) and (all_effects or request.effect is effect))
                 or (bubble and isinstance(request, _BubbleRun))
                 or (visual and isinstance(request, (_ImageRun, _PoseRun)))
                 or (
@@ -298,7 +305,7 @@ def _detach(stage: Stage, actor: Sprite | Puppet) -> None:
         for root in stage._actions
         if any(action._actor is actor for action in _walk(root))
         or any(
-            isinstance(f.waiting, (_Glide, _CellMove, _ImageRun, _PoseRun, _BubbleRun))
+            isinstance(f.waiting, (_Glide, _CellMove, _ImageRun, _PoseRun, _BubbleRun, _EffectRun))
             and f.waiting.actor is actor
             for f in _fibers(root)
         )
@@ -497,7 +504,8 @@ def _advance(stage: Stage, root: Action, fiber: _Fiber, at: float) -> float | No
             _freeze(
                 yielded
                 if isinstance(
-                    yielded, (_Glide, _CellMove, _ImageRun, _PoseRun, _BubbleRun, _SoundWait)
+                    yielded,
+                    (_Glide, _CellMove, _ImageRun, _PoseRun, _BubbleRun, _EffectRun, _SoundWait),
                 )
                 else None,
                 stage.time,
@@ -521,6 +529,7 @@ def _advance(stage: Stage, root: Action, fiber: _Fiber, at: float) -> float | No
                 _JoinDelivery,
                 _SoundWait,
                 _BubbleRun,
+                _EffectRun,
             ),
         ):
             raise StageError("Scripts must await Plocks operations, not asyncio or external I/O")
@@ -540,7 +549,7 @@ def _stop_actor(actor: Sprite | Puppet, action: Action | None) -> None:
     for root in tuple(stage._actions):
         owned = any(a._actor is actor and (action is None or a is action) for a in _walk(root))
         operating = action is None and any(
-            isinstance(f.waiting, (_Glide, _CellMove, _ImageRun, _PoseRun, _BubbleRun))
+            isinstance(f.waiting, (_Glide, _CellMove, _ImageRun, _PoseRun, _BubbleRun, _EffectRun))
             and f.waiting.actor is actor
             for f in _fibers(root)
         )

@@ -332,3 +332,26 @@ def bad_hit(event: Event[Sprite, int]) -> None:
 @stage.every(seconds=1)  # error
 def bad_timer(event: Event[Stage, str]) -> None:
     pass
+
+from plocks import CastHit, Collision
+
+@hero.on_hit  # error
+def obsolete_hit_payload(event: Event[Sprite, CastHit]) -> None:
+    pass
+
+@hero.on_hit
+def bad_collision_fields(event: Event[Sprite, Collision]) -> None:
+    event.data.distance  # error
+    event.data.point = (0, 0)  # error
+
+hero.on_touch([world])  # error
+hero.on_touch("enemy")  # error
+hero.on_hit(world)  # error
+
+from plocks import Effect
+hero.set_effect("ghost", 50)  # error
+hero.change_effect(Effect.COLOR, "red")  # error
+hero.animate_effect(Effect.GHOST, to="clear", seconds=1)  # error
+person.animate_effect(Effect.WHIRL, to=90, seconds="slow")  # error
+Script().set_effect("color", 30)  # error
+Script().animate_effect(Effect.GHOST, to=20, seconds=1, easing="out")  # error

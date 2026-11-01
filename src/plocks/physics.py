@@ -399,9 +399,10 @@ class Body:
     def projectile(self) -> bool:
         """Opt-in swept hits for straight kinematic bullets; default False.
 
-        Enabling also enables sensor mode. On impact the bullet stops and emits
-        on_hit; removal/damage is your callback's choice. Disabling leaves the
-        sensor setting in place. Rotation and physical links are unsupported.
+        Enabling also enables sensor mode. A blocking impact stops the bullet;
+        sensor crossings notify without stopping. Both use on_hit. Your callback
+        chooses damage/removal. Disabling leaves sensor mode enabled. Rotation
+        and physical links are unsupported.
         """
         _native(self)
         return self._projectile
@@ -598,7 +599,11 @@ class Body:
         return _grounded(self)
 
     def touching(self, other: Body | TileMap) -> bool:
-        """Test current physical contacts; actor.touching remains visual AABB overlap."""
+        """Test current solver contacts; sensors/non-solver pairs are excluded.
+
+        actor.touching checks visual overlap. on_hit also reports exact sensor
+        and kinematic/static contact, which may have no solver response.
+        """
         from ._physics import _touching
 
         return _touching(self, other)

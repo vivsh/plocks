@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from .puppets import Puppet
     from .sprites import Sprite
     from .stage import Stage
+    from .tiling import TileMap
     from .ui import Button
 
 _R_co = TypeVar("_R_co", bound="Stage | Sprite | Puppet | Button", covariant=True)
@@ -24,9 +25,10 @@ _D_co = TypeVar("_D_co", covariant=True)
 class Event(Generic[_R_co, _D_co]):  # noqa: UP046 -- explicit receiver and payload types preserve callback checking
     """One callback occurrence: source, receiving target, and typed data.
 
-    Startup and clone-start data are None; key data is Key, click data is
-    (position, button), and
-    update data is simulated seconds. Broadcast data has its Message payload type
+    Startup and clone start/end data are None. Button data is GamepadPress or
+    GamepadRelease; click data is (position, button). Update data is simulated
+    seconds, periodic data is the configured interval, and hit data is Collision.
+    Broadcast data has its Message payload type
     and is passed by reference. Engine sources are Stage; broadcast sources are
     their senders. Clone-start sources are the copied actors and targets are their
     new clones. Targets retain their exact Sprite/Puppet/Stage type for editor
@@ -37,6 +39,22 @@ class Event(Generic[_R_co, _D_co]):  # noqa: UP046 -- explicit receiver and payl
     source: Stage | Sprite | Puppet
     target: _R_co
     data: _D_co
+
+
+@dataclass(frozen=True, slots=True)
+class Collision:
+    """One physical contact: the other owner, world contact point and outward normal.
+
+    Used as on_hit Event.data. target is the other Sprite/Puppet/TileMap; the
+    Event.target is the receiving actor. normal points out of the other surface
+    towards the receiver. cell is (row, column) for a tile, otherwise None.
+    Values are immutable snapshots; later motion or edits do not update them.
+    """
+
+    target: Sprite | Puppet | TileMap
+    point: Point
+    normal: Point
+    cell: tuple[int, int] | None
 
 
 type Click = tuple[Point, MouseButton]

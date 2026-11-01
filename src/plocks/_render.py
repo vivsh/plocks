@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from math import floor
+from math import ceil, floor
 from typing import TYPE_CHECKING
 
 import pygame
@@ -30,24 +30,49 @@ def _image(
     direction: float,
     scale: float,
     mirrored: bool,
+    pixels: pygame.Surface | None = None,
 ) -> None:
     """Place transformed pixel art by its source anchor; scratch surfaces stay local."""
-    source = pygame.transform.flip(asset._pixels, True, False) if mirrored else asset._pixels
+    _blit(
+        target,
+        asset._pixels if pixels is None else pixels,
+        asset.anchor,
+        stage.to_screen(position),
+        direction,
+        scale,
+        mirrored,
+    )
+
+
+def _blit(
+    target: pygame.Surface,
+    source: pygame.Surface,
+    anchor: Point,
+    position: Point,
+    direction: float,
+    scale: float,
+    mirrored: bool,
+) -> None:
+    """Paint source pixels around their anchor at a supplied screen-coordinate point."""
+    width, height = source.get_size()
+    if mirrored:
+        source = pygame.transform.flip(source, True, False)
     scaled = pygame.transform.scale(
-        source, (max(1, round(asset.width * scale)), max(1, round(asset.height * scale)))
+        source, (max(1, round(width * scale)), max(1, round(height * scale)))
     )
     image = pygame.transform.rotate(scaled, 90 - direction)
-    ax, ay = asset.anchor
-    local_x = asset.width / 2 - ax
-    dx, dy = _rotate((-local_x if mirrored else local_x, ay - asset.height / 2), direction, scale)
-    center = stage.to_screen((position[0] + dx, position[1] + dy))
+    ax, ay = anchor
+    local_x = width / 2 - ax
+    dx, dy = _rotate((-local_x if mirrored else local_x, ay - height / 2), direction, scale)
+    center = position[0] + dx, position[1] - dy
     target.blit(
-        image,
-        (floor(center[0] - image.width / 2 + 0.5), floor(center[1] - image.height / 2 + 0.5)),
+        image, (floor(center[0] - image.width / 2 + 0.5), floor(center[1] - image.height / 2 + 0.5))
     )
 
 
 def _sprite(stage: Stage, target: pygame.Surface, sprite: Sprite) -> None:
+    from ._effects import _apply
+
     _image(
         stage,
         target,
@@ -56,6 +81,7 @@ def _sprite(stage: Stage, target: pygame.Surface, sprite: Sprite) -> None:
         _visual_direction(sprite.direction, sprite.rotation_style),
         sprite.scale,
         _mirrored(sprite.direction, sprite.rotation_style),
+        _apply(sprite.image._pixels, sprite),
     )
 
 
@@ -99,6 +125,20 @@ def frame(stage: Stage) -> None:
 
 
 def _puppet(stage: Stage, target: pygame.Surface, actor: Puppet) -> None:
+    from ._effects import _apply, _settings
+
+    if _settings(actor):
+        source, anchor = _assembled(actor)
+        _blit(
+            target,
+            _apply(source, actor),
+            anchor,
+            stage.to_screen(actor.position),
+            _visual_direction(actor.direction, actor.rotation_style),
+            actor.scale,
+            _mirrored(actor.direction, actor.rotation_style),
+        )
+        return
     pivots = _pivots(actor.pose)
     direction = _visual_direction(actor.direction, actor.rotation_style)
     mirrored = _mirrored(actor.direction, actor.rotation_style)
@@ -114,6 +154,26 @@ def _puppet(stage: Stage, target: pygame.Surface, actor: Puppet) -> None:
             actor.scale,
             mirrored,
         )
+
+
+def _assembled(actor: Puppet) -> tuple[pygame.Surface, Point]:
+    """Compose the current rig once in local coordinates; return pixels and its pivot anchor."""
+    pivots = _pivots(actor.pose)
+    points: list[Point] = []
+    for name, image in actor._parts.items():
+        (px, py), angle = pivots[name]
+        ax, ay = image.anchor
+        for x in (0, image.width):
+            for y in (0, image.height):
+                dx, dy = _rotate((x - ax, ay - y), angle + 90)
+                points.append((px + dx, py + dy))
+    left, right = floor(min(x for x, _ in points)), ceil(max(x for x, _ in points))
+    bottom, top = floor(min(y for _, y in points)), ceil(max(y for _, y in points))
+    source = pygame.Surface((max(1, right - left), max(1, top - bottom)), pygame.SRCALPHA)
+    for name, image in actor._parts.items():
+        (px, py), angle = pivots[name]
+        _blit(source, image._pixels, image.anchor, (px - left, top - py), angle + 90, 1, False)
+    return source, (-float(left), float(top))
 
 
 def _tiles(stage: Stage, target: pygame.Surface, tiles: TileMap) -> None:

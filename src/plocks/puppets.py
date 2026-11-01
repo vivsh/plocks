@@ -12,7 +12,8 @@ from ._operations import _PoseRun, _sample_pose
 from ._scripts import WhenBusy, _conflicts
 from .actions import Action
 from .audio import Sound
-from .events import Click, Event, GamepadPress, GamepadRelease
+from .effects import Effect
+from .events import Click, Collision, Event, GamepadPress, GamepadRelease
 from .gamepads import Gamepad, GamepadButton
 from .geometry import (
     Bounds,
@@ -36,13 +37,13 @@ from .motion import (
     _visual_direction,
 )
 from .physics import Body, BodyType
-from .queries import CastHit, CastIgnore
+from .queries import CastIgnore
 from .rigging import HumanJoint, Pose, Skeleton, _pivots
 from .state import _new_state, _State_co
 
 if TYPE_CHECKING:
     from ._commands import Actor, _Say, _Think
-    from ._operations import _BubbleRun
+    from ._operations import _BubbleRun, _EffectRun
     from .scripts import Script
     from .sprites import Sprite
     from .stage import Stage
@@ -71,6 +72,7 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
     __slots__ = (
         "_bubble",
         "_clone_source",
+        "_effects",
         "_layer",
         "_parts",
         "_pose",
@@ -131,6 +133,7 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         self._rotation_style = RotationStyle.ALL_AROUND
         self._clone_source: Sprite | Puppet | None = None
         self._bubble: _Say | _Think | _BubbleRun | None = None
+        self._effects: dict[Effect, float | _EffectRun] = {}
 
     def remove(self) -> None:
         """Remove this actor from its stage; already detached actors do nothing.
@@ -448,8 +451,8 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
     @overload
     def on_hit(
-        self, work: Callable[[Event[Self, CastHit]], _R], *, when_busy: WhenBusy = WhenBusy.IGNORE
-    ) -> Callable[[Event[Self, CastHit]], _R]: ...
+        self, work: Callable[[Event[Self, Collision]], _R], *, when_busy: WhenBusy = WhenBusy.IGNORE
+    ) -> Callable[[Event[Self, Collision]], _R]: ...
     @overload
     def on_hit(
         self, work: Script[Puppet] | Script[Actor], *, when_busy: WhenBusy = WhenBusy.IGNORE
@@ -457,15 +460,17 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
     @overload
     def on_hit(
         self, *, when_busy: WhenBusy = WhenBusy.IGNORE
-    ) -> Callable[[Callable[[Event[Self, CastHit]], _R]], Callable[[Event[Self, CastHit]], _R]]: ...
+    ) -> Callable[
+        [Callable[[Event[Self, Collision]], _R]], Callable[[Event[Self, Collision]], _R]
+    ]: ...
     def on_hit(self, work: object = None, *, when_busy: WhenBusy = WhenBusy.IGNORE) -> object:
-        """Handle a swept projectile impact; event.data is its immutable CastHit.
+        """Handle the beginning of physical shape contact; event.data is Collision.
 
-        Enable body.projectile on a kinematic bullet first. The bullet stops at
-        contact; your handler decides damage and removal. Normal busy rules apply.
-        This event is independent of visual on_touch overlaps.
+        Works with bodies and terrain, including sensor overlap. Filters apply;
+        persistent contact does not repeat until separation. Physics controls the
+        response. Projectile mode adds swept detection. on_touch stays visual.
         """
-        from ._projectiles import _bind
+        from ._collisions import _bind
 
         return _bind(self, work, when_busy)
 
@@ -912,6 +917,58 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         from ._commands import _ClearBubble, _schedule
 
         return _schedule(self, _ClearBubble(), after=after)
+
+    def set_effect(self, effect: Effect, value: float, *, after: Action | None = None) -> Action:
+        """Schedule a graphic effect; zero restores its ordinary appearance.
+
+        COLOR cycles every 200, GHOST clamps 0..100, BRIGHTNESS -100..100.
+        Other amounts follow Effect's hover documentation. Values must be finite.
+        Replacing an animated effect cancels its whole Action; other effects continue.
+        Returns immediately; use after to sequence. Physics and assets are unchanged.
+        """
+        from ._commands import _schedule, _SetEffect
+
+        return _schedule(self, _SetEffect(effect, value), after=after)
+
+    def change_effect(self, effect: Effect, by: float, *, after: Action | None = None) -> Action:
+        """Add a finite amount to this effect's value when the command executes.
+
+        Requires an attached actor. Cancels the previous same-effect writer's
+        enclosing Action. Returns immediately; use after for ordering.
+        """
+        from ._commands import _ChangeEffect, _schedule
+
+        return _schedule(self, _ChangeEffect(effect, by), after=after)
+
+    def clear_effects(self, *, after: Action | None = None) -> Action:
+        """Schedule a reset of all graphic effects and cancel their active writers.
+
+        Does not replace the image/pose or change collision geometry. Returns an
+        Action; use after to clear following a flash or fade.
+        """
+        from ._commands import _ClearEffects, _schedule
+
+        return _schedule(self, _ClearEffects(), after=after)
+
+    def animate_effect(
+        self,
+        effect: Effect,
+        *,
+        to: float,
+        seconds: float,
+        easing: Ease = Ease.LINEAR,
+        after: Action | None = None,
+    ) -> Action:
+        """Animate an effect from its value at execution to a finite destination.
+
+        seconds is finite and nonnegative; zero sets then yields one tick. Pause
+        freezes progress. Completion retains the destination; cancellation freezes
+        the current amount. Different effects run together. Same-effect replacement
+        cancels the older whole Action. Use after for sequential fades or flashes.
+        """
+        from ._commands import _AnimateEffect, _schedule
+
+        return _schedule(self, _AnimateEffect(effect, to, seconds, easing), after=after)
 
     def play_sound(
         self, sound: Sound, *, volume: float = 1, wait: bool = True, after: Action | None = None

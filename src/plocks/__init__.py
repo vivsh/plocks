@@ -25,6 +25,7 @@ from .connections import Hinge as Hinge
 from .connections import Motor as Motor
 from .connections import Rope as Rope
 from .connections import Spring as Spring
+from .effects import Effect as Effect
 from .errors import (
     AssetError as AssetError,
 )
@@ -40,6 +41,7 @@ from .errors import (
     StageError as StageError,
 )
 from .events import Click as Click
+from .events import Collision as Collision
 from .events import Event as Event
 from .events import GamepadPress as GamepadPress
 from .events import GamepadRelease as GamepadRelease
@@ -120,6 +122,7 @@ __all__ = (
     "CastTarget",
     "Circle",
     "Click",
+    "Collision",
     "Color",
     "Condition",
     "Connection",
@@ -127,6 +130,7 @@ __all__ = (
     "CostumeSource",
     "DrawCallback",
     "Ease",
+    "Effect",
     "Event",
     "Gamepad",
     "GamepadButton",

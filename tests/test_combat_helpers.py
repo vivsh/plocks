@@ -147,7 +147,7 @@ def test_filter_validation_and_clone_shape_preservation(arena: Stage) -> None:
 
 
 def test_fast_cloned_projectile_hits_thin_tile_then_reclones(arena: Stage) -> None:
-    from plocks import CastHit, Event
+    from plocks import Collision, Event
 
     template = Sprite(Image.rectangle(10, 10), y=1000, body_type=BodyType.KINEMATIC)
     wall = TileMap(["#"], {"#": template.image}, tile_size=(2, 100), solid={"#"}, x=50, y=50)
@@ -155,10 +155,10 @@ def test_fast_cloned_projectile_hits_thin_tile_then_reclones(arena: Stage) -> No
     arena.add(wall)
     template.body.projectile = True
     assert template.body.sensor
-    results: list[CastHit] = []
+    results: list[Collision] = []
 
     @template.on_hit
-    def hit(event: Event[Sprite, CastHit]) -> None:
+    def hit(event: Event[Sprite, Collision]) -> None:
         assert event.target.x == pytest.approx(45)
         results.append(event.data)
         event.target.remove()
@@ -177,7 +177,7 @@ def test_fast_cloned_projectile_hits_thin_tile_then_reclones(arena: Stage) -> No
 
 
 def test_projectile_filters_stop_once_and_relaunch(arena: Stage) -> None:
-    from plocks import CastHit, Event
+    from plocks import Collision, Event
 
     bullet = Sprite(Image.rectangle(4, 4), body_type=BodyType.KINEMATIC)
     friend = Sprite(Image.rectangle(2, 20), x=20, body_type=BodyType.STATIC)
@@ -191,7 +191,7 @@ def test_projectile_filters_stop_once_and_relaunch(arena: Stage) -> None:
     targets: list[object] = []
 
     @bullet.on_hit
-    def hit(event: Event[Sprite, CastHit]) -> None:
+    def hit(event: Event[Sprite, Collision]) -> None:
         targets.append(event.data.target)
 
     bullet.body.travel_along(speed=6000)
@@ -211,7 +211,7 @@ def test_projectile_filters_stop_once_and_relaunch(arena: Stage) -> None:
 
 
 def test_projectile_relative_translation_crosses_between_samples(arena: Stage) -> None:
-    from plocks import CastHit, Event
+    from plocks import Collision, Event
 
     bullet = Sprite(Image.rectangle(2, 2), body_type=BodyType.KINEMATIC)
     target = Sprite(Image.rectangle(2, 2), x=10, y=10, body_type=BodyType.KINEMATIC)
@@ -221,7 +221,7 @@ def test_projectile_relative_translation_crosses_between_samples(arena: Stage) -
     targets: list[object] = []
 
     @bullet.on_hit
-    def hit(event: Event[Sprite, CastHit]) -> None:
+    def hit(event: Event[Sprite, Collision]) -> None:
         targets.append(event.data.target)
 
     bullet.body.velocity = (4800, 0)
@@ -250,17 +250,17 @@ def test_projectile_mode_and_connections_validate_before_mutation(arena: Stage) 
 
 
 def test_projectile_respects_one_way_top(arena: Stage) -> None:
-    from plocks import CastHit, Event
+    from plocks import Collision, Event
 
     platform = Sprite(Image.rectangle(100, 10), body_type=BodyType.STATIC, one_way=True)
     bullet = Sprite(Image.rectangle(4, 4), y=-30, body_type=BodyType.KINEMATIC)
     arena.add(platform)
     arena.add(bullet)
     bullet.body.projectile = True
-    hits: list[CastHit] = []
+    hits: list[Collision] = []
 
     @bullet.on_hit
-    def hit(event: Event[Sprite, CastHit]) -> None:
+    def hit(event: Event[Sprite, Collision]) -> None:
         hits.append(event.data)
 
     bullet.body.velocity = (0, 6000)
@@ -273,7 +273,7 @@ def test_projectile_respects_one_way_top(arena: Stage) -> None:
 
 
 def test_puppet_projectile_inherits_typed_hit_and_origin(arena: Stage) -> None:
-    from plocks import CastHit, Event, Joint, Skeleton
+    from plocks import Collision, Event, Joint, Skeleton
 
     skeleton = Skeleton({"root": Joint(parent=None)})
     bullet = Puppet(skeleton, parts={"root": Image.rectangle(4, 4)}, body_type=BodyType.KINEMATIC)
@@ -285,7 +285,7 @@ def test_puppet_projectile_inherits_typed_hit_and_origin(arena: Stage) -> None:
     results: list[Puppet] = []
 
     @bullet.on_hit
-    def hit(event: Event[Puppet, CastHit]) -> None:
+    def hit(event: Event[Puppet, Collision]) -> None:
         assert event.data.target is enemy
         results.append(event.target)
         event.target.remove()

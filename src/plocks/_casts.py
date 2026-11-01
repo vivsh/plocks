@@ -12,6 +12,8 @@ from .queries import CastHit, CastIgnore, CastTarget
 if TYPE_CHECKING:
     import pymunk
 
+    from .tiling import TileMap
+
 
 def _filter(ignore: CastIgnore) -> Callable[[CastTarget], bool]:
     """Snapshot iterable exclusions or validate one pure typed predicate."""
@@ -58,7 +60,13 @@ def _source(
 
 
 def _candidates(
-    world: Physics, start: Point, end: Point, offsets: tuple[Point, ...], radius: float
+    world: Physics,
+    start: Point,
+    end: Point,
+    offsets: tuple[Point, ...],
+    radius: float,
+    *,
+    include_sensors: bool = False,
 ) -> list[tuple[CastTarget, pymunk.Shape, tuple[int, int] | None]]:
     """Use the native spatial index, then order by stage insertion and tile cell."""
     import pymunk
@@ -84,18 +92,9 @@ def _candidates(
     result: list[tuple[CastTarget, pymunk.Shape, tuple[int, int] | None]] = []
     for native in shapes:
         target = owners.get(native.body) if native.body is not None else None
-        if target is None or native.sensor:
+        if target is None or (native.sensor and not include_sensors):
             continue
-        cell = None
-        if isinstance(target, TileMap):
-            if isinstance(native, pymunk.Segment):
-                # One-way geometry lies exactly on a cell edge. Derive from
-                # native local coordinates to avoid world-offset rounding.
-                w, h = target.tile_size
-                cell = round(-native.a.y / h), round(native.a.x / w)
-            else:
-                bb = native.cache_bb()
-                cell = target.cell_at(x=(bb.left + bb.right) / 2, y=(bb.bottom + bb.top) / 2)
+        cell = _cell(target, native) if isinstance(target, TileMap) else None
         result.append((target, native, cell))
     result.sort(key=lambda item: (order[item[0]], item[2] or (-1, -1)))
     return result
@@ -175,3 +174,14 @@ def _body_cast(
     return _cast(
         body._world, body.shape, start, end, body._actor.direction, body._actor.scale, ignore, body
     )
+
+
+def _cell(target: TileMap, shape: pymunk.Shape) -> tuple[int, int] | None:
+    """Read the owning terrain cell from native local geometry, without an index."""
+    import pymunk
+
+    if isinstance(shape, pymunk.Segment):
+        w, h = target.tile_size
+        return round(-shape.a.y / h), round(shape.a.x / w)
+    bb = shape.cache_bb()
+    return target.cell_at(x=(bb.left + bb.right) / 2, y=(bb.bottom + bb.top) / 2)

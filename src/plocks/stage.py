@@ -39,6 +39,7 @@ _R = TypeVar("_R", bound=_Result)
 type _Draw = Callable[[Canvas], None]
 if TYPE_CHECKING:
     from ._touches import _TouchWatch
+    from .queries import CastTarget
 
 type _InputEvent = tuple[Point, MouseButton] | GamepadPress | GamepadRelease | _CloneStart
 type _StageObject = (
@@ -84,6 +85,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         "_gamepads",
         "_height",
         "_held_keys",
+        "_hit_contacts",
         "_hit_handlers",
         "_last_wall",
         "_members",
@@ -172,6 +174,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         self._clone_handlers: list[_Handler] = []
         self._clone_end_handlers: list[_Handler] = []
         self._hit_handlers: list[_Handler] = []
+        self._hit_contacts: set[tuple[Actor, CastTarget]] = set()
         self._touches: list[_TouchWatch] = []
         self._clicks: dict[Actor | None, list[_Handler]] = {}
         self._messages: list[_Delivery] = []
@@ -457,6 +460,10 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         if obj not in self._members:
             raise ValueError("This object is not in the stage")
         ends = tuple(h for h in self._clone_end_handlers if h.actor is obj)
+        if isinstance(obj, (Sprite, Puppet, TileMap)):
+            from ._collisions import _prune
+
+            _prune(self, obj)
         try:
             if isinstance(obj, Panel):
                 for child in obj._children:

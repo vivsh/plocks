@@ -8,8 +8,7 @@ plocks run clone_blaster
 
 **Arrows:** walk · **Space / gamepad A:** jump · **X / gamepad B:** fire
 Hold the fire button to keep shooting. Targets stay put so you can practise.
-Jump and shoot above their heads to hit the tile walls. Bullets that leave the
-screen disappear too.
+Jump and shoot above their heads to hit the tile walls. Missed bullets disappear after two game seconds.
 
 To edit it: `plocks examples clone_blaster --copy-to my-blaster`, then run
 `python my-blaster/main.py`. The assets stay beside the code.
@@ -24,7 +23,7 @@ To edit it: `plocks examples clone_blaster --copy-to my-blaster`, then run
 - The hero uses a centered image anchor so turning keeps its collider aligned.
 - `can_travel()` checks the next walking step before the hero enters a wall.
 - Fire belongs to the **hero**; bullets inherit the template's handlers, not the hero's.
-- Sensor bullets use overlap events; they do not push the robots.
+- Projectile mode uses swept `on_hit` contacts, stopping shots at robots and walls.
 - `travel_along(speed=520, direction=...)` launches the copy along the hero’s facing direction.
 
 Try changing bullet speed from 520 to 350 or the firing interval from 0.18 to 0.3.

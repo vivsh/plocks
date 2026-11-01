@@ -49,6 +49,7 @@ TUTORIALS = (
     "swing_lab",
     "robot_workshop",
     "clone_blaster",
+    "railgun",
 )
 ROOT = Path(__file__).parents[1]
 

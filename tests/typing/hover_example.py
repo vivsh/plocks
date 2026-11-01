@@ -12,7 +12,9 @@ from plocks import (
     CastHit,
     CastTarget,
     Click,
+    Collision,
     Ease,
+    Effect,
     Event,
     GamepadButton,
     GamepadDown,
@@ -70,8 +72,11 @@ def main() -> None:
         assert_type(event.data, float)
 
     @hero.on_hit
-    def impact(event: Event[Sprite, CastHit]) -> None:
+    def impact(event: Event[Sprite, Collision]) -> None:
         assert_type(event.data.target, CastTarget)
+        assert_type(event.data.point, tuple[float, float])
+        assert_type(event.data.normal, tuple[float, float])
+        assert_type(event.data.cell, tuple[int, int] | None)
 
     @hero.on_clone_start
     def clone_start(event: Event[Sprite, None]) -> None:
@@ -95,6 +100,16 @@ def main() -> None:
 
     patrol = Script(Sprite).repeat(10).glide_by(x=10, seconds=0.2).images((hero.image,), fps=5)
     hero.on_start(patrol)
+    assert_type(hero.set_effect(Effect.COLOR, 20), Action)
+    assert_type(person.change_effect(Effect.GHOST, by=10), Action)
+    fade = hero.animate_effect(Effect.GHOST, to=100, seconds=1, easing=Ease.OUT)
+    assert_type(fade, Action)
+    assert_type(hero.clear_effects(after=fade), Action)
+    assert_type(
+        hero.sequence().set_effect(Effect.BRIGHTNESS, 50).wait(0.1).clear_effects(), Script[Sprite]
+    )
+    assert_type(person.sequence().animate_effect(Effect.WHIRL, to=180, seconds=1), Script[Puppet])
+    Script().set_effect(Effect.GHOST, 20).change_effect(Effect.COLOR, by=10).clear_effects()
     hero.sequence().set_image(hero.image)
     person.repeat(2).poses((person.pose,), fps=2)
     common = Script().when(

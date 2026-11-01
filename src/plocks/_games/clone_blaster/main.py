@@ -5,7 +5,7 @@ from pathlib import Path
 from plocks import (
     Anchor,
     BodyType,
-    CastHit,
+    Collision,
     Event,
     GamepadButton,
     GamepadPress,
@@ -116,7 +116,7 @@ def start_bullet(event: Event[Sprite, None]) -> None:
 
 
 @bullet.on_hit
-def hit(event: Event[Sprite, CastHit]) -> None:
+def hit(event: Event[Sprite, Collision]) -> None:
     global hits
     bullet_clone = event.target
     if bullet_clone.is_clone:

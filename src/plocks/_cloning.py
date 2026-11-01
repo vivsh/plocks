@@ -67,6 +67,9 @@ def _copy_actor(source: Actor) -> Actor:
     target.visible = source.visible
     target.layer = source.layer
     target.rotation_style = source.rotation_style
+    from .effects import _value
+
+    target._effects = {effect: _value(source, effect) for effect in source._effects}
     target._state = state
     target._clone_source = source
     return target
@@ -196,6 +199,9 @@ def _prune[K, V](registry: dict[K, list[V]], keep: Callable[[V], bool]) -> None:
 
 def _forget(stage: Stage, actor: Actor) -> None:
     """Retire all clone registrations and queued starts; ordinary actors keep theirs."""
+    from ._collisions import _prune as prune_contacts
+
+    prune_contacts(stage, actor)
     _prune(stage._gamepad_handlers, lambda binding: binding.handler.actor is not actor)
     _prune(stage._gamepad_up_handlers, lambda handler: handler.actor is not actor)
     stage._hit_handlers[:] = [h for h in stage._hit_handlers if h.actor is not actor]

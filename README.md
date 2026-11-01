@@ -17,6 +17,7 @@ hints. Start with a bundled game, change one thing, and see what happens!
 | What you want to do | What Plocks gives you |
 | --- | --- |
 | Bring characters to life | Sprites, [images, grids, named pictures and anchors](docs/art/images.md), speech and thought bubbles, and jointed Puppets |
+| Flash, fade or twist pictures | [Seven graphic effects](docs/activities/effects.md), animated with scripts or `after` |
 | Give characters a plan | Movement scripts: glide, wait, repeat and react to events |
 | Make characters work together | Broadcasts, typed message data and clones with their own controls |
 | Make a ball or block | [Shape images](docs/art/shapes.md) with colors, outlines and anchors—no picture files needed |
@@ -24,6 +25,7 @@ hints. Start with a bundled game, change one thing, and see what happens!
 | Jump and land | Simple walking and grounded jumping, moving platforms, and platforms you can jump through from below |
 | Build a tank battle | [Grid steps, friendly-fire rules, fast bullets and enemy timers](docs/activities/battle_games.md) |
 | Solve a maze | [Find a route around walls](docs/activities/navigation.md), then follow it at your chosen speed |
+| React to bumps and blasts | [Physical hits and visual overlaps](docs/activities/hits.md), fast projectiles and railgun rays |
 | Collect coins and show progress | [Touch events](docs/activities/touch.md), [labels, health bars, buttons and colored panels](docs/activities/ui.md) |
 | Show a message or match your colors | [Alerts with levels](docs/activities/alerts.md), widget anchors and a shared [UI theme](docs/activities/panels.md#keep-a-matching-style) |
 | Make a machine | [Ropes, springs, hinges and motors](docs/activities/assemblies.md) joining ordinary characters |
@@ -127,6 +129,7 @@ Python command occupies the same thread as the game. Ordinary game files still u
 | [Temple Trail](src/plocks/_games/temple_run) | Jump, slide and turn corners | Movement scripts, images, perspective |
 | [Snake Run](src/plocks/_games/snake_run) | Eat apples and grow a tail | Remembering positions, size and distance |
 | [Fruit Slice](src/plocks/_games/fruit_ninja) | Swipe fruit, dodge bombs | Mouse input, randomness, swipe maths |
+| [Railgun Range](src/plocks/_games/railgun) | Blast brick cover with a blue beam | Raycasts, temporary effects and physical hit callbacks |
 | [Clone Blaster](src/plocks/_games/clone_blaster) | Fire cloned bullets with gamepad B | Clones, impact handlers, cleanup and repeated firing |
 | [Jungle Run](src/plocks/_games/jungle_run) | Run, jump and shoot robots | Bullets, a health bar, pause menus and several things moving together |
 

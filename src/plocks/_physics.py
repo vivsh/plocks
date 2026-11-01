@@ -7,9 +7,9 @@ from math import ceil, degrees, hypot, inf, isfinite, radians
 from typing import TYPE_CHECKING
 
 from .errors import PhysicsError
+from .events import Collision
 from .geometry import Point, _Placement, _point, _positive
 from .physics import Body, BodyType, Box, Circle, Physics, _native
-from .queries import CastHit
 
 if TYPE_CHECKING:
     import pymunk
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from ._commands import Actor
     from ._operations import _Request
     from .imaging import Image
+    from .queries import CastTarget
     from .rigging import Pose
     from .stage import Stage
     from .tiling import TileMap
@@ -476,7 +477,7 @@ def _substeps(world: Physics, dt: float, requests: tuple[_Request | None, ...]) 
     return max(base, ceil(required))
 
 
-def _integrate(stage: Stage, dt: float) -> tuple[tuple[Body, CastHit], ...]:
+def _integrate(stage: Stage, dt: float) -> tuple[tuple[Actor, Collision], ...]:
     from ._operations import _ForceRun, _Glide, _TorqueRun
     from ._scripts import _fibers
     from .motion import _ease
@@ -507,7 +508,8 @@ def _integrate(stage: Stage, dt: float) -> tuple[tuple[Body, CastHit], ...]:
     # Adapt native precision without changing the simulation clock or action deadlines.
     count = _substeps(world, dt, requests)
     substep = dt / count
-    impacts: list[tuple[Body, CastHit]] = []
+    impacts: list[tuple[Actor, Collision]] = []
+    seen: set[tuple[Actor, CastTarget]] = set()
     projectiles = any(body._projectile for body in world._bodies)
     for index in range(count):
         starts = {body: body._actor.position for body in world._bodies} if projectiles else {}
@@ -548,10 +550,11 @@ def _integrate(stage: Stage, dt: float) -> tuple[tuple[Body, CastHit], ...]:
                 max(0, vy - dy * substep) if vy > 0 else min(0, vy + dy * substep),
             )
         _space(world).step(substep)
-        if starts:
-            from ._projectiles import _hits
+        from ._collisions import _sample as sample_contacts
+        from ._projectiles import _hits
 
-            impacts.extend(_hits(world, starts))
+        swept = _hits(world, starts) if starts else ()
+        impacts.extend(sample_contacts(stage, swept, seen))
         if world._connections:
             for body in world._bodies:
                 native = _native(body)

@@ -6,6 +6,7 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
+from .effects import Effect
 from .geometry import Point, _number
 from .motion import Ease, _ease
 
@@ -64,8 +65,20 @@ class _CellMove:
     seconds: float
 
 
+@dataclass(frozen=True, slots=True)
+class _EffectRun:
+    actor: Sprite | Puppet
+    effect: Effect
+    start: float
+    end: float
+    started: float
+    seconds: float
+    easing: Ease
+
+
 type _Request = (
-    _CellMove
+    _EffectRun
+    | _CellMove
     | _ForceRun
     | _TorqueRun
     | _AwaitAction
@@ -298,7 +311,7 @@ def _sample_pose(operation: _PoseRun, now: float) -> Pose:
 def _deadline(request: _Request) -> float | None:
     if isinstance(request, (_Delay, _BubbleRun)):
         return request.deadline
-    if isinstance(request, (_Glide, _CellMove, _ForceRun, _TorqueRun)):
+    if isinstance(request, (_Glide, _CellMove, _ForceRun, _TorqueRun, _EffectRun)):
         return request.started + request.seconds
     if isinstance(request, _ImageRun):
         return request.started + sum(request.definition.durations)
@@ -308,6 +321,10 @@ def _deadline(request: _Request) -> float | None:
 
 
 def _freeze(request: _Request | None, now: float, *, cancel: bool) -> None:
+    if isinstance(request, _EffectRun) and request.actor._effects.get(request.effect) is request:
+        from .effects import _value
+
+        request.actor._effects[request.effect] = _value(request.actor, request.effect, now)
     if isinstance(request, _CellMove):
         from .physics import Body, _native
 

@@ -61,19 +61,19 @@ After adding a kinematic bullet:
 bullet.body.projectile = True
 ```
 
-It flies as a sensor, stops at its first hit, and calls `on_hit`. Even thin walls
+It flies as a sensor, stops at its first blocking hit, and calls `on_hit`. Even thin walls
 between frames are checked. You choose what happens next:
 
 ```python
 @bullet.on_hit
-def hit(event: Event[Sprite, CastHit]) -> None:
+def hit(event: Event[Sprite, Collision]) -> None:
     print(event.data.target)
     event.target.remove()
 ```
 
-Import `Event`, `Sprite` and `CastHit` from `plocks`. Hit data also has `point`,
-`normal`, `distance`, and tile `cell`. Normal `on_touch` watches picture overlap;
-use `on_hit` for projectile impacts. Projectile mode needs straight, nonrotating
+Import `Event`, `Sprite` and `Collision` from `plocks`. Hit data also has `point`,
+`normal` and tile `cell`. Normal `on_touch` watches picture overlap;
+use [on_hit](hits.md) for physical contacts, including projectile impacts. Projectile mode needs straight, nonrotating
 kinematic bodies without physical connections. Turning between flights is fine.
 Turning projectile mode off leaves its sensor setting on.
 
