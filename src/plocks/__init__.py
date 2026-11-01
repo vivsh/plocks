@@ -51,6 +51,7 @@ from .gamepads import GamepadInput as GamepadInput
 from .gamepads import GamepadLayout as GamepadLayout
 from .geometry import Bounds as Bounds
 from .geometry import Color as Color
+from .geometry import Edge as Edge
 from .geometry import Point as Point
 from .geometry import distance as distance
 from .image_map import ImageMap as ImageMap
@@ -130,6 +131,7 @@ __all__ = (
     "CostumeSource",
     "DrawCallback",
     "Ease",
+    "Edge",
     "Effect",
     "Event",
     "Gamepad",

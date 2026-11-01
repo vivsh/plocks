@@ -114,6 +114,9 @@ def _inherit(stage: Stage, source: Actor, target: Actor) -> None:
     from ._touches import _inherit as inherit_touches
 
     inherit_touches(stage, source, target, inherited)
+    from ._edges import _inherit as inherit_edges
+
+    inherit_edges(stage, source, target, inherited)
     inherit_inputs(stage._gamepad_handlers)
     for callbacks in tuple(stage._gamepad_up_handlers.values()):
         callbacks.extend(
@@ -202,6 +205,9 @@ def _forget(stage: Stage, actor: Actor) -> None:
     from ._collisions import _prune as prune_contacts
 
     prune_contacts(stage, actor)
+    from ._edges import _detach as detach_edges
+
+    detach_edges(stage, actor)
     _prune(stage._gamepad_handlers, lambda binding: binding.handler.actor is not actor)
     _prune(stage._gamepad_up_handlers, lambda handler: handler.actor is not actor)
     stage._hit_handlers[:] = [h for h in stage._hit_handlers if h.actor is not actor]

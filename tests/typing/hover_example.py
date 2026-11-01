@@ -14,6 +14,7 @@ from plocks import (
     Click,
     Collision,
     Ease,
+    Edge,
     Effect,
     Event,
     GamepadButton,
@@ -51,6 +52,21 @@ def main() -> None:
     person = Puppet.stick_figure()
     stage.add(hero)
     stage.add(person)
+    assert_type(hero.touching_edge(), bool)
+    assert_type(person.touching_edge(section.bounds), bool)
+
+    @hero.on_edge()
+    def reached_edge(event: Event[Sprite, frozenset[Edge]]) -> None:
+        assert_type(event.target, Sprite)
+        assert_type(event.data, frozenset[Edge])
+
+    @person.on_edge(section.bounds)
+    def puppet_edge(event: Event[Puppet, frozenset[Edge]]) -> None:
+        assert_type(event.target, Puppet)
+
+    hero.on_edge(script=Script().wait(0.1))
+    hero.on_edge(section.bounds, hero.sequence().say("Level edge", seconds=0.2))
+    person.on_edge(script=person.sequence().wait(0.1))
     assert_type(distance((0, 0), (3, 4)), float)
     assert_type(hero.distance_to(person), float)
     assert_type(hero.direction_to(person), float)
@@ -218,6 +234,14 @@ def state_example() -> None:
     assert_type(Sprite(Path("hero.png"), state=None).state, None)
     assert_type(Puppet(person.skeleton, parts=person.parts).state, None)
     assert_type(Puppet.stick_figure().state, None)
+
+    @hero.on_edge()
+    def player_edge(event: Event[Sprite[PlayerState], frozenset[Edge]]) -> None:
+        assert_type(event.target.state.health, int)
+
+    @person.on_edge()
+    def stateful_puppet_edge(event: Event[Puppet[PlayerState], frozenset[Edge]]) -> None:
+        assert_type(event.target.state.speed, float)
 
     def accept_broad(sprite: Sprite, shared_stage: Stage, puppet: Puppet) -> None:
         assert_type(sprite.state, object)

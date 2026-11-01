@@ -27,7 +27,8 @@ class Event(Generic[_R_co, _D_co]):  # noqa: UP046 -- explicit receiver and payl
 
     Startup and clone start/end data are None. Button data is GamepadPress or
     GamepadRelease; click data is (position, button). Update data is simulated
-    seconds, periodic data is the configured interval, and hit data is Collision.
+    seconds, periodic data is the configured interval, hit data is Collision, and
+    edge data is frozenset[Edge] with all currently reached rectangle sides.
     Broadcast data has its Message payload type
     and is passed by reference. Engine sources are Stage; broadcast sources are
     their senders. Clone-start sources are the copied actors and targets are their

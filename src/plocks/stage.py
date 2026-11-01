@@ -38,6 +38,7 @@ _D = TypeVar("_D")
 _R = TypeVar("_R", bound=_Result)
 type _Draw = Callable[[Canvas], None]
 if TYPE_CHECKING:
+    from ._edges import _EdgeWatch
     from ._touches import _TouchWatch
     from .queries import CastTarget
 
@@ -79,6 +80,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         "_clone_end_handlers",
         "_clone_handlers",
         "_draws",
+        "_edges",
         "_game_state",
         "_gamepad_handlers",
         "_gamepad_up_handlers",
@@ -176,6 +178,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         self._hit_handlers: list[_Handler] = []
         self._hit_contacts: set[tuple[Actor, CastTarget]] = set()
         self._touches: list[_TouchWatch] = []
+        self._edges: list[_EdgeWatch] = []
         self._clicks: dict[Actor | None, list[_Handler]] = {}
         self._messages: list[_Delivery] = []
         self._message_handlers: dict[Message[object], list[_Handler]] = {}
@@ -497,6 +500,10 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
                     self._camera_follow = None
             if obj in self._members:
                 self._members.remove(obj)
+            if isinstance(obj, (Sprite, Puppet)):
+                from ._edges import _detach as detach_edges
+
+                detach_edges(self, obj)
             if isinstance(obj, (Sprite, Puppet)) and obj.is_clone:
                 from ._cloning import _forget
 

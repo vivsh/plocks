@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -14,6 +15,19 @@ type Point = tuple[float, float]
 """An (x, y) pair, measured in logical pixels unless an API says otherwise."""
 type Color = str | tuple[int, int, int] | tuple[int, int, int, int]
 """A named color, RGB tuple, or RGBA tuple; each channel ranges from 0 to 255."""
+
+
+class Edge(Enum):
+    """A reached or crossed side of a viewport or fixed world rectangle.
+
+    Used by on_edge Event.data, an immutable frozenset: a corner can contain
+    two sides. Comparisons use actor bounding rectangles, not physical shapes.
+    """
+
+    LEFT = "left"
+    RIGHT = "right"
+    TOP = "top"
+    BOTTOM = "bottom"
 
 
 def distance(first: Point, second: Point) -> float:

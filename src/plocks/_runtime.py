@@ -299,6 +299,10 @@ def advance(stage: Stage, now: float) -> None:
                 from ._camera import _sample as sample_camera
 
                 sample_camera(stage, dt)
+                if stage.running and not stage.paused:
+                    from ._edges import _sample as sample_edges
+
+                    sample_edges(stage)
     if stage._accumulator >= dt:
         stage._accumulator %= dt
     stage._accumulator = max(0, stage._accumulator)
@@ -368,6 +372,7 @@ def close(stage: Stage) -> None:
     stage._hit_handlers.clear()
     stage._hit_contacts.clear()
     stage._touches.clear()
+    stage._edges.clear()
     stage._camera_follow = None
     stage._ui_focus = None
     stage._clicks.clear()

@@ -355,3 +355,15 @@ hero.animate_effect(Effect.GHOST, to="clear", seconds=1)  # error
 person.animate_effect(Effect.WHIRL, to=90, seconds="slow")  # error
 Script().set_effect("color", 30)  # error
 Script().animate_effect(Effect.GHOST, to=20, seconds=1, easing="out")  # error
+
+from plocks import Edge
+hero.touching_edge("viewport")  # error
+person.touching_edge(world)  # error
+hero.on_edge(script=Script(Puppet))  # error
+person.on_edge(script=Script(Sprite))  # error
+@hero.on_edge()  # error
+def wrong_edge_data(event: Event[Sprite, Edge]) -> None:
+    pass
+@person.on_edge()  # error
+def wrong_edge_receiver(event: Event[Sprite, frozenset[Edge]]) -> None:
+    pass

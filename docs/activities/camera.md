@@ -93,3 +93,11 @@ Mouse events give screen positions. In a scrolling world, add `stage.camera` to
 find the world position, as Scrolling World's painting handler does.
 
 [Next: screen controls](ui.md)
+
+
+## Notice a level boundary
+
+With `stage.follow(hero)`, your hero can stay near the screen center. Use
+`hero.on_edge(world.bounds)` to watch the whole TileMap's rectangle, or
+`hero.touching_edge(world.bounds)` to ask immediately. Omit bounds to use the
+current camera-relative viewport instead. [Try the edge activity](edges.md).

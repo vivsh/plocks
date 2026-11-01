@@ -18,6 +18,7 @@ from .gamepads import Gamepad, GamepadButton
 from .geometry import (
     Bounds,
     Color,
+    Edge,
     Point,
     _integer,
     _number,
@@ -448,6 +449,64 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         if isinstance(other, TileMap):
             return bool(other.tiles_touching(self.bounds, solid_only=True))
         return self.bounds.intersects(other.bounds)
+
+    def touching_edge(self, bounds: Bounds | None = None) -> bool:
+        """Whether this actor reaches or crosses a rectangle's sides; changes nothing.
+
+        Omit bounds for the current camera-relative viewport (requires attachment).
+        Explicit world Bounds also work detached. Uses the transformed image AABB,
+        including padding; hidden actors count. Entirely outside actors still count.
+        A corner or oversized actor can reach multiple sides. No physics response.
+        """
+        from ._edges import _which
+
+        return bool(_which(self, bounds))
+
+    @overload
+    def on_edge(
+        self,
+        bounds: Bounds | None = None,
+        *,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> Callable[
+        [Callable[[Event[Self, frozenset[Edge]]], _R]],
+        Callable[[Event[Self, frozenset[Edge]]], _R],
+    ]: ...
+    @overload
+    def on_edge(
+        self,
+        bounds: Bounds | None,
+        script: Script[Puppet] | Script[Actor],
+        *,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> None: ...
+    @overload
+    def on_edge(
+        self,
+        bounds: Bounds | None = None,
+        *,
+        script: Script[Puppet] | Script[Actor],
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> None: ...
+    def on_edge(
+        self,
+        bounds: Bounds | None = None,
+        script: Script[Puppet] | Script[Actor] | None = None,
+        *,
+        when_busy: WhenBusy = WhenBusy.IGNORE,
+    ) -> object:
+        """Bind a callback or Script when at least one new rectangle side is reached.
+
+        event.data is frozenset[Edge], containing ALL currently reached sides, not
+        just the new ones. source is Stage; target is this actor. Omitted bounds
+        follow the viewport after camera updates; explicit Bounds stay fixed.
+        Staying at an edge does not repeat. Leaving and returning can notify again.
+        Requires stage membership. Pause freezes sampling; crossings completed
+        between samples may be missed. No clamping, bounce or physical collision.
+        """
+        from ._edges import _bind
+
+        return _bind(self, bounds, script, when_busy)
 
     @overload
     def on_hit(
