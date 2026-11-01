@@ -36,6 +36,7 @@ from .motion import (
     _visual_direction,
 )
 from .physics import Body, BodyType
+from .queries import CastHit, CastIgnore
 from .rigging import HumanJoint, Pose, Skeleton, _pivots
 from .state import _new_state, _State_co
 
@@ -69,7 +70,7 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
     __slots__ = (
         "_bubble",
-        "_is_clone",
+        "_clone_source",
         "_layer",
         "_parts",
         "_pose",
@@ -128,7 +129,7 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
             raise TypeError("Use a BodyType value")
         self._stage: Stage | None = None
         self._rotation_style = RotationStyle.ALL_AROUND
-        self._is_clone = False
+        self._clone_source: Sprite | Puppet | None = None
         self._bubble: _Say | _Think | _BubbleRun | None = None
 
     def remove(self) -> None:
@@ -145,7 +146,20 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
     @property
     def is_clone(self) -> bool:
         """Whether this actor was created by clone(); removal does not change it."""
-        return self._is_clone
+        return self._clone_source is not None
+
+    @property
+    def clone_count(self) -> int:
+        """Number of attached copies made directly from this actor; detached returns 0.
+
+        Copies of a copy belong to that copy's count. Counts are derived from
+        current stage membership, so removing a clone updates them immediately.
+        """
+        if self._stage is None:
+            return 0
+        from ._cloning import _count_clones
+
+        return _count_clones(self._stage, self)
 
     def clone(self) -> Puppet[_State_co]:
         """Add an independent copy to the same stage and queue its clone-start event.
@@ -183,6 +197,36 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         from .stage import _attached
 
         return _attached(self)._on_actor_clone(self, work)
+
+    @overload
+    def on_clone_start(
+        self, work: Callable[[Event[Self, None]], _R]
+    ) -> Callable[[Event[Self, None]], _R]: ...
+    @overload
+    def on_clone_start(self, work: Script[Puppet] | Script[Actor]) -> None: ...
+    def on_clone_start(self, work: object) -> object:
+        """Clear spelling of on_clone: run on a new clone at its next script phase.
+
+        event.source is its prototype; event.target is the newly attached clone.
+        Existing on_clone remains supported with exactly the same behavior.
+        """
+        from .stage import _attached
+
+        return _attached(self)._on_actor_clone(self, work)
+
+    def on_clone_end(
+        self, callback: Callable[[Event[Self, None]], None]
+    ) -> Callable[[Event[Self, None]], None]:
+        """Run synchronously after an inherited clone has been removed.
+
+        event.source is its prototype and event.target is the detached clone.
+        Counts already reflect removal. Return None; no Script/Action on the
+        detached receiver. Stage closure emits no end callbacks.
+        """
+        from ._cloning import _register_end
+
+        _register_end(self, callback)
+        return callback
 
     @property
     def state(self) -> _State_co:
@@ -365,6 +409,35 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
             self.position, other.position if isinstance(other, (Sprite, Puppet)) else other
         )
 
+    def direction_to(self, other: Point | Sprite | Puppet) -> float:
+        """Heading to a world point or actor anchor, in degrees clockwise from up.
+
+        Returns 0 up, 90 right, 180 down, or 270 left, in the range [0, 360).
+        Coincident anchors return this actor's current direction. Neither actor
+        is changed; no stage membership is needed. Coordinates must be finite.
+        Example: hero.body.travel_along(speed=120, direction=hero.direction_to(enemy)).
+        """
+        from .motion import _direction_to
+
+        return _direction_to(self, other)
+
+    def can_see(
+        self,
+        other: Sprite | Puppet,
+        *,
+        distance: float | None = None,
+        ignore: CastIgnore = None,
+    ) -> bool:
+        """Whether the target anchor is in range with no intervening physics wall.
+
+        Both actors must belong to the same open physics stage. Self is ignored;
+        sensors are transparent. Hidden actors still count. No field of view,
+        turning or movement. Omit distance for unlimited range, in world pixels.
+        """
+        from ._combat import _can_see
+
+        return _can_see(self, other, distance, ignore)
+
     def touching(self, other: Sprite | Puppet | TileMap) -> bool:
         """Test AABB overlap, or solid tile overlap. Visibility does not affect it."""
         from .tiling import TileMap
@@ -372,6 +445,29 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         if isinstance(other, TileMap):
             return bool(other.tiles_touching(self.bounds, solid_only=True))
         return self.bounds.intersects(other.bounds)
+
+    @overload
+    def on_hit(
+        self, work: Callable[[Event[Self, CastHit]], _R], *, when_busy: WhenBusy = WhenBusy.IGNORE
+    ) -> Callable[[Event[Self, CastHit]], _R]: ...
+    @overload
+    def on_hit(
+        self, work: Script[Puppet] | Script[Actor], *, when_busy: WhenBusy = WhenBusy.IGNORE
+    ) -> None: ...
+    @overload
+    def on_hit(
+        self, *, when_busy: WhenBusy = WhenBusy.IGNORE
+    ) -> Callable[[Callable[[Event[Self, CastHit]], _R]], Callable[[Event[Self, CastHit]], _R]]: ...
+    def on_hit(self, work: object = None, *, when_busy: WhenBusy = WhenBusy.IGNORE) -> object:
+        """Handle a swept projectile impact; event.data is its immutable CastHit.
+
+        Enable body.projectile on a kinematic bullet first. The bullet stops at
+        contact; your handler decides damage and removal. Normal busy rules apply.
+        This event is independent of visual on_touch overlaps.
+        """
+        from ._projectiles import _bind
+
+        return _bind(self, work, when_busy)
 
     @overload
     def on_touch(
@@ -654,6 +750,24 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
         return _schedule(self, _GlideTo(x=x, y=y, seconds=seconds, easing=easing), after=after)
 
+    def move_cell(
+        self,
+        world: TileMap,
+        *,
+        direction: float,
+        seconds: float = 0.2,
+        after: Action | None = None,
+    ) -> Action:
+        """Schedule one cardinal cell step from a cell center; blocked steps do nothing.
+
+        A second active step is ignored. Uses current clearance; moving blockers
+        can cancel between centers. Nonphysical/kinematic actors only. Does not
+        turn the actor. Directions: 0 up, 90 right, 180 down, 270 left.
+        """
+        from ._commands import _MoveCell, _schedule
+
+        return _schedule(self, _MoveCell(world, direction, seconds), after=after)
+
     def follow_path(
         self, points: Iterable[Point], *, speed: float = 100, after: Action | None = None
     ) -> Action:
@@ -691,6 +805,16 @@ class Puppet(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         from ._commands import _GlideBy, _schedule
 
         return _schedule(self, _GlideBy(x=x, y=y, seconds=seconds, easing=easing), after=after)
+
+    def remove_after(self, *, seconds: float, after: Action | None = None) -> Action:
+        """Remove after simulated seconds; return an Action you can cancel.
+
+        Pause freezes the wait. Zero yields one tick. Removal cancels this
+        actor's other work; re-adding never revives an old removal deadline.
+        """
+        from ._commands import _Plan, _Remove, _schedule, _Wait
+
+        return _schedule(self, _Plan(None, (_Wait(seconds), _Remove()), 1), after=after)
 
     def wait(self, seconds: float, *, after: Action | None = None) -> Action:
         """Wait simulated seconds; pause freezes progress and zero yields one tick.

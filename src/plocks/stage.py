@@ -75,6 +75,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         "_camera",
         "_camera_follow",
         "_clicks",
+        "_clone_end_handlers",
         "_clone_handlers",
         "_draws",
         "_game_state",
@@ -83,6 +84,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         "_gamepads",
         "_height",
         "_held_keys",
+        "_hit_handlers",
         "_last_wall",
         "_members",
         "_message_handlers",
@@ -168,6 +170,8 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         self._actions: list[Action] = []
         self._starts: list[_Handler] = []
         self._clone_handlers: list[_Handler] = []
+        self._clone_end_handlers: list[_Handler] = []
+        self._hit_handlers: list[_Handler] = []
         self._touches: list[_TouchWatch] = []
         self._clicks: dict[Actor | None, list[_Handler]] = {}
         self._messages: list[_Delivery] = []
@@ -389,6 +393,13 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
                 voice._channel.set_volume(self._volume)
 
     @property
+    def clone_count(self) -> int:
+        """Number of clones currently attached, including clones of clones."""
+        from ._cloning import _count_clones
+
+        return _count_clones(self)
+
+    @property
     def objects(self) -> tuple[_StageObject, ...]:
         """A membership snapshot. Change membership with add/remove/clear."""
         return tuple(self._members)
@@ -445,6 +456,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         """
         if obj not in self._members:
             raise ValueError("This object is not in the stage")
+        ends = tuple(h for h in self._clone_end_handlers if h.actor is obj)
         try:
             if isinstance(obj, Panel):
                 for child in obj._children:
@@ -482,6 +494,10 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
                 from ._cloning import _forget
 
                 _forget(self, obj)
+        if isinstance(obj, (Sprite, Puppet)):
+            from ._cloning import _notify_end
+
+            _notify_end(self, obj, ends)
 
     def _on_actor_clone(self, actor: Actor, work: object) -> object:
         _open(self)
@@ -861,6 +877,34 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         return _admit(
             self, _send(cast(Message[object], message), data, self, to, wait), None, after=after
         )
+
+    def every(
+        self, *, seconds: float, when_busy: WhenBusy = WhenBusy.IGNORE
+    ) -> Callable[[Callable[[Event[Self, float]], _R]], Callable[[Event[Self, float]], _R]]:
+        """Call a function every simulated interval; first call follows one interval.
+
+        event.data is the configured interval. Pause/alerts freeze it. Returning
+        an Action uses normal busy ignore/restart rules. Missed sub-tick repeats
+        are skipped; callbacks run at most once per tick. Stage closure stops it.
+        """
+        from ._timers import _repeat_event
+        from .geometry import _positive
+
+        _open(self)
+        seconds = _positive(seconds, "seconds")
+        if not isinstance(when_busy, WhenBusy):
+            raise TypeError("Use WhenBusy.IGNORE or RESTART")
+
+        def decorate(
+            callback: Callable[[Event[Self, float]], _R],
+        ) -> Callable[[Event[Self, float]], _R]:
+            _open(self)
+            handler = _callback_handler(callback, None, when_busy)
+            deadline = _number(self.time + seconds, "repeat deadline")
+            _admit(self, _repeat_event(self, seconds, handler, deadline), None)
+            return callback
+
+        return decorate
 
     def wait(self, seconds: float, *, after: Action | None = None) -> Action:
         """Schedule a simulation-time wait; zero yields until the next tick."""

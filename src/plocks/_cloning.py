@@ -68,7 +68,7 @@ def _copy_actor(source: Actor) -> Actor:
     target.layer = source.layer
     target.rotation_style = source.rotation_style
     target._state = state
-    target._is_clone = True
+    target._clone_source = source
     return target
 
 
@@ -83,6 +83,9 @@ def _copy_physics(source: Actor, target: Actor) -> None:
     after.drag = before.drag
     after.bounce = before.bounce
     after.sensor = before.sensor
+    after.collision_group = before.collision_group
+    after.collides_with = before.collides_with
+    after.projectile = before.projectile
     if source.body_type is BodyType.DYNAMIC:
         after.mass = before.mass
         after.rotation_locked = before.rotation_locked
@@ -120,6 +123,19 @@ def _inherit(stage: Stage, source: Actor, target: Actor) -> None:
         callbacks.extend(
             inherited(handler) for handler in tuple(callbacks) if handler.actor is source
         )
+    if len(stage._hit_handlers) + sum(h.actor is source for h in stage._hit_handlers) > 1024:
+        raise StageError("A stage supports at most 1024 hit handlers")
+    if (
+        len(stage._clone_end_handlers) + sum(h.actor is source for h in stage._clone_end_handlers)
+        > 1024
+    ):
+        raise StageError("A stage supports at most 1024 clone-end handlers")
+    stage._clone_end_handlers.extend(
+        inherited(h) for h in tuple(stage._clone_end_handlers) if h.actor is source
+    )
+    stage._hit_handlers.extend(
+        inherited(h) for h in tuple(stage._hit_handlers) if h.actor is source
+    )
     stage._clone_handlers.extend(
         inherited(handler) for handler in tuple(stage._clone_handlers) if handler.actor is source
     )
@@ -140,7 +156,10 @@ def _clone(source: Actor) -> Actor:
         _inherit(stage, source, target)
         stage._pending.append(_CloneStart(source, target))
     except BaseException as error:
+        # A failed clone was never delivered to its author; suppress end events
+        # while still retiring any partially inherited registrations.
         try:
+            _forget(stage, target)
             if target in stage._members:
                 stage.remove(target)
             else:
@@ -179,9 +198,11 @@ def _forget(stage: Stage, actor: Actor) -> None:
     """Retire all clone registrations and queued starts; ordinary actors keep theirs."""
     _prune(stage._gamepad_handlers, lambda binding: binding.handler.actor is not actor)
     _prune(stage._gamepad_up_handlers, lambda handler: handler.actor is not actor)
+    stage._hit_handlers[:] = [h for h in stage._hit_handlers if h.actor is not actor]
     _prune(stage._clicks, lambda handler: handler.actor is not actor)
     _prune(stage._message_handlers, lambda handler: handler.actor is not actor)
     stage._starts[:] = [handler for handler in stage._starts if handler.actor is not actor]
+    stage._clone_end_handlers[:] = [h for h in stage._clone_end_handlers if h.actor is not actor]
     stage._clone_handlers[:] = [
         handler for handler in stage._clone_handlers if handler.actor is not actor
     ]
@@ -193,3 +214,44 @@ def _forget(stage: Stage, actor: Actor) -> None:
         for event in stage._pending
         if not isinstance(event, _CloneStart) or event.target is not actor
     ]
+
+
+def _count_clones(stage: Stage, source: Actor | None = None) -> int:
+    """Derive live counts without a counter or reverse-provenance index."""
+    return sum(
+        isinstance(actor, (Sprite, Puppet))
+        and actor.is_clone
+        and (source is None or actor._clone_source is source)
+        for actor in stage._members
+    )
+
+
+def _register_end(actor: Actor, callback: object) -> None:
+    from ._scripts import WhenBusy
+    from .stage import _attached, _callback_handler
+
+    stage = _attached(actor)
+    if len(stage._clone_end_handlers) >= 1024:
+        raise StageError("A stage supports at most 1024 clone-end handlers")
+    stage._clone_end_handlers.append(_callback_handler(callback, actor, WhenBusy.IGNORE))
+
+
+def _notify_end(stage: Stage, actor: Actor, handlers: tuple[_Handler, ...]) -> None:
+    """Notify only after successful detachment; cleanup/rollback never spawn work."""
+    from .events import Event
+    from .stage import _check_callback_result
+
+    source = actor._clone_source
+    if source is None:
+        return
+    for handler in handlers:
+        if stage._state == "closed":
+            break
+        try:
+            _check_callback_result(handler.start(Event(source, actor, None)), "clone_end")
+        except BaseException as error:
+            try:
+                stage.stop()
+            except BaseException as cleanup:  # noqa: BLE001 -- preserve the original callback failure
+                error.add_note(f"Stopping after clone-end failure also failed: {cleanup!r}")
+            raise

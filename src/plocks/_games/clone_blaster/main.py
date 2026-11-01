@@ -5,6 +5,7 @@ from pathlib import Path
 from plocks import (
     Anchor,
     BodyType,
+    CastHit,
     Event,
     GamepadButton,
     GamepadPress,
@@ -38,6 +39,7 @@ hero = Sprite(Image(assets / "hero.png").resized(40, 56), x=-260, y=-116)
 stage.add(hero)
 hero.body.rotation_locked = True
 hero.rotation_style = RotationStyle.LEFT_RIGHT
+hero.body.collision_group = "player"
 
 # Keep one hidden bullet attached as our template. clone() adds each copy itself.
 # A kinematic sensor flies without gravity and does not push the targets.
@@ -46,7 +48,10 @@ bullet = Sprite(
 )
 bullet.visible = False
 stage.add(bullet)
-bullet.body.sensor = True
+# Swept bullets stop at thin walls too. Friendly shots pass through the hero.
+bullet.body.projectile = True
+bullet.body.collision_group = "player-shot"
+bullet.body.collides_with = {"enemy", "terrain"}
 
 robots: list[Sprite] = []
 for x in (40, 170, 290):
@@ -57,6 +62,7 @@ for x in (40, 170, 290):
         body_type=BodyType.STATIC,
     )
     stage.add(robot)
+    robot.body.collision_group = "enemy"
     robots.append(robot)
 
 shots = 0
@@ -75,7 +81,7 @@ def fire(event: Event[Sprite, GamepadPress]) -> None:
     global shots
     # This handler belongs to the hero, so bullet copies never inherit it.
     # Limit live copies; count the scene instead of keeping another bullet list.
-    if sum(isinstance(obj, Sprite) and obj.is_clone for obj in stage.objects) >= 16:
+    if bullet.clone_count >= 16:
         return
     bullet_clone = bullet.clone()
     bullet_clone.visible = True
@@ -88,8 +94,7 @@ def fire(event: Event[Sprite, GamepadPress]) -> None:
 
 @hero.on_button_down(GamepadButton.A, gamepad=player)
 def jump(event: Event[Sprite, GamepadPress]) -> None:
-    if event.target.body.grounded:
-        event.target.body.impulse(y=420)
+    event.target.body.jump(height=98)
 
 
 @hero.on_update
@@ -101,35 +106,24 @@ def walk(event: Event[Sprite, float]) -> None:
         # Check this tick's horizontal step before walking into a wall.
         if not actor.body.can_travel(distance=abs(speed) * event.data):
             speed = 0
-    actor.body.velocity = (speed, actor.body.velocity[1])
+    actor.body.walk(speed=speed)
 
 
-@bullet.on_touch(world)
-def hit_wall(event: Event[Sprite, TileMap]) -> None:
-    bullet_clone = event.target
-    if bullet_clone.is_clone:
-        bullet_clone.remove()
+@bullet.on_clone_start
+def start_bullet(event: Event[Sprite, None]) -> None:
+    # Even a missed copy disappears after two game seconds.
+    event.target.remove_after(seconds=2)
 
 
-def hit_robot(event: Event[Sprite, Sprite]) -> None:
+@bullet.on_hit
+def hit(event: Event[Sprite, CastHit]) -> None:
     global hits
     bullet_clone = event.target
     if bullet_clone.is_clone:
-        # Remove this copy, never the hidden template. Later shots still clone it.
-        bullet_clone.remove()
-        hits += 1
-        show_score()
-
-
-for target in robots:
-    bullet.on_touch(target)(hit_robot)
-
-
-@bullet.on_update
-def clean_up(event: Event[Sprite, float]) -> None:
-    bullet_clone = event.target
-    # Hidden actors also receive updates. Leave the original template attached!
-    if bullet_clone.is_clone and not stage.world_bounds.intersects(bullet_clone.bounds):
+        # Hit data names the wall or robot. Remove only this receiving copy.
+        if event.data.target in robots:
+            hits += 1
+            show_score()
         bullet_clone.remove()
 
 

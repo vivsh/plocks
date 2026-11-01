@@ -23,6 +23,8 @@ from .input import Key, MouseButton
 
 if TYPE_CHECKING:
     from ._commands import Actor
+    from .physics import Body
+    from .queries import CastHit
     from .stage import Stage
 
 
@@ -281,12 +283,16 @@ def advance(stage: Stage, now: float) -> None:
                     "update",
                 )
         if stage.running and not stage.paused:
+            impacts: tuple[tuple[Body, CastHit], ...] = ()
             if stage._physics is not None:
                 from ._physics import _integrate
 
-                _integrate(stage, dt)
+                impacts = _integrate(stage, dt)
             stage._tick += 1
             _sample(stage)
+            from ._projectiles import _dispatch as dispatch_hits
+
+            dispatch_hits(stage, impacts)
             from ._touches import _sample as sample_touches
 
             sample_touches(stage)
@@ -358,6 +364,8 @@ def close(stage: Stage) -> None:
     stage._gamepad_up_handlers.clear()
     stage._starts.clear()
     stage._clone_handlers.clear()
+    stage._clone_end_handlers.clear()
+    stage._hit_handlers.clear()
     stage._touches.clear()
     stage._camera_follow = None
     stage._ui_focus = None

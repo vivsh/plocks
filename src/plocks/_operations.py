@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from .rigging import Pose
     from .sprites import Sprite
     from .stage import Stage
+    from .tiling import TileMap
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,8 +54,19 @@ class _Glide:
     easing: Ease
 
 
+@dataclass(frozen=True, slots=True)
+class _CellMove:
+    actor: Sprite | Puppet
+    world: TileMap
+    origin: Point
+    destination: Point
+    started: float
+    seconds: float
+
+
 type _Request = (
-    _ForceRun
+    _CellMove
+    | _ForceRun
     | _TorqueRun
     | _AwaitAction
     | _AwaitAll
@@ -286,7 +298,7 @@ def _sample_pose(operation: _PoseRun, now: float) -> Pose:
 def _deadline(request: _Request) -> float | None:
     if isinstance(request, (_Delay, _BubbleRun)):
         return request.deadline
-    if isinstance(request, (_Glide, _ForceRun, _TorqueRun)):
+    if isinstance(request, (_Glide, _CellMove, _ForceRun, _TorqueRun)):
         return request.started + request.seconds
     if isinstance(request, _ImageRun):
         return request.started + sum(request.definition.durations)
@@ -296,6 +308,11 @@ def _deadline(request: _Request) -> float | None:
 
 
 def _freeze(request: _Request | None, now: float, *, cancel: bool) -> None:
+    if isinstance(request, _CellMove):
+        from .physics import Body, _native
+
+        if isinstance(request.actor._transform, Body):
+            _native(request.actor._transform).velocity = (0, 0)
     if isinstance(request, _Glide):
         from .physics import Body, _native
 

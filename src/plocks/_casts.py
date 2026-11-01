@@ -128,8 +128,15 @@ def _cast(
     decisions: dict[CastTarget, bool] = {}
     best: CastHit | None = None
     for target, native, cell in _candidates(world, start, end, offsets, radius):
-        if own is not None and target is own._actor:
-            continue
+        if own is not None:
+            from ._combat import _pair
+
+            if (
+                target is own._actor
+                or native.body is None
+                or not _pair(world, _native(own), native.body)
+            ):
+                continue
         if target not in decisions:
             decisions[target] = skipped(target)
         if decisions[target]:

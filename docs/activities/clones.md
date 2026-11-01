@@ -33,7 +33,7 @@ stage.add(original)
 
 
 # This runs for each new copy. event.target means that particular copy.
-@original.on_clone
+@original.on_clone_start
 def launch(event: Event[Sprite, None]) -> None:
     copy = event.target
     copy.visible = True
@@ -45,7 +45,7 @@ def launch(event: Event[Sprite, None]) -> None:
 def tidy_up(event: Event[Sprite, float]) -> None:
     copy = event.target
     if copy.is_clone and copy.x > stage.world_bounds.right + 30:
-        stage.remove(copy)
+        copy.remove()
 
 
 # Put the spawning control on the stage, so copies do not spawn more copies!
@@ -82,7 +82,7 @@ For a list named `items`, give a clone its own list with
 `copy.state.items = list(copy.state.items)`.
 
 Use `event.target` in inherited functions. Writing `original.x` still changes the
-original. Remove unwanted copies with `stage.remove(copy)`; that also clears their
+original. Remove unwanted copies with `copy.remove()`; that also clears their
 inherited controls and running actions. A stage allows up to 300 attached clones.
 
 ## Remove a copy
@@ -94,3 +94,23 @@ Calling `remove()` again is harmless.
 
 Add a character to the stage **before** registering its handlers. Currently,
 Plocks stores those registrations on the stage.
+
+## Count copies and notice when they leave
+
+`original.clone_count` counts attached copies made directly from that original.
+`stage.clone_count` counts all attached clones, including copies of copies.
+A detached original reports zero. A copy's copies belong to that copy's count.
+
+```python
+@original.on_clone_end
+def ended(event: Event[Sprite, None]) -> None:
+    print("Copies left:", original.clone_count)
+```
+
+End runs after removal: `event.target` is already detached and the count has changed.
+`event.source` is its prototype. Return nothing from this function. You can update
+a score or create another copy from an attached original. Closing the stage does
+not call end handlers. A copy removed before its queued start can have an end
+without a start. The shorter `on_clone` spelling still works for start handlers.
+
+For a short-lived copy, use `copy.remove_after(seconds=2)` instead of a timer flag.

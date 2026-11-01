@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from math import degrees, inf, radians
@@ -88,6 +89,9 @@ class Physics:
         from ._physics import _ONE_WAY, _begin_one_way
 
         self._space.add_collision_handler(_ONE_WAY, 0).begin = _begin_one_way
+        from ._combat import _install_filter
+
+        _install_filter(self)
 
     def raycast(self, start: Point, end: Point, *, ignore: CastIgnore = None) -> CastHit | None:
         """Nearest thin-line hit in world coordinates, or None; sensors are skipped.
@@ -221,13 +225,26 @@ class Body:
     Dynamic movement uses velocity, impulses and forces. Kinematic movement may glide.
     """
 
-    __slots__ = ("_actor", "_auto_shape", "_drag", "_native", "_shape", "_world")
+    __slots__ = (
+        "_actor",
+        "_auto_shape",
+        "_collides_with",
+        "_collision_group",
+        "_drag",
+        "_native",
+        "_projectile",
+        "_shape",
+        "_world",
+    )
     _actor: Sprite | Puppet
     _world: Physics
     _native: pymunk.Body | None
     _shape: Box | Circle
     _auto_shape: bool
     _drag: Point
+    _collision_group: str
+    _collides_with: frozenset[str] | None
+    _projectile: bool
 
     def __new__(cls) -> Self:
         """Bodies are created by stage membership; use actor.body."""
@@ -290,6 +307,27 @@ class Body:
         heading = self._actor.direction if direction is None else _number(direction, "direction")
         self.velocity = _rotate((speed, 0), heading)
 
+    def walk(self, *, speed: float) -> None:
+        """Set signed horizontal pixels/second now, preserving jumping/falling speed.
+
+        Zero stops sideways motion. Cancels x writers only; does not turn the
+        actor. Static or removed bodies raise PhysicsError.
+        """
+        from ._combat import _walk
+
+        _walk(self, speed)
+
+    def jump(self, *, height: float) -> bool:
+        """Launch upward if grounded; return whether a jump started.
+
+        Height is positive ballistic rise in pixels under unchanged downward
+        vertical gravity. Drag, moving ground and contacts affect actual rise.
+        Preserves horizontal speed; dynamic bodies only. No double jump.
+        """
+        from ._combat import _jump
+
+        return _jump(self, height)
+
     def shape_cast(
         self,
         *,
@@ -322,6 +360,68 @@ class Body:
         return self.shape_cast(distance=distance, direction=direction, ignore=ignore) is None
 
     @property
+    def collision_group(self) -> str:
+        """Named team/category for this body; default 'default'. Tiles use 'terrain'."""
+        _native(self)
+        return self._collision_group
+
+    @collision_group.setter
+    def collision_group(self, value: str) -> None:
+        from ._combat import _group, _wake
+
+        value = _group(value)
+        _native(self)
+        self._collision_group = value
+        _wake(self._world)
+
+    @property
+    def collides_with(self) -> frozenset[str] | None:
+        """Accepted group names; None accepts all. Both bodies must accept the pair.
+
+        Assign an iterable of names, or None. This affects physical contacts,
+        body casts and projectile hits; visual touching/on_touch are unchanged.
+        """
+        _native(self)
+        return self._collides_with
+
+    @collides_with.setter
+    def collides_with(self, value: Iterable[str] | None) -> None:
+        from ._combat import _group, _wake
+
+        if isinstance(value, str):
+            raise TypeError("collides_with needs a collection of names, not one string")
+        groups = None if value is None else frozenset(_group(name) for name in value)
+        _native(self)
+        self._collides_with = groups
+        _wake(self._world)
+
+    @property
+    def projectile(self) -> bool:
+        """Opt-in swept hits for straight kinematic bullets; default False.
+
+        Enabling also enables sensor mode. On impact the bullet stops and emits
+        on_hit; removal/damage is your callback's choice. Disabling leaves the
+        sensor setting in place. Rotation and physical links are unsupported.
+        """
+        _native(self)
+        return self._projectile
+
+    @projectile.setter
+    def projectile(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError("projectile must be bool")
+        _native(self)
+        if value:
+            if self.body_type is not BodyType.KINEMATIC or self.angular_velocity != 0:
+                raise PhysicsError("Projectile mode requires a nonrotating kinematic body")
+            if any(
+                self._actor is end for link in self._world._connections for end in link._endpoints
+            ):
+                raise PhysicsError("Projectile bodies cannot have physical connections")
+            self.sensor = True
+        self._projectile = value
+
+    @property
     def angular_velocity(self) -> float:
         """Clockwise degrees per second; independent of visual rotation_style."""
         return -degrees(_native(self).angular_velocity)
@@ -330,6 +430,8 @@ class Body:
     def angular_velocity(self, value: float) -> None:
         value = _number(value, "angular_velocity")
         native = _native(self)
+        if self._projectile and value:
+            raise PhysicsError("Projectile bodies cannot rotate during flight")
         if self.body_type is BodyType.STATIC or self.rotation_locked:
             raise PhysicsError("Angular velocity requires an unlocked moving body")
         from ._physics import _one_way
@@ -371,6 +473,8 @@ class Body:
         from ._physics import _one_way
 
         native = _native(self)
+        if not value and self._projectile:
+            raise PhysicsError("Projectile bodies must remain sensors")
         if value and _one_way(self._actor):
             raise PhysicsError("A one-way platform cannot be a sensor")
         for shape in native.shapes:

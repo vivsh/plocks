@@ -56,7 +56,7 @@ hero.glide_by(y=-80, seconds=0.3, after=up)
 For jumping onto real ground, try [jumping and landing](physics.md).
 
 
-## Distance and directional speed
+## Distance, direction and speed
 
 `hero.distance_to(enemy)` measures the straight-line distance between their positions.
 You can also use `hero.distance_to((100, 50))` or import `distance` from `plocks`
@@ -65,6 +65,20 @@ and call `distance((0, 0), (30, 40))` to get 50 pixels.
 `hero.bounds.distance_to(enemy.bounds)` measures the gap between their rectangles.
 It returns zero when they touch or overlap. To compare centers, use
 `distance(hero.bounds.center, enemy.bounds.center)`.
+
+`hero.direction_to(enemy)` gives the direction from the hero to the enemy.
+You can also give a point: `hero.direction_to((100, 50))`.
+It measures from their positions without turning or moving anyone.
+If both positions are the same, it returns the hero's current direction.
+
+```python
+# Aim towards the enemy, or travel towards it without turning.
+hero.direction = hero.direction_to(enemy)
+hero.body.travel_along(speed=120, direction=hero.direction_to(enemy))
+```
+
+The second line needs physics enabled. Call it again as the enemy moves if you
+want to keep chasing; a direction is measured when you ask for it.
 
 With physics enabled, set speed along a direction:
 

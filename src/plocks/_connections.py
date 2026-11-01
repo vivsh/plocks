@@ -38,6 +38,8 @@ def _endpoint(
     if isinstance(value, (Sprite, Puppet)):
         if value._stage is not world._stage:
             raise PhysicsError("Connection actors must belong to this stage")
+        if value.body.projectile:
+            raise PhysicsError("Projectile bodies cannot have physical connections")
         body = _native(value.body)
         return (
             body,

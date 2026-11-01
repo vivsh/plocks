@@ -71,14 +71,14 @@ def test_holding_b_continues_after_many_impacts(game: Stage) -> None:
     assert not game._actions
 
 
-def test_wall_and_offscreen_remove_only_their_bullet(game: Stage) -> None:
+def test_wall_and_lifetime_remove_only_their_bullet(game: Stage) -> None:
     template = cast(Sprite, state(game)["bullet"])
     for position, velocity in (((350, 0), (520, 0)), ((-390, 200), (-520, 0))):
         bullet_clone = template.clone()
         bullet_clone.visible = True
         bullet_clone.position = position
         bullet_clone.body.velocity = velocity
-        tick(game, 10)
+        tick(game, 130)
         assert bullet_clone._stage is None
         assert template._stage is game
     assert state(game)["hits"] == 0

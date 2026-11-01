@@ -294,7 +294,7 @@ def update(event: Event[Stage, float]) -> None:
         refresh_ui()
         return
     direction = player.left_stick[0]
-    hero.body.velocity = (direction * 220, hero.body.velocity[1])
+    hero.body.walk(speed=direction * 220)
     if hero.x < -365:
         hero.x = -365
     elif hero.x > 1770:

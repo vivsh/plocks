@@ -29,6 +29,17 @@ stage.physics.gravity = (0, -700)
 
 Run it again. The dinosaur should fall more slowly. Try one change at a time!
 
+## Easy walking and jumping
+
+```python
+hero.body.walk(speed=150)  # Keep falling/jumping while moving right.
+hero.body.jump(height=90)  # Only launch when grounded.
+```
+
+Negative walking speed goes left; zero stops sideways movement. Jump height is
+ballistic pixels with downward vertical gravity. It returns `False` in midair.
+A moving platform, drag or another push can change the actual rise.
+
 ## What else can a body do?
 
 - `body.velocity` controls speed. Keep its y speed when changing sideways movement.

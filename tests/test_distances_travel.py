@@ -58,3 +58,84 @@ def test_static_travel_rejects_before_mutation() -> None:
         assert actor.body.velocity == (0, 0)
     finally:
         close(stage)
+
+
+@pytest.mark.parametrize("puppet", [False, True])
+@pytest.mark.parametrize(
+    "point, expected",
+    [
+        ((10, 30), 0),
+        ((20, 30), 45),
+        ((20, 20), 90),
+        ((20, 10), 135),
+        ((10, 10), 180),
+        ((0, 10), 225),
+        ((0, 20), 270),
+        ((0, 30), 315),
+    ],
+)
+def test_direction_to_points(puppet: bool, point: tuple[int, int], expected: int) -> None:
+    """Both detached actors measure clockwise world headings from their anchors."""
+    actor = Puppet.stick_figure() if puppet else Sprite(Image.rectangle(10, 10))
+    actor.position = (10, 20)
+    actor.direction = 123
+    assert actor.direction_to(point) == pytest.approx(expected)
+    assert actor.position == (10, 20) and actor.direction == 123
+
+
+@pytest.mark.parametrize("source_puppet", [False, True])
+@pytest.mark.parametrize("target_puppet", [False, True])
+def test_direction_to_actors_and_coincidence(source_puppet: bool, target_puppet: bool) -> None:
+    """Sprite/Puppet targets are sampled afresh; coincidence preserves the source facing."""
+    from plocks.motion import _point_towards
+
+    actor = Puppet.stick_figure() if source_puppet else Sprite(Image.rectangle(10, 10))
+    target = Puppet.stick_figure() if target_puppet else Sprite(Image.rectangle(10, 10))
+    actor.direction = 234
+    assert actor.direction_to(target) == 234
+    assert actor.direction_to(actor.position) == 234
+    target.position = (-50, 50)
+    assert actor.direction_to(target) == 315
+    assert target.direction == 90
+    _point_towards(actor, target)
+    assert actor.direction == 315
+    target.position = (50, -50)
+    assert actor.direction_to(target) == 135
+    assert actor.direction == 315
+
+
+@pytest.mark.parametrize("puppet", [False, True])
+@pytest.mark.parametrize("invalid", [float("nan"), float("inf"), -float("inf")])
+def test_direction_to_rejects_nonfinite_coordinates(puppet: bool, invalid: float) -> None:
+    """Invalid targets fail before changing the querying actor."""
+    actor = Puppet.stick_figure() if puppet else Sprite(Image.rectangle(10, 10))
+    with pytest.raises(ValueError):
+        actor.direction_to((invalid, 0))
+    with pytest.raises(ValueError):
+        actor.direction_to((0, invalid))
+    assert actor.position == (0, 0) and actor.direction == 90
+
+
+def test_direction_to_physical_actor_is_read_only() -> None:
+    """Camera, visibility and visual rotation do not change heading or body velocity."""
+    from plocks import RotationStyle
+
+    stage = Stage(physics=True)
+    actor = Sprite(Image.rectangle(10, 20), direction=270)
+    target = Puppet.stick_figure()
+    target.position = (100, 0)
+    stage.add(actor)
+    stage.add(target)
+    try:
+        stage.camera = (30, 40)
+        actor.rotation_style = RotationStyle.NONE
+        target.visible = False
+        actor.body.velocity = (20, 30)
+        assert actor.direction_to(target) == 90
+        assert actor.direction == 270
+        assert actor.position == (0, 0)
+        assert actor.body.velocity == (20, 30)
+        actor.body.travel_along(speed=120, direction=actor.direction_to(target))
+        assert actor.body.velocity == pytest.approx((120, 0))
+    finally:
+        close(stage)

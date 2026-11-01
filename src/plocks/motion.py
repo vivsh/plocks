@@ -121,15 +121,24 @@ def _move_to(actor: Sprite | Puppet, x: float | None, y: float | None) -> None:
     _set_position(actor, (px, py))
 
 
-def _point_towards(actor: Sprite | Puppet, target: Point | Sprite | Puppet) -> None:
+def _direction_to(actor: Sprite | Puppet, target: Point | Sprite | Puppet) -> float:
+    """Read the clockwise anchor-to-anchor heading, keeping facing at coincidence."""
     from math import atan2, degrees
 
-    from .geometry import _point
+    from .geometry import _number, _point
+    from .puppets import Puppet
+    from .sprites import Sprite
 
-    point = _point(target) if isinstance(target, tuple) else target.position
-    dx, dy = point[0] - actor.x, point[1] - actor.y
-    if dx or dy:
-        actor.direction = degrees(atan2(dx, dy))
+    point = _point(target.position if isinstance(target, (Sprite, Puppet)) else target)
+    dx = _number(point[0] - actor.x, "horizontal difference")
+    dy = _number(point[1] - actor.y, "vertical difference")
+    return degrees(atan2(dx, dy)) % 360 if dx or dy else actor.direction
+
+
+def _point_towards(actor: Sprite | Puppet, target: Point | Sprite | Puppet) -> None:
+    direction = _direction_to(actor, target)
+    if direction != actor.direction:
+        actor.direction = direction
 
 
 def _random(actor: Sprite | Puppet, bounds: Bounds | None) -> None:

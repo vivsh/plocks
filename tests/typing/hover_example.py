@@ -51,6 +51,38 @@ def main() -> None:
     stage.add(person)
     assert_type(distance((0, 0), (3, 4)), float)
     assert_type(hero.distance_to(person), float)
+    assert_type(hero.direction_to(person), float)
+    assert_type(hero.can_see(person, distance=300), bool)
+    assert_type(hero.clone_count, int)
+    assert_type(stage.clone_count, int)
+    hero.body.walk(speed=-120)
+    assert_type(hero.body.jump(height=80), bool)
+    hero.body.collision_group = "player"
+    hero.body.collides_with = {"enemy", "terrain"}
+    assert_type(hero.body.collides_with, frozenset[str] | None)
+    assert_type(hero.body.projectile, bool)
+    assert_type(hero.move_cell(section, direction=90), Action)
+    assert_type(hero.remove_after(seconds=2), Action)
+    Script().walk(speed=10).jump(height=50).move_cell(section, direction=90).wait(2).remove()
+
+    @stage.every(seconds=3)
+    def periodic(event: Event[Stage, float]) -> None:
+        assert_type(event.data, float)
+
+    @hero.on_hit
+    def impact(event: Event[Sprite, CastHit]) -> None:
+        assert_type(event.data.target, CastTarget)
+
+    @hero.on_clone_start
+    def clone_start(event: Event[Sprite, None]) -> None:
+        assert_type(event.target, Sprite)
+
+    @hero.on_clone_end
+    def clone_end(event: Event[Sprite, None]) -> None:
+        assert_type(event.target, Sprite)
+
+    assert_type(person.direction_to(hero), float)
+    assert_type(hero.direction_to((100, 50)), float)
     assert_type(hero.bounds.distance_to(person.bounds), float)
     hero.body.travel_along(speed=120, direction=90)
     assert_type(hero.body.can_travel(distance=10, ignore=(person,)), bool)

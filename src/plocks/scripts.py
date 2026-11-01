@@ -18,12 +18,15 @@ from ._commands import (
     _GlideTo,
     _GoToRandom,
     _Images,
+    _Jump,
     _Move,
+    _MoveCell,
     _MoveTo,
     _Plan,
     _PlaySound,
     _PointTowards,
     _Poses,
+    _Remove,
     _Say,
     _Send,
     _SetImage,
@@ -33,6 +36,7 @@ from ._commands import (
     _TurnLeft,
     _TurnRight,
     _Wait,
+    _Walk,
     _When,
 )
 from .audio import Sound
@@ -44,6 +48,7 @@ from .motion import Ease
 from .puppets import Puppet
 from .rigging import Pose
 from .sprites import Sprite
+from .tiling import TileMap
 
 _T = TypeVar("_T", bound=Actor)
 _D = TypeVar("_D")
@@ -184,6 +189,26 @@ class Script(Generic[_T]):  # noqa: UP046 -- explicit invariance protects editab
     def wait(self, seconds: float) -> Self:
         """Wait simulated seconds; pause freezes progress and zero yields one tick. Records a command; schedules nothing."""
         self._commands.append(_Wait(seconds))
+        return self
+
+    def move_cell(self, world: TileMap, *, direction: float, seconds: float = 0.2) -> Self:
+        """Record one centered cardinal step; blocked or already-moving steps do nothing."""
+        self._commands.append(_MoveCell(world, direction, seconds))
+        return self
+
+    def walk(self, *, speed: float) -> Self:
+        """Set horizontal body speed when reached, preserving jumping/falling."""
+        self._commands.append(_Walk(speed))
+        return self
+
+    def jump(self, *, height: float) -> Self:
+        """Launch a grounded dynamic body when reached; height is ballistic pixels."""
+        self._commands.append(_Jump(height))
+        return self
+
+    def remove(self) -> Self:
+        """Remove the actor when reached; no later commands on that actor run."""
+        self._commands.append(_Remove())
         return self
 
     def turn_left(self, degrees: float) -> Self:

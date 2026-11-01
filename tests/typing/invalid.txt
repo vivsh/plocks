@@ -302,3 +302,33 @@ stage.physics.shape_cast(hero.image, start=(0, 0), end=(10, 0))  # error
 cast_hit = stage.physics.raycast((0, 0), (100, 0))
 if cast_hit is not None:
     cast_hit.distance = 1  # error
+
+hero.direction_to("right")  # error
+person.direction_to(90)  # error
+
+hero.body.walk(speed="fast")  # error
+hero.body.jump(height="high")  # error
+hero.body.projectile = "yes"  # error
+hero.body.collision_group = 4  # error
+hero.body.collides_with = {4}  # error
+hero.can_see("enemy")  # error
+hero.can_see(person, distance="near")  # error
+hero.clone_count = 1  # error
+stage.clone_count = 1  # error
+hero.remove_after(seconds="later")  # error
+hero.move_cell("map", direction=90)  # error
+stage.every(seconds="often")  # error
+Script().walk(speed="fast")  # error
+Script().jump(height="high")  # error
+
+@hero.on_clone_end  # error
+def bad_clone_end(event: Event[Sprite, None]) -> Action:
+    return hero.wait(1)
+
+@hero.on_hit  # error
+def bad_hit(event: Event[Sprite, int]) -> None:
+    pass
+
+@stage.every(seconds=1)  # error
+def bad_timer(event: Event[Stage, str]) -> None:
+    pass

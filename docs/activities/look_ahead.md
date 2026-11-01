@@ -50,6 +50,15 @@ if hit is not None and hit.target is hero:
     print("I see you!")
 ```
 
+For the usual range-and-walls check, there is also a shortcut:
+
+```python
+if enemy.can_see(hero, distance=300):
+    print("I see you!")
+```
+
+It ignores the observer automatically and checks between actor positions.
+
 A ray is a thin line. It returns the first hit, or `None` for no hit. Rays can start
 inside an object: that is a zero-distance hit, so ignore the starting actor yourself.
 Body casts already ignore their own actor. Sensors are skipped by all these queries.

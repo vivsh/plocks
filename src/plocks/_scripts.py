@@ -12,6 +12,7 @@ from ._operations import (
     _AwaitAction,
     _AwaitAll,
     _BubbleRun,
+    _CellMove,
     _Context,
     _deadline,
     _Delay,
@@ -268,7 +269,7 @@ def _conflicts(
         for fiber in tuple(_fibers(root)):
             request = fiber.waiting
             if (
-                not isinstance(request, (_Glide, _ImageRun, _PoseRun, _BubbleRun))
+                not isinstance(request, (_Glide, _CellMove, _ImageRun, _PoseRun, _BubbleRun))
                 or request.actor is not actor
             ):
                 continue
@@ -276,7 +277,8 @@ def _conflicts(
             if deadline is not None and deadline <= stage.time + 1e-12:
                 continue
             overlap = (
-                (bubble and isinstance(request, _BubbleRun))
+                (isinstance(request, _CellMove) and (x or y))
+                or (bubble and isinstance(request, _BubbleRun))
                 or (visual and isinstance(request, (_ImageRun, _PoseRun)))
                 or (
                     isinstance(request, _Glide)
@@ -296,7 +298,7 @@ def _detach(stage: Stage, actor: Sprite | Puppet) -> None:
         for root in stage._actions
         if any(action._actor is actor for action in _walk(root))
         or any(
-            isinstance(f.waiting, (_Glide, _ImageRun, _PoseRun, _BubbleRun))
+            isinstance(f.waiting, (_Glide, _CellMove, _ImageRun, _PoseRun, _BubbleRun))
             and f.waiting.actor is actor
             for f in _fibers(root)
         )
@@ -332,7 +334,13 @@ def _detach(stage: Stage, actor: Sprite | Puppet) -> None:
 def _sample(stage: Stage) -> None:
     for root in tuple(stage._actions):
         for fiber in _fibers(root):
-            if isinstance(fiber.waiting, _Glide):
+            if isinstance(fiber.waiting, _CellMove):
+                from ._cell_motion import _sample as sample_cell
+
+                if not sample_cell(fiber.waiting, stage.time):
+                    _cancel(stage, root)
+                    break
+            elif isinstance(fiber.waiting, _Glide):
                 _sample_glide(fiber.waiting, stage.time)
 
     from ._physics import _sync_shapes
@@ -410,6 +418,12 @@ def _step(stage: Stage) -> None:
 
 def _ready(stage: Stage, root: Action, request: _Request, at: float) -> float | None:
     deadline = _deadline(request)
+    if isinstance(request, _CellMove):
+        from ._cell_motion import _sample as sample_cell
+
+        if not sample_cell(request, stage.time):
+            _cancel(stage, root)
+            return None
     if deadline is not None:
         if isinstance(request, _Glide):
             _sample_glide(request, stage.time)
@@ -482,7 +496,9 @@ def _advance(stage: Stage, root: Action, fiber: _Fiber, at: float) -> float | No
         if root.done:
             _freeze(
                 yielded
-                if isinstance(yielded, (_Glide, _ImageRun, _PoseRun, _BubbleRun, _SoundWait))
+                if isinstance(
+                    yielded, (_Glide, _CellMove, _ImageRun, _PoseRun, _BubbleRun, _SoundWait)
+                )
                 else None,
                 stage.time,
                 cancel=True,
@@ -496,6 +512,7 @@ def _advance(stage: Stage, root: Action, fiber: _Fiber, at: float) -> float | No
                 _AwaitAll,
                 _Delay,
                 _Glide,
+                _CellMove,
                 _ForceRun,
                 _TorqueRun,
                 _ImageRun,
@@ -523,7 +540,7 @@ def _stop_actor(actor: Sprite | Puppet, action: Action | None) -> None:
     for root in tuple(stage._actions):
         owned = any(a._actor is actor and (action is None or a is action) for a in _walk(root))
         operating = action is None and any(
-            isinstance(f.waiting, (_Glide, _ImageRun, _PoseRun, _BubbleRun))
+            isinstance(f.waiting, (_Glide, _CellMove, _ImageRun, _PoseRun, _BubbleRun))
             and f.waiting.actor is actor
             for f in _fibers(root)
         )

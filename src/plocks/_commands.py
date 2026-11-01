@@ -33,6 +33,7 @@ from .sprites import Sprite
 
 if TYPE_CHECKING:
     from .stage import Stage
+    from .tiling import TileMap
 
 type Actor = Sprite | Puppet
 """The two supported behavior targets; not a runtime base class."""
@@ -652,3 +653,61 @@ class _Torque(_Command[Actor]):
             await _suspend(_TorqueRun(self.body, self.amount, at, seconds))
         else:
             await _suspend(_Delay(stage.time + 1 / stage.tick_rate))
+
+
+@dataclass(frozen=True, slots=True)
+class _Walk(_Command[Actor]):
+    speed: float
+
+    def __post_init__(self) -> None:
+        _number(self.speed, "speed")
+
+    async def run(self, actor: Actor) -> None:
+        from ._combat import _walk
+
+        _, root, _, _ = await _context()
+        _walk(actor.body, self.speed, root)
+
+
+@dataclass(frozen=True, slots=True)
+class _Jump(_Command[Actor]):
+    height: float
+
+    def __post_init__(self) -> None:
+        _positive(self.height, "height")
+
+    async def run(self, actor: Actor) -> None:
+        from ._combat import _jump
+
+        _, root, _, _ = await _context()
+        _jump(actor.body, self.height, root)
+
+
+@dataclass(frozen=True, slots=True)
+class _Remove(_Command[Actor]):
+    async def run(self, actor: Actor) -> None:
+        await _context()
+        actor.remove()
+
+
+@dataclass(frozen=True, slots=True)
+class _MoveCell(_Command[Actor]):
+    world: TileMap
+    direction: float
+    seconds: float
+
+    def __post_init__(self) -> None:
+        from .tiling import TileMap
+
+        if not isinstance(self.world, TileMap):
+            raise TypeError("move_cell requires a TileMap")
+        direction = _number(self.direction, "direction") % 360
+        if direction not in (0, 90, 180, 270):
+            raise ValueError("Cell direction must be 0, 90, 180 or 270 degrees")
+        object.__setattr__(self, "direction", direction)
+        _positive(self.seconds, "seconds")
+
+    async def run(self, actor: Actor) -> None:
+        from ._cell_motion import _move_cell
+
+        await _move_cell(actor, self)

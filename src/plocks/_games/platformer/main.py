@@ -98,7 +98,7 @@ def respawn() -> None:
 @hero.on_button_down(GamepadButton.A, gamepad=player)
 def jump(event: Event[Sprite, GamepadPress]) -> None:
     if hero.body.grounded and not won:
-        hero.body.impulse(y=440)
+        hero.body.jump(height=108)
 
 
 def reset() -> None:
@@ -128,8 +128,7 @@ def update(event: Event[Stage, float]) -> None:
     global spawn, saved, won, falls
     # Change sideways speed, but keep the up/down speed that physics calculated.
     speed_x = player.left_stick[0] * 175 if not won else 0
-    vertical_speed = hero.body.velocity[1]
-    hero.body.velocity = (speed_x, vertical_speed)
+    hero.body.walk(speed=speed_x)
     if not saved and hero.touching(checkpoint):
         spawn = (180, 62)
         saved = True

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from .errors import PhysicsError
 from .geometry import Point, _Placement, _point, _positive
 from .physics import Body, BodyType, Box, Circle, Physics, _native
+from .queries import CastHit
 
 if TYPE_CHECKING:
     import pymunk
@@ -121,6 +122,10 @@ def _can_fit(body: Body, definition: Box | Circle) -> bool:
             other = hit.shape
             if other is None or other.body is native or other.sensor:
                 continue
+            from ._combat import _pair
+
+            if other.body is None or not _pair(body._world, native, other.body):
+                continue
             if other.collision_type == _ONE_WAY:
                 top = other.cache_bb().top
                 if current_bottom < top - 1e-6:
@@ -193,6 +198,7 @@ def _attach(world: Physics, actor: Actor) -> None:
     body._actor, body._world, body._native, body._shape = actor, world, native, definition
     body._auto_shape = True
     body._drag = (0, 0)
+    body._collision_group, body._collides_with, body._projectile = "default", None, False
     world._bodies.append(body)
     actor._transform = body
 
@@ -288,6 +294,10 @@ def _contacts(body: Body) -> list[tuple[pymunk.Body, Point, Point]]:
         a, b = arbiter.shapes
         mine, other = (a, b) if a.body is native else (b, a)
         if mine.sensor or other.sensor:
+            return
+        from ._combat import _pair
+
+        if other.body is None or not _pair(body._world, native, other.body):
             return
         fresh = mine.shapes_collide(other)
         if not fresh.points:
@@ -466,14 +476,14 @@ def _substeps(world: Physics, dt: float, requests: tuple[_Request | None, ...]) 
     return max(base, ceil(required))
 
 
-def _integrate(stage: Stage, dt: float) -> None:
+def _integrate(stage: Stage, dt: float) -> tuple[tuple[Body, CastHit], ...]:
     from ._operations import _ForceRun, _Glide, _TorqueRun
     from ._scripts import _fibers
     from .motion import _ease
 
     world = stage._physics
     if world is None:
-        return
+        return ()
     _sync_shapes(stage)
     requests = tuple(f.waiting for root in tuple(stage._actions) for f in _fibers(root))
     for request in requests:
@@ -497,7 +507,10 @@ def _integrate(stage: Stage, dt: float) -> None:
     # Adapt native precision without changing the simulation clock or action deadlines.
     count = _substeps(world, dt, requests)
     substep = dt / count
+    impacts: list[tuple[Body, CastHit]] = []
+    projectiles = any(body._projectile for body in world._bodies)
     for index in range(count):
+        starts = {body: body._actor.position for body in world._bodies} if projectiles else {}
         start = stage.time + index * substep
         for request in requests:
             if not isinstance(request, (_ForceRun, _TorqueRun)):
@@ -535,6 +548,10 @@ def _integrate(stage: Stage, dt: float) -> None:
                 max(0, vy - dy * substep) if vy > 0 else min(0, vy + dy * substep),
             )
         _space(world).step(substep)
+        if starts:
+            from ._projectiles import _hits
+
+            impacts.extend(_hits(world, starts))
         if world._connections:
             for body in world._bodies:
                 native = _native(body)
@@ -550,3 +567,5 @@ def _integrate(stage: Stage, dt: float) -> None:
                     raise PhysicsError(
                         "Physical connection motion became nonfinite; reduce the workload"
                     )
+
+    return tuple(impacts)
