@@ -51,6 +51,39 @@ That captures its rectangle now; moving the map later doesn't move the watched a
 When a camera follows your hero near the screen center, level bounds can be more
 useful than screen edges. [Learn about the camera](camera.md).
 
+## Stay inside your level
+
+Set this once after adding your hero:
+
+```python
+hero.keep_inside(world.bounds)  # world is your TileMap.
+```
+
+Now held arrows, movement scripts and physics all stay inside that rectangle.
+Your hero can slide along a side. A physical hero can stand on the bottom and
+jump again. Puppets use exactly the same method.
+
+```python
+hero.keep_inside(arena)        # Or choose your own Bounds.
+hero.keep_inside(None)         # Turn the limit off.
+```
+
+The rectangle stays in the world while the camera moves. Passing
+`stage.world_bounds` captures the visible rectangle **now**; it does not follow
+later camera movement. To use a new rectangle, call `keep_inside` again.
+A glide keeps its timing and finishes against the boundary; it doesn't cancel
+its script. Removing and re-adding a character keeps the rule, and clones copy it.
+
+With physics, the limit uses the **body's shape**. Without physics, it uses the
+whole transformed picture. A small custom body can let the picture stick out.
+The character must fit: making its picture or body too large raises an error.
+Connected machines should already be inside before you enable the limit.
+
+`on_edge(...)` tells you **when** a side is reached. `keep_inside(...)` prevents
+leaving. Edge events still check the picture, and private physics boundaries do
+not produce `on_hit` events or appear in ray casts. Use real wall sprites when
+you want walls with their own hit events, friction or bounce.
+
 ## Ask a question right now
 
 ```python

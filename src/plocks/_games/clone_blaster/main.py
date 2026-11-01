@@ -38,6 +38,8 @@ stage.add(world)
 hero = Sprite(Image(assets / "hero.png").resized(40, 56), x=-260, y=-116)
 stage.add(hero)
 hero.body.rotation_locked = True
+# Keep the hero in the level, even while a movement control stays held.
+hero.keep_inside(world.bounds)
 hero.rotation_style = RotationStyle.LEFT_RIGHT
 hero.body.collision_group = "player"
 

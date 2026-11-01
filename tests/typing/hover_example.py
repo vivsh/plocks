@@ -54,6 +54,10 @@ def main() -> None:
     stage.add(person)
     assert_type(section.bounds.edges_at((0, 0)), frozenset[Edge])
     assert_type(section.bounds.edges_at(hero.position), frozenset[Edge])
+    hero.keep_inside(section.bounds)
+    person.keep_inside(stage.world_bounds)
+    hero.keep_inside(None)
+    person.keep_inside(None)
     assert_type(hero.touching_edge(), bool)
     assert_type(person.touching_edge(section.bounds), bool)
 

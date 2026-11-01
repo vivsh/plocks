@@ -24,7 +24,7 @@ from .gamepads import Gamepad, GamepadButton, GamepadInput, GamepadLayout, _new_
 from .geometry import Bounds, Color, Point, _integer, _number, _point
 from .input import Key, Mouse, MouseButton
 from .messages import Message
-from .physics import Physics
+from .physics import Body, Physics
 from .puppets import Puppet
 from .scripts import Script, _message_arguments, _snapshot
 from .sprites import Sprite
@@ -442,6 +442,10 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
                     _terrain(self._physics, obj)
                 else:
                     _attach(self._physics, obj)
+            if isinstance(obj, (Sprite, Puppet)) and not isinstance(obj._transform, Body):
+                from ._containment import _enforce
+
+                _enforce(obj)
             obj._stage = self
         if isinstance(obj, (Button, Label, ProgressBar, Panel)):
             if isinstance(obj, (Button, Label, ProgressBar)) and obj._panel is not None:

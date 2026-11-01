@@ -228,6 +228,7 @@ class Body:
     __slots__ = (
         "_actor",
         "_auto_shape",
+        "_boundary_native",
         "_collides_with",
         "_collision_group",
         "_drag",
@@ -240,6 +241,7 @@ class Body:
     _world: Physics
     _native: pymunk.Body | None
     _shape: Box | Circle
+    _boundary_native: pymunk.Body | None
     _auto_shape: bool
     _drag: Point
     _collision_group: str

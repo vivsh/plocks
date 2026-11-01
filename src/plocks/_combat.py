@@ -95,6 +95,11 @@ def _wake(world: Physics) -> None:
 
 def _pair(world: Physics, first: pymunk.Body, second: pymunk.Body) -> bool:
     """Borrow named rules; terrain has no Python collision-configuration owner."""
+    from ._containment import _pair as boundary_pair
+
+    boundary = boundary_pair(world, first, second)
+    if boundary is not None:
+        return boundary
     a = next((body for body in world._bodies if body._native is first), None)
     b = next((body for body in world._bodies if body._native is second), None)
     ag, bg = (
@@ -108,6 +113,7 @@ def _pair(world: Physics, first: pymunk.Body, second: pymunk.Body) -> bool:
 
 def _install_filter(world: Physics) -> None:
     """Install one stateless pair test, preserving native one-way begin semantics."""
+    from ._containment import _BOUNDARY
     from ._physics import _ONE_WAY, _space
 
     def accept(arbiter: pymunk.Arbiter, space: pymunk.Space, data: object) -> bool:
@@ -117,3 +123,5 @@ def _install_filter(world: Physics) -> None:
     space = _space(world)
     space.add_default_collision_handler().pre_solve = accept
     space.add_collision_handler(_ONE_WAY, 0).pre_solve = accept
+    space.add_collision_handler(_BOUNDARY, 0).pre_solve = accept
+    space.add_collision_handler(_BOUNDARY, _ONE_WAY).pre_solve = accept

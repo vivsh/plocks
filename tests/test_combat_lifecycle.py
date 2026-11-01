@@ -291,6 +291,7 @@ def test_exact_added_ownership() -> None:
         "_native",
         "_shape",
         "_auto_shape",
+        "_boundary_native",
         "_drag",
         "_collision_group",
         "_collides_with",

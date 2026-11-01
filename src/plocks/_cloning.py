@@ -159,6 +159,7 @@ def _clone(source: Actor) -> Actor:
     try:
         stage.add(target)
         _copy_physics(source, target)
+        target.keep_inside(source._movement_bounds)
         _inherit(stage, source, target)
         stage._pending.append(_CloneStart(source, target))
     except BaseException as error:

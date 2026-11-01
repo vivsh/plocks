@@ -230,6 +230,7 @@ def test_actual_field_inventory_has_no_parallel_lifecycle(game: tuple[Stage, Spr
         "_shape",
         "_drag",
         "_auto_shape",
+        "_boundary_native",
         "_collision_group",
         "_collides_with",
         "_projectile",

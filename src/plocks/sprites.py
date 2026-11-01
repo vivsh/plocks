@@ -69,6 +69,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         "_clone_source",
         "_effects",
         "_layer",
+        "_movement_bounds",
         "_one_way",
         "_rotation_style",
         "_scale",
@@ -140,6 +141,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         self._visual: Image | _ImageRun = _image(source)
         if not isinstance(body_type, BodyType):
             raise TypeError("Use a BodyType value")
+        self._movement_bounds: Bounds | None = None
         self._stage: Stage | None = None
         self._rotation_style = RotationStyle.ALL_AROUND
         self._clone_source: Sprite | Puppet | None = None
@@ -354,11 +356,16 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
     @scale.setter
     def scale(self, value: float) -> None:
         value = _positive(value, "scale")
+        from ._containment import _changed
+        from .motion import _set_position
+
+        position = _changed(self, scale=value)
         if isinstance(self._transform, Body):
             from ._physics import _replace_shape
 
             _replace_shape(self._transform, self._transform.shape, value)
         self._scale = value
+        _set_position(self, position)
 
     @property
     def visible(self) -> bool:
@@ -389,6 +396,14 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
     @image.setter
     def image(self, value: ImageSource) -> None:
         image = _image(value)
+        from ._containment import _changed, _enforce
+        from ._physics import _image_shape
+
+        if isinstance(self._transform, Body):
+            if self.body._auto_shape:
+                _changed(self, definition=_image_shape(image))
+        else:
+            _changed(self, image=image)
         _conflicts(self, False, False, visual=True)
         previous = self._visual
         self._visual = image
@@ -396,6 +411,7 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
             from ._physics import _sync_shape
 
             _sync_shape(self)
+            _enforce(self)
         except BaseException:
             self._visual = previous
             raise
@@ -485,6 +501,21 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
         if isinstance(other, TileMap):
             return bool(other.tiles_touching(self.bounds, solid_only=True))
         return self.bounds.intersects(other.bounds)
+
+    def keep_inside(self, bounds: Bounds | None) -> None:
+        """Keep this actor inside fixed world bounds until disabled with None.
+
+        Works with held controls, actions and physics without a drawing/update
+        callback. Physics contains the collider; otherwise the transformed image
+        bounds are used. Outward speed stops, while sliding and jumping continue.
+        The rule survives removal and is copied by clone(). Camera movement does
+        not move it. Raises ValueError if the actor cannot fit, or PhysicsError
+        if initial correction would displace a connection or enter solid geometry.
+        Example: hero.keep_inside(world.bounds).
+        """
+        from ._containment import _configure
+
+        _configure(self, bounds)
 
     def touching_edge(self, bounds: Bounds | None = None) -> bool:
         """Whether this actor reaches or crosses a rectangle's sides; changes nothing.
@@ -1240,4 +1271,9 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
     def rotation_style(self, value: RotationStyle) -> None:
         if not isinstance(value, RotationStyle):
             raise TypeError("Use a RotationStyle value")
+        from ._containment import _changed
+        from .motion import _set_position
+
+        position = _changed(self, style=value)
         self._rotation_style = value
+        _set_position(self, position)

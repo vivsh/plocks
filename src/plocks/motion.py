@@ -164,10 +164,12 @@ def _body_direction(body: Body) -> float:
 
 
 def _set_position(actor: Sprite | Puppet, position: Point) -> None:
+    from ._containment import _position
     from ._physics import _ONE_WAY, _one_way, _space
     from .geometry import _Placement
     from .physics import Body, _native
 
+    position = _position(actor, position)
     if isinstance(actor._transform, Body):
         native = _native(actor._transform)
         space = _space(actor._transform._world)
@@ -188,6 +190,9 @@ def _set_position(actor: Sprite | Puppet, position: Point) -> None:
             space.remove(*shapes)
             space.add(*shapes)
         native.activate()
+        from ._containment import _enforce
+
+        _enforce(actor)
     else:
         actor._transform = _Placement(position, actor.direction, actor.body_type)
 
@@ -201,10 +206,12 @@ def _set_direction(actor: Sprite | Puppet, direction: float) -> None:
     if _one_way(actor) and direction % 360 != 90:
         raise PhysicsError("One-way platforms must stay horizontal (direction=90)")
 
+    from ._containment import _changed
     from ._physics import _space
     from .geometry import _Placement
     from .physics import Body, _native
 
+    position = _changed(actor, direction=direction)
     if isinstance(actor._transform, Body):
         native = _native(actor._transform)
         native.angle = radians(90 - direction)
@@ -212,3 +219,4 @@ def _set_direction(actor: Sprite | Puppet, direction: float) -> None:
         native.activate()
     else:
         actor._transform = _Placement(actor.position, direction, actor.body_type)
+    _set_position(actor, position)

@@ -497,6 +497,9 @@ class _SetPartImage(_Command[Puppet]):
             from ._physics import _sync_shape
 
             _sync_shape(actor)
+            from ._containment import _enforce
+
+            _enforce(actor)
         except BaseException:
             actor._parts[self.joint] = previous
             raise

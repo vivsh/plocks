@@ -350,9 +350,9 @@ def _sample(stage: Stage) -> None:
             elif isinstance(fiber.waiting, _Glide):
                 _sample_glide(fiber.waiting, stage.time)
 
-    from ._physics import _sync_shapes
+    from ._containment import _sample as contain
 
-    _sync_shapes(stage)
+    contain(stage)
 
 
 def _deliver(stage: Stage) -> None:
@@ -418,9 +418,9 @@ def _step(stage: Stage) -> None:
                 error.add_note(f"Action cleanup also failed: {cleanup!r}")
             raise
 
-    from ._physics import _sync_shapes
+    from ._containment import _sample as contain
 
-    _sync_shapes(stage)
+    contain(stage)
 
 
 def _ready(stage: Stage, root: Action, request: _Request, at: float) -> float | None:

@@ -112,7 +112,21 @@ def _can_fit(body: Body, definition: Box | Circle) -> bool:
     """Query temporary native geometry; never attach it to the live world."""
     import pymunk
 
+    from ._containment import _clip, _footprint
+
     native = _native(body)
+    area = body._actor._movement_bounds
+    if area is not None:
+        try:
+            position = _clip(
+                area,
+                _footprint(body._actor, position=(0, 0), definition=definition),
+                body._actor.position,
+            )
+        except ValueError:
+            return False
+        if hypot(position[0] - body._actor.x, position[1] - body._actor.y) > 1e-6:
+            return False
     probe = pymunk.Body(body_type=pymunk.Body.KINEMATIC)
     probe.position, probe.angle = native.position, native.angle
     candidate = _shape(probe, definition, body._actor.scale)
@@ -197,15 +211,26 @@ def _attach(world: Physics, actor: Actor) -> None:
     _space(world).add(native, shape)
     body = object.__new__(Body)
     body._actor, body._world, body._native, body._shape = actor, world, native, definition
+    body._boundary_native = None
     body._auto_shape = True
     body._drag = (0, 0)
     body._collision_group, body._collides_with, body._projectile = "default", None, False
     world._bodies.append(body)
     actor._transform = body
+    try:
+        from ._containment import _configure
+
+        _configure(actor, actor._movement_bounds)
+    except BaseException:
+        _retire(body)
+        raise
 
 
 def _replace_shape(body: Body, definition: Box | Circle, scale: float) -> None:
+    from ._containment import _changed
+
     native = _native(body)
+    position = _changed(body._actor, definition=definition, scale=scale)
     moment = (
         inf
         if body.rotation_locked or body.body_type is not BodyType.DYNAMIC
@@ -247,6 +272,7 @@ def _replace_shape(body: Body, definition: Box | Circle, scale: float) -> None:
     native.center_of_gravity = (definition.center[0] * scale, definition.center[1] * scale)
     native.moment = moment
     body._shape = definition
+    native.position = position
     space.reindex_shapes_for_body(native)
     native.activate()
 
@@ -257,7 +283,9 @@ def _retire(body: Body) -> None:
     native = body._native
     actor = body._actor
     from ._connections import _remove_actor
+    from ._containment import _release
 
+    _release(body)
     _remove_actor(body._world, actor)
     placement = _Placement(
         (float(native.position.x), float(native.position.y)),
@@ -455,6 +483,7 @@ def _substeps(world: Physics, dt: float, requests: tuple[_Request | None, ...]) 
         not world._connections
         and not any(t.tilemap.one_way for t in world._terrain)
         and not any(_one_way(body._actor) for body in world._bodies)
+        and not any(body._boundary_native is not None for body in world._bodies)
     ):
         return 4
     extent, speed = inf, 0.0
@@ -550,6 +579,10 @@ def _integrate(stage: Stage, dt: float) -> tuple[tuple[Actor, Collision], ...]:
                 max(0, vy - dy * substep) if vy > 0 else min(0, vy + dy * substep),
             )
         _space(world).step(substep)
+        from ._containment import _enforce
+
+        for body in world._bodies:
+            _enforce(body._actor, stepping=True)
         from ._collisions import _sample as sample_contacts
         from ._projectiles import _hits
 

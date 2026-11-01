@@ -372,3 +372,7 @@ world.bounds.edges_at("center")  # error
 world.bounds.edges_at((1, "up"))  # error
 world.bounds.edges_at((1, 2, 3))  # error
 world.bounds.edges_at((1, 2)).add(Edge.LEFT)  # error
+
+hero.keep_inside("viewport")  # error
+person.keep_inside((0, 0, 100, 100))  # error
+hero.keep_inside(world)  # error
