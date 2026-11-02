@@ -658,6 +658,35 @@ class Sprite(Generic[_State_co]):  # noqa: UP046 -- default state type supports 
 
         return _bind(self, other, script, True, when_busy)
 
+    def every(
+        self, *, seconds: float, when_busy: WhenBusy = WhenBusy.IGNORE
+    ) -> Callable[[Callable[[Event[Self, float]], _R]], Callable[[Event[Self, float]], _R]]:
+        """Call a function every positive simulated interval, starting after one interval.
+
+        Add this actor first. event.target is the actor, event.source is its stage,
+        and event.data is the configured interval in seconds. Pause freezes timing.
+        Return an Action or compatible Script to use busy ignore/restart behavior.
+        Clones inherit independent timers; removal stops them and re-adding starts
+        fresh. stop() cancels current behavior but keeps future periodic calls.
+        Raises StageError on detachment/closure or registration/execution limits.
+        """
+        from ._timers import _interval, _register
+        from .errors import StageError
+        from .stage import _attached, _callback_handler
+
+        stage = _attached(self)
+        seconds = _interval(seconds, when_busy)
+
+        def decorate(
+            callback: Callable[[Event[Self, float]], _R],
+        ) -> Callable[[Event[Self, float]], _R]:
+            if _attached(self) is not stage:
+                raise StageError("The actor changed stages before periodic registration")
+            _register(stage, _callback_handler(callback, self, when_busy), seconds)
+            return callback
+
+        return decorate
+
     def on_update(
         self, callback: Callable[[Event[Self, float]], None]
     ) -> Callable[[Event[Self, float]], None]:

@@ -137,8 +137,10 @@ def _admit(
 
 
 def _adopt(stage: Stage, fiber: _Fiber, before: tuple[Action, ...]) -> None:
+    if any(timer.action is not None and timer.action._state is fiber for timer in stage._timers):
+        return
     for child in tuple(stage._actions):
-        if child not in before:
+        if child not in before and not any(timer.action is child for timer in stage._timers):
             stage._actions.remove(child)
             child._parent = fiber
             fiber.children.append(child)
@@ -321,6 +323,12 @@ def _detach(stage: Stage, actor: Sprite | Puppet) -> None:
     actor._stage = None
     errors: list[BaseException] = []
     try:
+        from ._timers import _detach as detach_timers
+
+        try:
+            detach_timers(stage, actor)
+        except BaseException as error:  # noqa: BLE001 -- still retire behaviors and native resources
+            errors.append(error)
         for root in affected:
             try:
                 _cancel(stage, root)

@@ -376,3 +376,30 @@ world.bounds.edges_at((1, 2)).add(Edge.LEFT)  # error
 hero.keep_inside("viewport")  # error
 person.keep_inside((0, 0, 100, 100))  # error
 hero.keep_inside(world)  # error
+
+hero.every(seconds="often")  # error
+person.every(seconds=1, when_busy="ignore")  # error
+
+@hero.every(seconds=1)  # error
+def bad_sprite_periodic(event: Event[Stage, float]) -> None:
+    pass
+
+@person.every(seconds=1)  # error
+def bad_puppet_periodic(event: Event[Puppet, str]) -> None:
+    pass
+
+@hero.every(seconds=1)  # error
+async def async_periodic(event: Event[Sprite, float]) -> None:
+    pass
+
+@hero.every(seconds=1)  # error
+def puppet_script_periodic(event: Event[Sprite, float]) -> Script[Puppet]:
+    return Script(Puppet)
+
+@person.every(seconds=1)  # error
+def sprite_script_periodic(event: Event[Puppet, float]) -> Script[Sprite]:
+    return Script(Sprite)
+
+@hero.every(seconds=1)  # error
+def wrong_periodic_return(event: Event[Sprite, float]) -> int:
+    return 1

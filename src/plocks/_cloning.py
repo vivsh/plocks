@@ -114,6 +114,9 @@ def _inherit(stage: Stage, source: Actor, target: Actor) -> None:
     from ._touches import _inherit as inherit_touches
 
     inherit_touches(stage, source, target, inherited)
+    from ._timers import _inherit as inherit_timers
+
+    inherit_timers(stage, source, inherited)
     from ._edges import _inherit as inherit_edges
 
     inherit_edges(stage, source, target, inherited)
@@ -206,6 +209,9 @@ def _forget(stage: Stage, actor: Actor) -> None:
     from ._collisions import _prune as prune_contacts
 
     prune_contacts(stage, actor)
+    from ._timers import _forget as forget_timers
+
+    forget_timers(stage, actor)
     from ._edges import _detach as detach_edges
 
     detach_edges(stage, actor)

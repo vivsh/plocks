@@ -39,6 +39,7 @@ _R = TypeVar("_R", bound=_Result)
 type _Draw = Callable[[Canvas], None]
 if TYPE_CHECKING:
     from ._edges import _EdgeWatch
+    from ._timers import _Timer
     from ._touches import _TouchWatch
     from .queries import CastTarget
 
@@ -103,6 +104,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         "_task",
         "_tick",
         "_tick_rate",
+        "_timers",
         "_touches",
         "_ui_focus",
         "_ui_theme",
@@ -173,6 +175,7 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         self._gamepad_up_handlers: dict[tuple[Gamepad, GamepadButton], list[_Handler]] = {}
         self._actions: list[Action] = []
         self._starts: list[_Handler] = []
+        self._timers: list[_Timer] = []
         self._clone_handlers: list[_Handler] = []
         self._clone_end_handlers: list[_Handler] = []
         self._hit_handlers: list[_Handler] = []
@@ -435,18 +438,14 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
                 from ._cloning import _check_quota
 
                 _check_quota(self)
-            if self._physics is not None:
-                from ._physics import _attach, _terrain
+            if isinstance(obj, (Sprite, Puppet)):
+                _attach_actor(self, obj)
+            else:
+                if self._physics is not None:
+                    from ._physics import _terrain
 
-                if isinstance(obj, TileMap):
                     _terrain(self._physics, obj)
-                else:
-                    _attach(self._physics, obj)
-            if isinstance(obj, (Sprite, Puppet)) and not isinstance(obj._transform, Body):
-                from ._containment import _enforce
-
-                _enforce(obj)
-            obj._stage = self
+                obj._stage = self
         if isinstance(obj, (Button, Label, ProgressBar, Panel)):
             if isinstance(obj, (Button, Label, ProgressBar)) and obj._panel is not None:
                 raise StageError("Add the containing panel instead of its child")
@@ -905,21 +904,16 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
         an Action uses normal busy ignore/restart rules. Missed sub-tick repeats
         are skipped; callbacks run at most once per tick. Stage closure stops it.
         """
-        from ._timers import _repeat_event
-        from .geometry import _positive
+        from ._timers import _interval, _register
 
         _open(self)
-        seconds = _positive(seconds, "seconds")
-        if not isinstance(when_busy, WhenBusy):
-            raise TypeError("Use WhenBusy.IGNORE or RESTART")
+        seconds = _interval(seconds, when_busy)
 
         def decorate(
             callback: Callable[[Event[Self, float]], _R],
         ) -> Callable[[Event[Self, float]], _R]:
             _open(self)
-            handler = _callback_handler(callback, None, when_busy)
-            deadline = _number(self.time + seconds, "repeat deadline")
-            _admit(self, _repeat_event(self, seconds, handler, deadline), None)
+            _register(self, _callback_handler(callback, None, when_busy), seconds)
             return callback
 
         return decorate
@@ -1080,6 +1074,36 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
             from ._runtime import start
 
             start(self)
+
+
+def _attach_actor(stage: Stage, actor: Actor) -> None:
+    """Acquire a body and restart retained periodic bindings as one add operation."""
+    from ._containment import _enforce
+    from ._physics import _attach, _retire
+    from ._timers import _check_attach, _detach, _resume
+
+    _check_attach(stage, actor)
+    previous = actor._transform
+    try:
+        if stage._physics is not None:
+            _attach(stage._physics, actor)
+        if not isinstance(actor._transform, Body):
+            _enforce(actor)
+        actor._stage = stage
+        _resume(stage, actor)
+    except BaseException as error:
+        actor._stage = None
+        try:
+            _detach(stage, actor)
+        except BaseException as cleanup:  # noqa: BLE001 -- preserve failed admission, finish native cleanup
+            error.add_note(f"Timer attachment rollback also failed: {cleanup!r}")
+        try:
+            if isinstance(actor._transform, Body):
+                _retire(actor._transform)
+        except BaseException as cleanup:  # noqa: BLE001 -- always restore detached placement
+            error.add_note(f"Physics attachment rollback also failed: {cleanup!r}")
+        actor._transform = previous
+        raise
 
 
 def _open(stage: Stage) -> None:

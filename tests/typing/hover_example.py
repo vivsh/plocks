@@ -1,5 +1,6 @@
 """Positive typing and editor hover inspection surface for the synchronous API."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import assert_type
@@ -92,6 +93,20 @@ def main() -> None:
     @stage.every(seconds=3)
     def periodic(event: Event[Stage, float]) -> None:
         assert_type(event.data, float)
+
+    @hero.every(seconds=2)
+    def sprite_periodic(event: Event[Sprite[None], float]) -> Action:
+        assert_type(event.target, Sprite[None])
+        assert_type(event.data, float)
+        return event.target.say("Hello", seconds=0.5)
+
+    @person.every(seconds=1)
+    def puppet_periodic(event: Event[Puppet[None], float]) -> Script[Puppet]:
+        assert_type(event.target, Puppet[None])
+        return event.target.sequence().turn_right(10)
+
+    assert_type(sprite_periodic, Callable[[Event[Sprite[None], float]], Action])
+    assert_type(puppet_periodic, Callable[[Event[Puppet[None], float]], Script[Puppet]])
 
     @hero.on_hit
     def impact(event: Event[Sprite, Collision]) -> None:
@@ -257,6 +272,20 @@ def state_example() -> None:
     accept_broad(hero, stage, person)
     stage.add(hero)
     stage.add(person)
+
+    @hero.every(seconds=1)
+    def stateful_periodic(event: Event[Sprite[PlayerState], float]) -> None:
+        assert_type(event.target.state.health, int)
+        event.target.state.health -= 1
+
+    @person.every(seconds=2)
+    def stateful_puppet_periodic(event: Event[Puppet[PlayerState], float]) -> None:
+        assert_type(event.target.state.speed, float)
+
+    @stage.every(seconds=3)
+    def stateful_stage_periodic(event: Event[Stage[GameState], float]) -> None:
+        assert_type(event.target.state.score, int)
+
     hero.state.health -= 1
     hero.state.speed = 0.5
     hero.state.coins.append(1)

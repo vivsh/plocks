@@ -366,6 +366,9 @@ def close(stage: Stage) -> None:
     stage._message_handlers.clear()
     stage._gamepad_handlers.clear()
     stage._gamepad_up_handlers.clear()
+    for timer in stage._timers:
+        timer.action = None
+    stage._timers.clear()
     stage._starts.clear()
     stage._clone_handlers.clear()
     stage._clone_end_handlers.clear()

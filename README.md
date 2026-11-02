@@ -18,7 +18,7 @@ hints. Start with a bundled game, change one thing, and see what happens!
 | --- | --- |
 | Bring characters to life | Sprites, [images, grids, named pictures and anchors](docs/art/images.md), speech and thought bubbles, and jointed Puppets |
 | Flash, fade or twist pictures | [Seven graphic effects](docs/activities/effects.md), animated with scripts or `after` |
-| Give characters a plan | Movement scripts: glide, wait, repeat and react to events |
+| Give characters a plan | Glide, wait, repeat and react—or use [`sprite.every(seconds=2)`](docs/activities/battle_games.md#give-each-character-a-timer) for regular actions |
 | Make characters work together | Broadcasts, typed message data and clones with their own controls |
 | Make a ball or block | [Shape images](docs/art/shapes.md) with colors, outlines and anchors—no picture files needed |
 | Build a world | Tile maps, automatic camera following, parallax, and Tiled and Pixelorama artwork |

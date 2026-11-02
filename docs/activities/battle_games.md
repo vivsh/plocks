@@ -103,5 +103,30 @@ The first call happens after three game seconds. Pause freezes the timer.
 `event.data` is the interval you chose. Keep the hidden enemy original attached,
 just like the bullet original in the tank game.
 
+## Give each character a timer
+
+After adding your enemy to the stage, it can do something every two game seconds:
+
+```python
+from plocks import Action, Event, Sprite
+
+@enemy.every(seconds=2)
+def taunt(event: Event[Sprite, float]) -> Action:
+    return event.target.say("Here I come!", seconds=0.5)
+```
+
+`event.target` is the enemy; `event.source` is the stage. Puppets work the same
+way, using `Event[Puppet, float]`. Return an Action or Script when the callback
+should stay busy until that work finishes. Extra ticks are ignored while busy;
+`when_busy=WhenBusy.RESTART` starts the work again instead (import `WhenBusy`
+from `plocks` to use it).
+
+The first call waits one full interval. Pausing freezes the timer. Clones inherit
+independent timers, so use **event.target** to change the receiving clone.
+`enemy.stop()` cancels current work but keeps future ticks. Removing an ordinary
+enemy stops its timer; adding it back to the same stage starts a fresh interval.
+Removed clones lose their inherited registrations. Closing the stage stops all timers.
+Keep using `stage.every(...)` for whole-game jobs such as spawning new enemies.
+
 **Make it yours:** add a red target, change the driving speed, or make steel tiles
 that bullets cannot destroy.
