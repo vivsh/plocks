@@ -3,15 +3,29 @@
 from __future__ import annotations
 
 from math import hypot
+from typing import TYPE_CHECKING
 
 from .events import Collision
 from .geometry import Point, _point
 from .physics import Body, Physics, _native
 
+if TYPE_CHECKING:
+    import pymunk
 
-def _hits(world: Physics, starts: dict[Body, Point]) -> tuple[tuple[Body, Collision], ...]:
-    """Sweep translating projectiles relative to the other bodies' translation."""
-    from ._casts import _candidates
+    from .queries import CastTarget
+
+
+def _hits(
+    world: Physics,
+    starts: dict[Body, Point],
+    geometry: dict[Body, tuple[tuple[Point, ...], float]],
+) -> tuple[tuple[Body, Collision], ...]:
+    """Sweep relative motion; reuse nonrotating projectile geometry within one tick.
+
+    The caller supplies fresh scratch for each integration. Projectile angular
+    velocity is zero and no user callbacks run between its physics substeps.
+    """
+    from ._casts import _candidates, _owners
     from ._combat import _pair
     from ._physics import _ONE_WAY, _space
     from ._sweep import _core, _sweep
@@ -22,6 +36,8 @@ def _hits(world: Physics, starts: dict[Body, Point]) -> tuple[tuple[Body, Collis
     }
     reach = max((hypot(*shift) for shift in shifts.values()), default=0.0)
     impacts: list[tuple[Body, Collision]] = []
+    owners: dict[pymunk.Body, CastTarget] | None = None
+    order: dict[object, int] | None = None
     for body, start in starts.items():
         if not body._projectile:
             continue
@@ -29,13 +45,25 @@ def _hits(world: Physics, starts: dict[Body, Point]) -> tuple[tuple[Body, Collis
         length = hypot(end[0] - start[0], end[1] - start[1])
         if not length:
             continue
+        if owners is None:
+            owners = _owners(world)
+            order = {obj: index for index, obj in enumerate(world._stage._members)}
         source = _native(body)
-        core, radius = _core(next(iter(source.shapes)))
-        offsets = tuple((x - end[0], y - end[1]) for x, y in core)
+        if body not in geometry:
+            core, radius = _core(next(iter(source.shapes)))
+            geometry[body] = tuple((x - end[0], y - end[1]) for x, y in core), radius
+        offsets, radius = geometry[body]
         best: tuple[float, Collision] | None = None
         sensors: list[tuple[float, Collision]] = []
         for target, shape, cell in _candidates(
-            world, start, end, offsets, radius + reach, include_sensors=True
+            world,
+            start,
+            end,
+            offsets,
+            radius + reach,
+            include_sensors=True,
+            owners=owners,
+            order=order,
         ):
             native = shape.body
             if native is None or native is source or not _pair(world, source, native):

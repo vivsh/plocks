@@ -219,12 +219,14 @@ def _trigger(
 ) -> Action | None:
     if not stage.running or (handler.actor is not None and handler.actor._stage is not stage):
         return None
-    busy = [a for a in _actions(stage) if a._handler is handler]
+    before = _actions(stage)
+    busy = [a for a in before if a._handler is handler]
     if busy and handler.when_busy is WhenBusy.IGNORE:
         return None
     for action in busy:
         _cancel(stage, action)
-    before = _actions(stage)
+    if busy:
+        before = _actions(stage)
     target = stage if handler.actor is None else handler.actor
     occurrence = (
         Event(stage if source is None else source, target, data)

@@ -4,7 +4,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from plocks import BodyType, Collision, Event, Image, Sprite, Stage, TileMap
+from plocks import BodyType, Circle, Collision, Event, Image, Sprite, Stage, TileMap
 from plocks._runtime import advance, close
 
 
@@ -76,6 +76,31 @@ def test_swept_clone_same_event_and_reverse_recipient(arena: Stage) -> None:
     copy.remove()
     assert not arena._hit_contacts
     assert original._stage is arena
+
+
+def test_projectile_sweep_uses_current_shape_orientation_after_relaunch(arena: Stage) -> None:
+    """A new tick rebuilds sweep geometry after a projectile is turned and relaunched."""
+    shot = Sprite(Image.rectangle(4, 4), body_type=BodyType.KINEMATIC)
+    upper = Sprite(Image.rectangle(2, 4), x=30, y=10, body_type=BodyType.STATIC)
+    lower = Sprite(Image.rectangle(2, 4), x=30, y=-10, body_type=BodyType.STATIC)
+    for actor in (shot, upper, lower):
+        arena.add(actor)
+    shot.body.shape = Circle(2, center=(0, 10))
+    shot.body.projectile = True
+    hits: list[object] = []
+
+    @shot.on_hit
+    def record(event: Event[Sprite, Collision]) -> None:
+        hits.append(event.data.target)
+
+    shot.body.travel_along(speed=6000, direction=90)
+    tick(arena, 1)
+    assert hits == [upper]
+    shot.position = (0, 0)
+    shot.direction = 270
+    shot.body.travel_along(speed=6000, direction=90)
+    tick(arena, 1)
+    assert hits == [upper, lower]
 
 
 def test_resting_floor_and_tile_seam_is_one_owner_contact(arena: Stage) -> None:

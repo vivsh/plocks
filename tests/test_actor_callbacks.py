@@ -100,6 +100,42 @@ def test_update_order_snapshots_and_hidden_actors[A: (Sprite, Puppet)](
     assert events[3:] == ["global", "actor", "last", "late"] and actor.x == 2
 
 
+def test_update_pause_stops_later_callbacks_and_resume_delivers_fresh_events(
+    stage: Stage,
+) -> None:
+    """Pause takes effect between callbacks; each delivered update has its own Event."""
+    events: list[Event[Stage, float]] = []
+
+    @stage.on_update
+    def first(event: Event[Stage, float]) -> None:
+        events.append(event)
+        if len(events) == 1:
+            stage.pause()
+
+    @stage.on_update
+    def second(event: Event[Stage, float]) -> None:
+        events.append(event)
+
+    ticks(stage, 1)
+    assert len(events) == 1 and stage.paused
+    stage.resume()
+    ticks(stage, 1)
+    assert len(events) == 3
+    assert events[1] is not events[2]
+    assert all(event.source is stage and event.target is stage for event in events)
+
+
+def test_update_rejects_non_none_result(stage: Stage) -> None:
+    """An update callback cannot return a value even when registered without typing."""
+
+    def bad_update(event: Event[Stage, float]) -> int:
+        return 1
+
+    stage.on_update(cast(Callable[[Event[Stage, float]], None], bad_update))
+    with pytest.raises(TypeError, match="update callbacks must return None"):
+        ticks(stage, 1)
+
+
 def test_update_detach_readd_and_migration[A: (Sprite, Puppet)](actor: A, stage: Stage) -> None:
     """Actor updates stay registered in their stage and never transfer implicitly."""
     stage.add(actor)

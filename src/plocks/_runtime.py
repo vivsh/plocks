@@ -271,16 +271,18 @@ def advance(stage: Stage, now: float) -> None:
         _step(stage)
         if stage.paused:
             break
+        if stage._updates:
+            from .stage import _check_callback_result
+
         for actor, callback in tuple(stage._updates):
             if stage.running and not stage.paused and (actor is None or actor._stage is stage):
-                from .stage import _check_callback_result
-
-                _check_callback_result(
+                result = (
                     cast(UpdateCallback, callback)(Event(stage, stage, dt))
                     if actor is None
-                    else cast("ActorUpdateCallback[Actor]", callback)(Event(stage, actor, dt)),
-                    "update",
+                    else cast("ActorUpdateCallback[Actor]", callback)(Event(stage, actor, dt))
                 )
+                if result is not None:
+                    _check_callback_result(result, "update")
         if stage.running and not stage.paused:
             impacts: tuple[tuple[Actor, Collision], ...] = ()
             if stage._physics is not None:

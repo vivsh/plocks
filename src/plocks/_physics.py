@@ -540,6 +540,7 @@ def _integrate(stage: Stage, dt: float) -> tuple[tuple[Actor, Collision], ...]:
     impacts: list[tuple[Actor, Collision]] = []
     seen: set[tuple[Actor, CastTarget]] = set()
     projectiles = any(body._projectile for body in world._bodies)
+    projectile_geometry: dict[Body, tuple[tuple[Point, ...], float]] = {}
     for index in range(count):
         starts = {body: body._actor.position for body in world._bodies} if projectiles else {}
         start = stage.time + index * substep
@@ -586,7 +587,7 @@ def _integrate(stage: Stage, dt: float) -> tuple[tuple[Actor, Collision], ...]:
         from ._collisions import _sample as sample_contacts
         from ._projectiles import _hits
 
-        swept = _hits(world, starts) if starts else ()
+        swept = _hits(world, starts, projectile_geometry) if starts else ()
         impacts.extend(sample_contacts(stage, swept, seen))
         if world._connections:
             for body in world._bodies:

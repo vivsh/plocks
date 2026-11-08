@@ -67,6 +67,8 @@ def _candidates(
     radius: float,
     *,
     include_sensors: bool = False,
+    owners: dict[pymunk.Body, CastTarget] | None = None,
+    order: dict[object, int] | None = None,
 ) -> list[tuple[CastTarget, pymunk.Shape, tuple[int, int] | None]]:
     """Use the native spatial index, then order by stage insertion and tile cell."""
     import pymunk
@@ -82,11 +84,10 @@ def _candidates(
         (max(start[0], end[0]) + max(xs) + radius, max(start[1], end[1]) + max(ys) + radius)
     )
     shapes = _space(world).bb_query(pymunk.BB(*low, *high), pymunk.ShapeFilter())
-    owners: dict[pymunk.Body, CastTarget] = {
-        body._native: body._actor for body in world._bodies if body._native is not None
-    }
-    owners.update({item.native: item.tilemap for item in world._terrain if item.native is not None})
-    order = {obj: index for index, obj in enumerate(world._stage._members)}
+    if owners is None:
+        owners = _owners(world)
+    if order is None:
+        order = {obj: index for index, obj in enumerate(world._stage._members)}
     from .tiling import TileMap
 
     result: list[tuple[CastTarget, pymunk.Shape, tuple[int, int] | None]] = []
@@ -98,6 +99,15 @@ def _candidates(
         result.append((target, native, cell))
     result.sort(key=lambda item: (order[item[0]], item[2] or (-1, -1)))
     return result
+
+
+def _owners(world: Physics) -> dict[pymunk.Body, CastTarget]:
+    """Build a short-lived native-body owner map for a query or physics substep."""
+    owners: dict[pymunk.Body, CastTarget] = {
+        body._native: body._actor for body in world._bodies if body._native is not None
+    }
+    owners.update({item.native: item.tilemap for item in world._terrain if item.native is not None})
+    return owners
 
 
 def _cast(
