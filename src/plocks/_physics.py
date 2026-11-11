@@ -472,23 +472,31 @@ def _travel_speed(body: Body, dt: float, requests: tuple[_Request | None, ...]) 
 def _substeps(world: Physics, dt: float, requests: tuple[_Request | None, ...]) -> int:
     """Keep relative travel below a quarter of the smallest moving collider dimension.
 
-    Derive the count locally in worlds with one-way platforms or connections. Retain the
-    usual four substeps for ordinary scenes; reject an unsafe count rather than
-    capping it silently or allowing an unbounded native stepping loop.
+    Derive the count locally for solid terrain, one-way platforms and connections.
+    Reject unsafe counts rather than silently capping them or stepping unboundedly.
     """
     from ._connections import _steps as connection_steps
 
     base = connection_steps(world, dt)
-    if (
-        not world._connections
-        and not any(t.tilemap.one_way for t in world._terrain)
-        and not any(_one_way(body._actor) for body in world._bodies)
-        and not any(body._boundary_native is not None for body in world._bodies)
-    ):
+    other_constraints = (
+        bool(world._connections)
+        or any(t.tilemap.one_way for t in world._terrain)
+        or any(_one_way(body._actor) or body._boundary_native is not None for body in world._bodies)
+    )
+    solid_sizes = [
+        min(t.tilemap.tile_size)
+        for t in world._terrain
+        if t.native is not None
+        and t.tilemap.solid
+        and any(shape.collision_type != _ONE_WAY for shape in t.native.shapes)
+    ]
+    if not other_constraints and not solid_sizes:
         return 4
     extent, speed = inf, 0.0
     for body in world._bodies:
         if body.body_type is BodyType.STATIC:
+            continue
+        if body._projectile and not other_constraints:
             continue
         speed = max(speed, _travel_speed(body, dt, requests))
         if body.body_type is BodyType.DYNAMIC:
@@ -497,6 +505,8 @@ def _substeps(world: Physics, dt: float, requests: tuple[_Request | None, ...]) 
             extent = min(extent, size * body._actor.scale)
     if extent == inf:
         return base
+    if solid_sizes:
+        extent = min(extent, min(solid_sizes))
     required = dt * (2 * speed) / (extent / 4)
     if not isfinite(required) or required > 1024:
         raise PhysicsError(

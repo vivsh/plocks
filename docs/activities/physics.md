@@ -79,8 +79,9 @@ of `solid`: solid tiles block every side. Both need `Stage(physics=True)` for
 automatic landing. One-way platforms stay horizontal; moving lifts use
 `BodyType.KINEMATIC`.
 
-If a tiny hit box moves too fast, Plocks may ask for more physics steps than it
-can safely run. Slow the object down or give it a larger hit box.
+Solid tile maps also use extra physics steps when a body moves fast. If an object
+moves too fast for the available steps, slow it down, use a larger hit box or tile,
+or increase the stage's `tick_rate`.
 
 
 ## Slowing down

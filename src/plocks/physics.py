@@ -65,10 +65,12 @@ class Circle:
 class Physics:
     """The native world belonging to one enabled Stage. Access through stage.physics.
 
-    One-way/connected worlds adapt native precision to motion and collider size, without
-    changing simulation time. PhysicsError stops execution if safe stepping would
-    require more than 1024 native substeps per tick. Reduce speed/force, enlarge
-    very small colliders, or increase the stage's tick_rate for that workload.
+    Worlds with solid tiles, one-way platforms, connections or containment adapt
+    native precision to motion and collider size without changing simulation time.
+    PhysicsError stops execution if the estimated safe stepping would require more
+    than 1024 native substeps per tick. Reduce speed/force, enlarge very small
+    colliders or tiles, or increase the stage's tick_rate for that workload. This
+    bounded sampling does not guarantee continuous collision detection.
     """
 
     __slots__ = ("_bodies", "_connections", "_space", "_stage", "_terrain")
@@ -86,6 +88,7 @@ class Physics:
         self._connections: list[Connection] = []
         self._terrain: list[_TileBody] = []
         self._space.gravity = (0, -900)
+        self._space.collision_bias = 0
         from ._physics import _ONE_WAY, _begin_one_way
 
         self._space.add_collision_handler(_ONE_WAY, 0).begin = _begin_one_way
