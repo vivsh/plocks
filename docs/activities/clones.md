@@ -92,6 +92,16 @@ In an inherited handler, use `event.target.remove()` to remove the copy receivin
 that event. Removing it stops its scripts and releases its physics body.
 Calling `remove()` again is harmless.
 
+To remove all the copies currently on the stage, while keeping the originals
+and their controls:
+
+```python
+stage.remove_clones()
+```
+
+Clone-end functions still run. If one creates a new copy, that new copy stays:
+the call removes the copies that were on the stage when it began.
+
 Add a character to the stage **before** registering its handlers. Currently,
 Plocks stores those registrations on the stage.
 

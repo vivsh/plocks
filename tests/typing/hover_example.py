@@ -80,6 +80,8 @@ def main() -> None:
     assert_type(hero.can_see(person, distance=300), bool)
     assert_type(hero.clone_count, int)
     assert_type(stage.clone_count, int)
+    assert_type(stage.remove_clones(), None)
+    assert_type(stage.remove_tilemaps(), None)
     hero.body.walk(speed=-120)
     assert_type(hero.body.jump(height=80), bool)
     hero.body.collision_group = "player"

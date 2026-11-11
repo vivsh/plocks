@@ -62,6 +62,19 @@ You should see your tiles and your hero at the starting spot.
 This little program draws the world; it does not move the hero yet.
 The original [Asset Workshop](../../src/plocks/_games/asset_workshop) adds movement and jumps.
 
+To change levels without removing your hero or its controls, remove the old
+tile maps, then add the new level's layers:
+
+```python
+stage.remove_clones()
+stage.remove_tilemaps()
+for tiles in next_level.layers.values():
+    stage.add(tiles)
+```
+
+Removing a tile map also removes its solid physics tiles. Other stage objects
+and callbacks stay in place.
+
 **Make it yours:** move `player_start`, save, and restart. Where does the hero appear?
 
 **Stuck?** Keep `Ground`, `Spawns`, and `player_start` spelled as shown.
