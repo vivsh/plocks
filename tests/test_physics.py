@@ -174,6 +174,47 @@ def test_terrain_edit_move_and_failed_edit_preserves_cells() -> None:
         close(stage)
 
 
+def test_reset_tiles_rebuilds_attached_terrain_from_original_cells() -> None:
+    """Reset restores solid and one-way cells and clears added terrain at the current position."""
+    stage = Stage(physics=True)
+    tile = PillowImage.new("RGBA", (8, 8))
+    world = TileMap(["#P."], {"#": tile, "P": tile}, tile_size=(8, 8), solid={"#"}, one_way={"P"})
+    stage.add(world)
+    try:
+        world.set_tile(row=0, column=0, tile=None)
+        world.set_tile(row=0, column=1, tile=None)
+        world.set_tile(row=0, column=2, tile="#")
+        world.position = (10, 30)
+        world.reset_tiles()
+        assert world.cells == (("#", "P", None),)
+        for column, x in enumerate((14, 22)):
+            hit = stage.physics.raycast(start=(x, 35), end=(x, 25))
+            assert hit is not None and hit.target is world and hit.cell == (0, column)
+        assert stage.physics.raycast(start=(30, 35), end=(30, 25)) is None
+    finally:
+        close(stage)
+
+
+def test_reset_tiles_keeps_edited_cells_and_terrain_when_budget_rejects_rebuild() -> None:
+    """An attached reset is rejected atomically when other maps occupy the collision budget."""
+    stage = Stage(physics=True)
+    tile = PillowImage.new("RGBA", (8, 8))
+    world = TileMap(["##"], {"#": tile}, tile_size=(8, 8), solid={"#"})
+    filler = TileMap(["#" * 4095], {"#": tile}, tile_size=(8, 8), solid={"#"}, x=100)
+    stage.add(world)
+    try:
+        world.set_tile(row=0, column=0, tile=None)
+        stage.add(filler)
+        with pytest.raises(PhysicsError, match="4096"):
+            world.reset_tiles()
+        assert world.cells == ((None, "#"),)
+        assert stage.physics.raycast(start=(4, 4), end=(4, -4)) is None
+        hit = stage.physics.raycast(start=(12, 4), end=(12, -4))
+        assert hit is not None and hit.target is world and hit.cell == (0, 1)
+    finally:
+        close(stage)
+
+
 def test_unbound_coroutine_force_detach_and_body_reset() -> None:
     from plocks import Action, Puppet
     from plocks._runtime import dispatch

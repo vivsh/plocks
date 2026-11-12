@@ -1,6 +1,6 @@
 """Remove level clones and tile maps without discarding original actors or callbacks."""
 
-from plocks import Event, Image, Puppet, Sprite, Stage, TileMap
+from plocks import BodyType, Event, Image, Puppet, Sprite, Stage, TileMap
 from plocks._runtime import advance, close
 
 
@@ -79,7 +79,7 @@ def test_remove_clones_honors_end_callbacks_and_snapshot() -> None:
         close(stage)
 
 
-def test_remove_tilemaps_detaches_terrain_and_keeps_sprites_and_handlers() -> None:
+def test_remove_tilemap_detaches_terrain_and_keeps_sprites_and_handlers() -> None:
     """Tile maps leave physics and can be re-added; existing sprite callbacks survive."""
     stage = Stage(physics=True)
     stage.physics.gravity = (0, 0)
@@ -98,15 +98,15 @@ def test_remove_tilemaps_detaches_terrain_and_keeps_sprites_and_handlers() -> No
     stage._state, stage._last_wall = "running", 0.0
     try:
         assert not hero.body.can_travel(distance=100, direction=90)
-        stage.remove_tilemaps()
+        stage.remove(wall)
+        stage.remove(other_map)
         assert wall not in stage.objects and other_map not in stage.objects
         assert not stage.physics._terrain and hero.body.can_travel(distance=100, direction=90)
         tick(stage)
         assert seen == [hero] and wall.get_tile(row=0, column=0) == "#"
         stage.add(wall)
         assert not hero.body.can_travel(distance=100, direction=90)
-        stage.remove_tilemaps()
-        stage.remove_tilemaps()
+        stage.remove(wall)
         assert hero in stage.objects
     finally:
         close(stage)
@@ -133,7 +133,7 @@ def test_level_switch_from_button_keeps_window_stage_and_decorators() -> None:
         calls.append("button")
         if old_map in stage.objects:
             stage.remove_clones()
-            stage.remove_tilemaps()
+            stage.remove(old_map)
             stage.add(new_map)
 
     stage._state, stage._last_wall = "running", 0.0
@@ -149,5 +149,89 @@ def test_level_switch_from_button_keeps_window_stage_and_decorators() -> None:
         _apply(stage.gamepads[0], GamepadInput(buttons=frozenset({GamepadButton.A})))
         tick(stage)
         assert calls == ["button", "button"]
+    finally:
+        close(stage)
+
+
+def test_removing_a_tilemap_does_not_rewrite_its_edited_cells() -> None:
+    """Detach removes visual membership and terrain, not the map's own edits."""
+    stage = Stage(physics=True)
+    image = Image.rectangle(40, 40)
+    world = TileMap(["##"], {"#": image}, tile_size=(40, 40), solid={"#"}, x=0, y=20)
+    stage.add(world)
+    try:
+        world.set_tile(row=0, column=0, tile=None)
+        stage.remove(world)
+        assert world not in stage.objects and not stage.physics._terrain
+        assert world.cells == ((None, "#"),)
+        stage.add(world)
+        assert stage.physics.raycast(start=(20, 50), end=(20, 0)) is None
+        hit = stage.physics.raycast(start=(60, 50), end=(60, 0))
+        assert hit is not None and hit.target is world and hit.cell == (0, 1)
+    finally:
+        close(stage)
+
+
+def test_touch_decorator_survives_resetting_and_readding_the_same_map() -> None:
+    """A detached reset restores terrain on re-add and preserves the map-specific callback."""
+    stage = Stage(physics=True)
+    image = Image.rectangle(40, 40)
+    world = TileMap(["#"], {"#": image}, tile_size=(40, 40), solid={"#"}, x=-20, y=20)
+    hero = Sprite(Image.rectangle(10, 10), body_type=BodyType.NONE)
+    stage.add(world)
+    stage.add(hero)
+    hits: list[TileMap] = []
+
+    @hero.on_touch(world)
+    def touching(event: Event[Sprite, TileMap]) -> None:
+        hits.append(event.data)
+
+    stage._state, stage._last_wall = "running", 0.0
+    try:
+        tick(stage)
+        world.set_tile(row=0, column=0, tile=None)
+        stage.remove(world)
+        tick(stage)
+        world.reset_tiles()
+        assert world.cells == (("#",),) and not stage.physics._terrain
+        stage.add(world)
+        hit = stage.physics.raycast(start=(0, 40), end=(0, 0))
+        assert hit is not None and hit.target is world and hit.cell == (0, 0)
+        tick(stage)
+        assert hits == [world, world]
+    finally:
+        close(stage)
+
+
+def test_repeated_new_levels_have_fresh_tiles_and_collision_events() -> None:
+    """A surviving actor can hit a new map at the same position in every level."""
+    from plocks import Collision
+
+    stage = Stage(physics=True)
+    stage.physics.gravity = (0, 0)
+    image = Image.rectangle(40, 40)
+    hero = Sprite(Image.rectangle(10, 10), x=-50)
+    stage.add(hero)
+    hero.body.rotation_locked = True
+    hits: list[Collision] = []
+
+    @hero.on_hit
+    def hit(event: Event[Sprite, Collision]) -> None:
+        hits.append(event.data)
+
+    stage._state, stage._last_wall = "running", 0.0
+    try:
+        for number in range(10):
+            level = TileMap(["#"], {"#": image}, tile_size=(40, 40), solid={"#"}, x=0, y=20)
+            stage.add(level)
+            hero.position = (-50, 0)
+            hero.body.velocity = (400, 0)
+            for _ in range(15):
+                tick(stage)
+            assert len(hits) == number + 1
+            assert hits[-1].target is level and hits[-1].cell == (0, 0)
+            level.set_tile(row=0, column=0, tile=None)
+            stage.remove(level)
+            assert not stage.physics._terrain
     finally:
         close(stage)

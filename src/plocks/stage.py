@@ -562,16 +562,6 @@ class Stage(Generic[_State_co]):  # noqa: UP046 -- default state type supports P
             if isinstance(obj, (Sprite, Puppet)) and obj.is_clone and obj._stage is self:
                 self.remove(obj)
 
-    def remove_tilemaps(self) -> None:
-        """Remove the current tile maps and their physical terrain from this stage.
-
-        Other objects and callback registrations remain. Removed maps can be
-        added again with their existing tiles and position.
-        """
-        for obj in tuple(self._members):
-            if isinstance(obj, TileMap) and obj._stage is self:
-                self.remove(obj)
-
     def on_update(
         self, callback: Callable[[Event[Self, float]], None]
     ) -> Callable[[Event[Self, float]], None]:

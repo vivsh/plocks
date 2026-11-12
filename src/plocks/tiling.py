@@ -24,7 +24,8 @@ class TileMap:
     """A rectangular character grid or explicit key matrix, placed by world top-left x/y.
 
     Cells select a shared image palette. Tile dimensions and palette stay fixed;
-    edit cells with set_tile. Solid cells participate in overlap queries and an enabled stage physics world.
+    edit cells with set_tile or restore the original layout with reset_tiles.
+    Solid cells participate in overlap queries and an enabled stage physics world.
     one_way keys support landing from above, allowing jumps through from below.
     Solid and one-way keys must be disjoint. Nonphysical movement is never resolved
     automatically. Empty cells return None.
@@ -47,6 +48,7 @@ class TileMap:
 
     __slots__ = (
         "_cells",
+        "_initial_cells",
         "_layer",
         "_one_way",
         "_opacity",
@@ -131,6 +133,7 @@ class TileMap:
         self._y = _number(y, "y")
         self._visible = visible
         self._layer = _integer(layer, "layer")
+        self._initial_cells: tuple[tuple[str | None, ...], ...] = tuple(tuple(row) for row in cells)
 
     @property
     def opacity(self) -> float:
@@ -407,6 +410,21 @@ class TileMap:
             cells[row][column] = tile
             _terrain(self._stage._physics, self, cells=cells)
         self._cells[row][column] = tile
+
+    def reset_tiles(self) -> None:
+        """Restore the original cell layout, whether attached or detached.
+
+        Attached physics maps rebuild their collision terrain. If that rebuild
+        is rejected, the current cells and terrain remain in use.
+        """
+        cells = [list(row) for row in self._initial_cells]
+        if cells == self._cells:
+            return
+        if self._stage is not None and self._stage._physics is not None:
+            from ._physics import _terrain
+
+            _terrain(self._stage._physics, self, cells=cells)
+        self._cells = cells
 
     def cell_at(self, *, x: float, y: float) -> tuple[int, int] | None:
         """Find (row, column) under a world point; right/bottom outer edges are outside."""

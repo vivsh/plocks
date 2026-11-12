@@ -67,13 +67,23 @@ tile maps, then add the new level's layers:
 
 ```python
 stage.remove_clones()
-stage.remove_tilemaps()
+for tiles in level.layers.values():
+    stage.remove(tiles)
 for tiles in next_level.layers.values():
     stage.add(tiles)
 ```
 
 Removing a tile map also removes its solid physics tiles. Other stage objects
 and callbacks stay in place.
+
+To restart a level with its original tiles, call `reset_tiles()` on each layer.
+You can do this while the level is on the stage or before you add it back.
+Removing and re-adding a layer without calling `reset_tiles()` keeps its edits.
+
+```python
+for tiles in level.layers.values():
+    tiles.reset_tiles()
+```
 
 **Make it yours:** move `player_start`, save, and restart. Where does the hero appear?
 

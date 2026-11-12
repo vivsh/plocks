@@ -307,3 +307,33 @@ def test_pixelorama_mismatched_metadata_fails(tmp_path: Path, problem: str) -> N
     save(assets / "hero.json", data)
     with pytest.raises(AssetError):
         PixeloramaSheet(assets / "hero.png")
+
+
+def test_new_tiled_map_uses_its_own_tiles_and_physics_after_previous_map_is_removed(
+    tmp_path: Path,
+) -> None:
+    """Editing/removing one imported level cannot erase the next level's tile or collider."""
+    assets = game(tmp_path)
+    path = assets / "jungle.tmj"
+    data = _document(path)
+    layer = cast(list[dict[str, object]], data["layers"])[0]
+    layer["properties"] = [{"name": "solid", "type": "bool", "value": True}]
+    save(path, data)
+    old = TiledMap(path, x=-160, y=64).layers["Ground"]
+    stage = Stage(width=320, height=320, physics=True)
+    stage.add(old)
+    try:
+        assert old.get_tile(row=4, column=0) == "1"
+        old.set_tile(row=4, column=0, tile=None)
+        stage.remove(old)
+        new = TiledMap(path, x=-160, y=64).layers["Ground"]
+        stage.add(new)
+        assert new is not old and new.get_tile(row=4, column=0) == "1"
+        target = pygame.Surface((320, 320), pygame.SRCALPHA)
+        _tiles(stage, target, new)
+        assert tuple(target.get_at((16, 240))) == new.palette["1"].to_pillow().getpixel((16, 16))
+        hit = stage.physics.raycast(start=(-144, -50), end=(-144, -90))
+        assert hit is not None and hit.target is new and hit.cell == (4, 0)
+        assert len(stage.physics._terrain) == 1 and stage.physics._terrain[0].tilemap is new
+    finally:
+        close(stage)
